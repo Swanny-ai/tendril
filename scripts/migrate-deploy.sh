@@ -6,6 +6,7 @@ for attempt in 1 2 3 4 5; do
   if npx prisma migrate deploy; then
     exit 0
   fi
+  if [ "$attempt" = 1 ]; then node scripts/db-diagnose.mjs; fi
   echo "prisma migrate deploy failed (attempt ${attempt}/5), retrying in $((attempt * 4))s..."
   sleep $((attempt * 4))
 done
