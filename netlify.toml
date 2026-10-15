@@ -1,7 +1,8 @@
 # Netlify deploy settings. Netlify detects Next.js and uses its OpenNext adapter automatically.
 [build]
-  # Apply any pending database migrations, then build. DATABASE_URL must be set in Netlify.
-  command = "npx prisma migrate deploy && npm run build"
+  # Apply pending database migrations (with retries while Neon wakes up), then build.
+  # DATABASE_URL must be set in Netlify.
+  command = "bash scripts/migrate-deploy.sh && npm run build"
   publish = ".next"
 
 [build.environment]
