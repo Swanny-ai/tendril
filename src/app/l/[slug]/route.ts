@@ -1,5 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { clientIp } from "@/lib/analytics/visitor";
+import { detectInAppBrowser } from "@/lib/in-app";
 import { rateLimit } from "@/lib/rate-limit";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
 
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
 
   const headers = new Headers(request.headers);
   const confirmed = request.nextUrl.searchParams.get("ok") === "1";
+  // ib=1: the visitor already went through the "open in browser" step (now in the real
+  // browser, or chose to stay in the app), so don't show it again or count a second visit.
+  const escaped = request.nextUrl.searchParams.get("ib") === "1";
   const log = (kinds: SmartLinkEventKind[]) => {
     if (!rateLimit(`smart:${clientIp(headers)}:${slug}:${kinds[0]}`, 30, 60_000)) return;
     after(async () => {
@@ -34,11 +38,18 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
     });
   };
 
+  // Deep link: inside Instagram, TikTok, Facebook... show a page with an "Open in browser"
+  // button that moves the visitor to the phone's default browser.
+  if (link.openInBrowser && !confirmed && !escaped && detectInAppBrowser(headers.get("user-agent") ?? "")) {
+    log(["hit"]);
+    return new Response(null, { status: 302, headers: { ...NO_STORE, Location: `/l/${slug}/open` } });
+  }
+
   if (link.adultWarning && !confirmed) {
-    log(["hit"]); // a visit; the warning page records its own "view"
+    if (!escaped) log(["hit"]); // a visit; the warning page records its own "view"
     return new Response(null, { status: 302, headers: { ...NO_STORE, Location: `/l/${slug}/warning` } });
   }
 
-  log(link.adultWarning ? ["confirm", "redirect"] : ["hit", "redirect"]);
+  log(link.adultWarning ? ["confirm", "redirect"] : escaped ? ["redirect"] : ["hit", "redirect"]);
   return new Response(null, { status: 302, headers: { ...NO_STORE, Location: link.destinationUrl } });
 }

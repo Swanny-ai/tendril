@@ -19,13 +19,24 @@ export type SmartLinkTarget = {
   warningMessage: string | null;
   warningButton: string | null;
   showBadge: boolean;
+  openInBrowser: boolean;
+  label: string;
+  /** The creator's bio-page identity, shown on the "open in browser" page. */
+  owner: { name: string; username: string; avatarUrl: string | null } | null;
 };
 
 /** Uncached loader (used by the proxy, where "use cache" is not available). */
 export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | null> {
   const link = await db.smartLink.findUnique({
     where: { slug },
-    include: { user: { select: { subscription: { select: { plan: true, status: true } } } } },
+    include: {
+      user: {
+        select: {
+          subscription: { select: { plan: true, status: true } },
+          page: { select: { username: true, displayName: true, avatarUrl: true } },
+        },
+      },
+    },
   });
   if (!link || !link.enabled) return null;
   const plan = planFromSubscription(link.user.subscription);
@@ -48,6 +59,11 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
     warningMessage: limits.customWarningText ? link.warningMessage : null,
     warningButton: limits.customWarningText ? link.warningButton : null,
     showBadge: limits.removeBadge ? link.showBadge : true,
+    openInBrowser: link.openInBrowser,
+    label: link.label,
+    owner: link.user.page
+      ? { name: link.user.page.displayName || link.user.page.username, username: link.user.page.username, avatarUrl: link.user.page.avatarUrl }
+      : null,
   };
 }
 

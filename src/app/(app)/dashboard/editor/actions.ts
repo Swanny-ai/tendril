@@ -199,6 +199,17 @@ export async function setWarningTemplateAction(key: string | null): Promise<Acti
   }
 }
 
+export async function setOpenInBrowserAction(enabled: boolean): Promise<ActionResult> {
+  try {
+    const { page } = await ownPage();
+    await db.page.update({ where: { id: page.id }, data: { openInBrowser: enabled === true } });
+    await invalidatePageFromAction(page.id);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 const AVATAR_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 

@@ -25,6 +25,7 @@ export type PublicPageData = {
   seoTitle: string | null;
   seoDescription: string | null;
   showBadge: boolean;
+  openInBrowser: boolean;
   theme: ThemeTokens;
   blocks: PublicBlock[];
 };
@@ -49,6 +50,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     seoTitle: page.seoTitle,
     seoDescription: page.seoDescription,
     showBadge: PLAN_LIMITS[plan].removeBadge ? page.showBadge : true,
+    openInBrowser: page.openInBrowser,
     theme: resolveTheme(page.themeKey, page.themeOverrides, PLAN_LIMITS[plan].customTheme),
     blocks: page.blocks
       .filter((b) => visible.has(b.id))

@@ -40,5 +40,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/l/:slug/warning", "/l/:slug/left", "/go/:blockId/warning"],
+  matcher: ["/l/:slug/warning", "/l/:slug/left", "/l/:slug/open", "/go/:blockId/warning"],
 };

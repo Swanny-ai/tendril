@@ -13,7 +13,7 @@ export type EditorProfile = {
   published: boolean;
 };
 
-export type EditorTheme = { themeKey: string; overrides: ThemeOverrides; showBadge: boolean; warningTemplate: string | null };
+export type EditorTheme = { themeKey: string; overrides: ThemeOverrides; showBadge: boolean; warningTemplate: string | null; openInBrowser: boolean };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -35,7 +35,7 @@ type EditorState = {
 export const useEditor = create<EditorState>((set) => ({
   username: "",
   profile: { displayName: "", bio: "", avatarUrl: null, seoTitle: "", seoDescription: "", published: true },
-  theme: { themeKey: "paper", overrides: {}, showBadge: true, warningTemplate: null },
+  theme: { themeKey: "paper", overrides: {}, showBadge: true, warningTemplate: null, openInBrowser: true },
   blocks: [],
   pending: 0,
   saveState: "idle",

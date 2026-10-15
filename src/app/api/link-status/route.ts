@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
   if (kind === "smart" && SLUG.test(id)) {
     const link = await loadSmartLink(id);
     if (!link) return reply(false);
-    return reply(page === "warning" ? link.adultWarning : true);
+    if (page === "warning") return reply(link.adultWarning);
+    if (page === "open") return reply(link.openInBrowser);
+    return reply(true);
   }
   if (kind === "block" && ID.test(id)) {
     const target = await loadRedirectTarget(id);

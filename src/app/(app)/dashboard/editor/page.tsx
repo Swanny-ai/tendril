@@ -33,7 +33,7 @@ export default async function EditorPage() {
           seoDescription: page.seoDescription ?? "",
           published: page.published,
         },
-        theme: { themeKey: page.themeKey, overrides: sanitizeOverrides(page.themeOverrides), showBadge: page.showBadge, warningTemplate: page.warningTemplate },
+        theme: { themeKey: page.themeKey, overrides: sanitizeOverrides(page.themeOverrides), showBadge: page.showBadge, warningTemplate: page.warningTemplate, openInBrowser: page.openInBrowser },
         blocks: blocks.map(
           (b): EditorBlock => ({
             id: b.id,

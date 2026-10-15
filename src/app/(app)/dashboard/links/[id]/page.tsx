@@ -46,6 +46,7 @@ export default async function EditSmartLinkPage(
           destinationUrl: link.destinationUrl,
           label: link.label,
           adultWarning: link.adultWarning,
+          openInBrowser: link.openInBrowser,
           warningTemplate: link.warningTemplate,
           warningTitle: link.warningTitle ?? "",
           warningMessage: link.warningMessage ?? "",

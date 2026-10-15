@@ -38,6 +38,7 @@ export default async function NewSmartLinkPage() {
             destinationUrl: "",
             label: "",
             adultWarning: true,
+            openInBrowser: true,
             warningTemplate: DEFAULT_WARNING_TEMPLATE,
             warningTitle: "",
             warningMessage: "",

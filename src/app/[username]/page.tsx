@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PublicPage } from "@/components/public-page/public-page";
 import { appUrl, brand } from "@/config/brand";
 import { getPublicPage } from "@/lib/pages";
+import { BioLinkEscape } from "./bio-link-escape";
 import { InAppHint } from "./in-app-hint";
 import { ViewBeacon } from "./view-beacon";
 
@@ -58,6 +59,7 @@ export default async function PublicProfilePage(props: PageProps<"/[username]">)
       <InAppHint />
       <PublicPage page={page} />
       <ViewBeacon pageId={page.id} />
+      {page.openInBrowser ? <BioLinkEscape /> : null}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     </main>
   );

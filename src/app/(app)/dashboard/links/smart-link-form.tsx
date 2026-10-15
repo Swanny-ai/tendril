@@ -28,6 +28,7 @@ export type SmartLinkFormValues = {
   warningMessage: string;
   warningButton: string;
   showBadge: boolean;
+  openInBrowser: boolean;
   enabled: boolean;
 };
 
@@ -137,6 +138,39 @@ export function SmartLinkForm({ id, initial, limits }: { id?: string; initial: S
               <Input id="label" maxLength={80} placeholder="e.g. Instagram bio, spring campaign" value={v.label} onChange={(e) => set({ label: e.target.value })} />
             </div>
           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="size-4 text-primary" aria-hidden /> Deep link: open in phone browser
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  When someone taps this link inside Instagram, TikTok or Facebook, they see a page with an &ldquo;Open in browser&rdquo; button that opens it in
+                  their default browser (Chrome or Safari), where they&apos;re signed in and payments work.
+                </CardDescription>
+              </div>
+              <Switch checked={v.openInBrowser} onCheckedChange={(openInBrowser) => set({ openInBrowser })} aria-label="Open in phone browser" />
+            </div>
+          </CardHeader>
+          {v.openInBrowser ? (
+            <CardContent>
+              <ol className="grid gap-2 text-sm sm:grid-cols-3">
+                {["Visitor taps your link in the app", "Your page shows an “Open in browser” button", "The link opens in their default browser"].map((step, i) => (
+                  <li key={step} className="flex items-start gap-2 rounded-lg border p-3">
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{i + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Android opens the browser straight away. On iPhone it works on iOS 17 and later; otherwise visitors get simple steps. Visitors outside apps go
+                straight to your link.
+              </p>
+            </CardContent>
+          ) : null}
         </Card>
 
         <Card>

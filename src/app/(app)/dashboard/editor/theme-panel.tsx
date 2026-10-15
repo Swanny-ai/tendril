@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import type { PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
 import { contrastRatio, resolveTheme, THEME_PRESETS, type FontKey, type ThemeOverrides } from "@/themes/presets";
-import { setThemeAction, setWarningTemplateAction } from "./actions";
+import { setThemeAction, setOpenInBrowserAction, setWarningTemplateAction } from "./actions";
 import { WARNING_TEMPLATES } from "@/warning-templates/templates";
 import type { Limits } from "./editor";
 import { queueSave, runSave, useEditor, type EditorTheme } from "./store";
@@ -156,6 +156,28 @@ export function ThemePanel({ plan, limits }: { plan: PlanName; limits: Limits })
             </Button>
           ) : null}
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>Deep links: open in phone browser</CardTitle>
+              <CardDescription className="mt-1">
+                When visitors tap your links inside Instagram, TikTok or Facebook, open them in their default browser (Chrome or Safari) instead of the
+                app&apos;s built-in one.
+              </CardDescription>
+            </div>
+            <Switch
+              aria-label="Open links in phone browser"
+              checked={theme.openInBrowser}
+              onCheckedChange={(v) => {
+                useEditor.getState().setTheme({ openInBrowser: v });
+                void runSave(() => setOpenInBrowserAction(v), (m) => toast.error(m));
+              }}
+            />
+          </div>
+        </CardHeader>
       </Card>
 
       <Card>

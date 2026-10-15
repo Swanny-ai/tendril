@@ -38,6 +38,7 @@ async function validate(userId: string, input: SmartLinkInput) {
       warningMessage: data.warningMessage || null,
       warningButton: data.warningButton || null,
       showBadge: data.showBadge,
+      openInBrowser: data.openInBrowser,
       enabled: data.enabled,
     },
     limits,

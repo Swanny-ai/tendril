@@ -1,0 +1,96 @@
+import { expect, test, type Page } from "@playwright/test";
+import { DEMO, TEST_PASSWORD, uniqueName } from "./helpers";
+
+// Simulated visitors inside Instagram's built-in browser.
+const IG_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0";
+const IG_ANDROID =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 Instagram 350.0.0.0";
+const PHONE_SAFARI = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+
+async function newCreatorWithLink(page: Page) {
+  const name = uniqueName("dl");
+  await page.goto("/signup");
+  await page.getByLabel("Email").fill(`${name}@tendril.test`);
+  await page.getByLabel("Password").fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("Username").fill(name);
+  await expect(page.getByText("Available")).toBeVisible();
+  await page.getByRole("button", { name: "Claim and continue" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/editor/);
+
+  const slug = uniqueName("deep").replace(/_/g, "-");
+  await page.goto("/dashboard/links/new");
+  await page.getByLabel("Link name").fill(slug);
+  await expect(page.getByText("Available", { exact: true })).toBeVisible();
+  await page.getByLabel("Destination URL").fill("https://example.com/shop");
+  await expect(page.getByRole("switch", { name: "Open in phone browser" })).toBeChecked(); // on by default
+  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  return { name, slug };
+}
+
+test("smart links: in-app visitors get the open-in-browser step, others go straight through", async ({ page, browser }) => {
+  const { name, slug } = await newCreatorWithLink(page);
+
+  const inApp = await page.request.get(`/l/${slug}`, { maxRedirects: 0, headers: { "user-agent": IG_IOS } });
+  expect(inApp.status()).toBe(302);
+  expect(inApp.headers()["location"]).toBe(`/l/${slug}/open`);
+
+  const outside = await page.request.get(`/l/${slug}`, { maxRedirects: 0, headers: { "user-agent": PHONE_SAFARI } });
+  expect(outside.headers()["location"]).toBe("https://example.com/shop");
+
+  const escaped = await page.request.get(`/l/${slug}?ib=1`, { maxRedirects: 0, headers: { "user-agent": IG_IOS } });
+  expect(escaped.headers()["location"]).toBe("https://example.com/shop");
+
+  // Step 2 page, as an iPhone visitor in Instagram sees it.
+  const ctx = await browser.newContext({ userAgent: IG_IOS, viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/l/${slug}/open`);
+  await expect(visitor.getByRole("heading", { name })).toBeVisible();
+  await expect(visitor.getByText("You're in Instagram's built-in browser.")).toBeVisible();
+  await expect(visitor.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", `/l/${slug}?ib=1`);
+  const open = visitor.getByRole("link", { name: "Open in Safari" });
+  const safariHref = (await open.getAttribute("href")) ?? "";
+  expect(safariHref.startsWith("x-safari-http")).toBe(true);
+  expect(safariHref.endsWith(`/l/${slug}?ib=1`)).toBe(true);
+  // The test browser can't open Safari, so the manual steps appear.
+  await open.click();
+  await expect(visitor.getByText("Didn't open?")).toBeVisible();
+  await ctx.close();
+
+  // Turning the option off sends in-app visitors straight to the destination.
+  await page.getByRole("link", { name: `/l/${slug}` }).click();
+  await page.getByRole("switch", { name: "Open in phone browser" }).click();
+  await page.getByRole("button", { name: "Save link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  const off = await page.request.get(`/l/${slug}`, { maxRedirects: 0, headers: { "user-agent": IG_IOS } });
+  expect(off.headers()["location"]).toBe("https://example.com/shop");
+  expect((await page.request.get(`/l/${slug}/open`)).status()).toBe(404);
+});
+
+test("android visitors get an intent link to their default browser", async ({ browser, page }) => {
+  const { slug } = await newCreatorWithLink(page);
+  const ctx = await browser.newContext({ userAgent: IG_ANDROID, viewport: { width: 412, height: 900 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/l/${slug}/open`);
+  const intent = (await visitor.getByRole("link", { name: "Open in browser" }).getAttribute("href")) ?? "";
+  expect(intent.startsWith("intent://")).toBe(true);
+  expect(intent).toContain(`/l/${slug}?ib=1#Intent;scheme=http`);
+  expect(intent).toContain("S.browser_fallback_url=");
+  await ctx.close();
+});
+
+test("bio page: link taps inside Instagram try the phone browser first", async ({ browser }) => {
+  const ctx = await browser.newContext({ userAgent: IG_IOS, viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/${DEMO.username}`);
+  const firstLink = visitor.locator('a[href^="/go/"]').first();
+  const href = await firstLink.getAttribute("href");
+  await firstLink.click();
+  // Still on the bio page (the test browser can't open Safari), with steps and a way to continue.
+  await expect(visitor.getByRole("dialog", { name: "Open in your browser" })).toBeVisible();
+  await expect(visitor).toHaveURL(new RegExp(`/${DEMO.username}$`));
+  await expect(visitor.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", href ?? "");
+  await ctx.close();
+});
