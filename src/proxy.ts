@@ -1,10 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { loadRedirectTarget } from "@/lib/pages";
-import { loadSmartLink } from "@/lib/smart-links";
 
 // Warning pages render per request and stream, so a missing link would otherwise
 // be sent as a 200 "not found" page. Checking here returns a real 404 status first.
-// The proxy cannot use "use cache", so it calls the uncached loaders (one indexed query).
+// The lookup happens in /api/link-status rather than here, because some hosts
+// (Netlify) run the proxy as an edge function, where the Postgres driver can't load.
 
 function notFound() {
   return new NextResponse(
@@ -15,19 +14,27 @@ function notFound() {
   );
 }
 
+async function exists(request: NextRequest, kind: "smart" | "block", id: string, page: string) {
+  const url = new URL("/api/link-status", request.nextUrl.origin);
+  url.search = new URLSearchParams({ kind, id, page }).toString();
+  try {
+    const res = await fetch(url, { headers: { accept: "application/json" } });
+    return res.status !== 404;
+  } catch {
+    return true; // if the check itself fails, let the page render (it shows its own not-found UI)
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const parts = request.nextUrl.pathname.split("/").filter(Boolean);
 
   if (parts[0] === "l" && parts.length === 3) {
-    const link = await loadSmartLink(parts[1]);
-    if (!link) return notFound();
-    if (parts[2] === "warning" && !link.adultWarning) return notFound();
+    if (!(await exists(request, "smart", parts[1], parts[2]))) return notFound();
     return NextResponse.next();
   }
 
   if (parts[0] === "go" && parts.length === 3 && parts[2] === "warning") {
-    const target = await loadRedirectTarget(parts[1]);
-    if (!target || !target.contentWarning) return notFound();
+    if (!(await exists(request, "block", parts[1], "warning"))) return notFound();
   }
   return NextResponse.next();
 }
