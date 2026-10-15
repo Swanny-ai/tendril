@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import { addPageView } from "./db";
 import { DEMO, login } from "./helpers";
 
 const CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
@@ -75,4 +76,15 @@ test("the live API requires sign-in", async ({ browser }) => {
   expect(res.status()).toBe(401);
   expect((await anon.request.get("/api/dashboard/export")).status()).toBe(401);
   await anon.close();
+});
+
+test("numbers update in the background without reloading the page", async ({ page }) => {
+  test.setTimeout(60_000);
+  await expect(page).toHaveURL(/tz=/);
+  await page.evaluate(() => ((window as unknown as { __noReload: boolean }).__noReload = true));
+  const total = page.getByRole("region", { name: "Key numbers" }).locator("p.font-heading").first();
+  const before = Number((await total.innerText()).replace(/D/g, ""));
+  await addPageView(DEMO.username);
+  await expect.poll(async () => Number((await total.innerText()).replace(/D/g, "")), { timeout: 30_000, intervals: [2_000] }).toBe(before + 1);
+  expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
 });

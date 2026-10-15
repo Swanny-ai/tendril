@@ -10,7 +10,9 @@ import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requirePage } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { AutoRefresh } from "./auto-refresh";
 import { DashboardToolbar } from "./dashboard-toolbar";
+import { LiveNumber } from "./live-number";
 import { LivePanels } from "./live-panels";
 import { PerformanceChart } from "./performance-chart";
 import { WorldMap } from "./world-map";
@@ -23,7 +25,7 @@ const fmt = new Intl.NumberFormat("en-US");
 const fmt1 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-function Kpi({ icon: Icon, label, value, note, tone }: { icon: typeof Eye; label: string; value: string; note: React.ReactNode; tone?: "up" | "down" }) {
+function Kpi({ icon: Icon, label, value, note, tone }: { icon: typeof Eye; label: string; value: React.ReactNode; note: React.ReactNode; tone?: "up" | "down" }) {
   return (
     <Card>
       <CardContent className="space-y-1 pt-1">
@@ -58,7 +60,8 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
   const limits = PLAN_LIMITS[plan];
   const tzParam = typeof q.tz === "string" && isValidTimeZone(q.tz) ? q.tz : null;
   const tz = tzParam ?? "UTC";
-  const range = resolveRange({ range: q.range, from: q.from, to: q.to }, tz, new Date(), limits.analyticsDays);
+  const now = new Date();
+  const range = resolveRange({ range: q.range, from: q.from, to: q.to }, tz, now, limits.analyticsDays);
   const owner = { userId, pageId: page.id };
   const sources = await getSources(userId, page);
   const [stats, live] = await Promise.all([getGlobalStats(owner, sources, range, tz, limits.breakdowns), getLiveStats(owner, sources, limits.breakdowns)]);
@@ -88,9 +91,9 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
       </div>
 
       <section aria-label="Key numbers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={Eye} label="Total views" value={fmt.format(totals.views)} note={`${fmt.format(totals.visitors)} unique visitors`} />
-        <Kpi icon={Link2} label="Active links" value={fmt.format(totals.activeSources)} note={`of ${totals.totalSources} with at least one view`} />
-        <Kpi icon={BarChart3} label="Avg views per link" value={fmt1.format(totals.avgPerSource)} note="Across links with views" />
+        <Kpi icon={Eye} label="Total views" value={<LiveNumber value={totals.views} text={fmt.format(totals.views)} />} note={`${fmt.format(totals.visitors)} unique visitors`} />
+        <Kpi icon={Link2} label="Active links" value={<LiveNumber value={totals.activeSources} text={fmt.format(totals.activeSources)} />} note={`of ${totals.totalSources} with at least one view`} />
+        <Kpi icon={BarChart3} label="Avg views per link" value={<LiveNumber value={totals.avgPerSource} text={fmt1.format(totals.avgPerSource)} />} note="Across links with views" />
         <Kpi
           icon={Activity}
           label="Growth"
@@ -139,7 +142,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
                           </span>
                         </span>
                         <span className="shrink-0 text-right tabular-nums">
-                          {fmt.format(s.views)}
+                          <LiveNumber value={s.views} text={fmt.format(s.views)} />
                           <span className="block text-xs text-muted-foreground">{Math.round(share * 100)}%</span>
                         </span>
                       </span>
@@ -189,7 +192,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
                           {c.code === "??" ? null : <span className="rounded bg-muted px-1.5 py-px text-[11px] font-medium text-muted-foreground">{c.code}</span>}
                         </span>
                         <span className="shrink-0 tabular-nums">
-                          {fmt.format(c.views)} <span className="text-xs text-muted-foreground">{(share * 100).toFixed(1)}%</span>
+                          <LiveNumber value={c.views} text={fmt.format(c.views)} /> <span className="text-xs text-muted-foreground">{(share * 100).toFixed(1)}%</span>
                         </span>
                       </div>
                       <div className="mt-1 h-1.5 rounded-full bg-muted">
@@ -207,6 +210,8 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
       </div>
 
       <LivePanels initial={live} geo={limits.breakdowns} />
+      {/* Ranges that end now keep updating in the background; past ranges can't change. */}
+      <AutoRefresh enabled={range.to.getTime() > now.getTime() - 120_000} />
     </div>
   );
 }

@@ -11,3 +11,12 @@ export async function userIdByEmail(email: string): Promise<string> {
 }
 
 export const closeDb = () => pool.end();
+
+/** Records one bio-page view for a username, as if a visitor just opened the page. */
+export async function addPageView(username: string, country = "MA"): Promise<void> {
+  await pool.query(
+    `INSERT INTO "PageView" ("pageId", ts, "visitorHash", source, country, device)
+     SELECT id, now() AT TIME ZONE 'UTC', md5(random()::text), 'direct', $2, 'mobile' FROM "Page" WHERE username = $1`,
+    [username, country],
+  );
+}
