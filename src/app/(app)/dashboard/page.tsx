@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Activity, BarChart3, Eye, Globe2, Link2, Lock, TrendingDown, TrendingUp } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { countryName, getGlobalStats, getLiveStats, getSources } from "@/lib/analytics/global";
 import { isValidTimeZone, resolveRange, TIMEZONE_OPTIONS } from "@/lib/analytics/ranges";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
@@ -163,11 +163,17 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
             <CardTitle className="flex items-center gap-2">
               <Globe2 className="size-4" /> Geographic distribution
             </CardTitle>
-            <CardDescription>
-              {stats.countries
-                ? `${countries.length} ${countries.length === 1 ? "country" : "countries"} · ${fmt.format(countryTotal)} total views`
-                : "Where your visitors are"}
-            </CardDescription>
+            <CardDescription>Hover a country to see its views for this range</CardDescription>
+            {stats.countries ? (
+              <CardAction className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground" data-testid="geo-totals">
+                <span>
+                  Countries: <LiveNumber value={countries.length} text={fmt.format(countries.length)} className="font-semibold text-foreground" />
+                </span>
+                <span>
+                  Total views: <LiveNumber value={countryTotal} text={fmt.format(countryTotal)} className="font-semibold text-foreground" />
+                </span>
+              </CardAction>
+            ) : null}
           </CardHeader>
           <CardContent>{stats.countries ? <WorldMap data={countries} /> : <ProLock what="Country maps" />}</CardContent>
         </Card>

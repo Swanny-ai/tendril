@@ -4,6 +4,7 @@ import type { FeatureCollection, Geometry } from "geojson";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import world from "world-atlas/countries-110m.json";
+import { MapHover } from "./map-hover";
 
 // Rendered on the server as plain SVG, so the map ships no client JavaScript.
 
@@ -37,42 +38,40 @@ export function WorldMap({ data }: { data: { numeric: string | null; name: strin
   const max = Math.max(0, ...data.map((d) => d.views));
   const fmt = new Intl.NumberFormat("en-US");
 
+  const steps = [0.12, 0.25, 0.37, 0.5, 0.62, 0.75, 0.87, 1];
+
   return (
-    <figure className="space-y-3">
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label={`World map of views by country. ${data.length} countries.`}
-        className="h-auto w-full [--map-empty:color-mix(in_oklab,var(--muted)_85%,var(--foreground))]"
-      >
-        {worldShapes().map((s) => {
-          const row = byId.get(s.id);
-          const t = intensity(row?.views ?? 0, max);
-          return (
-            <path
-              key={s.id + s.name}
-              d={s.d}
-              fill={heatColor(t)}
-              stroke="var(--card)"
-              strokeWidth={0.5}
-              data-country={s.id}
-              className="transition-opacity hover:opacity-80"
-            >
-              <title>{`${row?.name ?? s.name}: ${fmt.format(row?.views ?? 0)} views`}</title>
-            </path>
-          );
-        })}
-      </svg>
-      <figcaption className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span>Views intensity (log scale)</span>
-        <span className="flex items-center gap-2">
-          <span className="tabular-nums">0</span>
-          <span
-            aria-hidden
-            className="h-2 w-40 rounded-full [--map-empty:color-mix(in_oklab,var(--muted)_85%,var(--foreground))]"
-            style={{ background: `linear-gradient(90deg, var(--map-empty), ${heatColor(0.01)}, ${heatColor(0.5)}, ${heatColor(1)})` }}
-          />
-          <span className="tabular-nums">{fmt.format(max)}</span>
+    <figure className="relative rounded-xl bg-muted/40 p-2 [--map-empty:color-mix(in_oklab,var(--muted)_85%,var(--foreground))]">
+      <MapHover>
+        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`World map of views by country. ${data.length} countries.`} className="h-auto w-full">
+          {worldShapes().map((s) => {
+            const row = byId.get(s.id);
+            const views = row?.views ?? 0;
+            return (
+              <path
+                key={s.id + s.name}
+                d={s.d}
+                fill={heatColor(intensity(views, max))}
+                stroke="var(--card)"
+                strokeWidth={0.5}
+                data-country={s.id}
+                data-name={row?.name ?? s.name}
+                data-views={views}
+                className="cursor-pointer transition-[filter] hover:brightness-90 hover:[stroke:var(--foreground)] hover:[stroke-width:1]"
+              />
+            );
+          })}
+        </svg>
+      </MapHover>
+      <figcaption className="pointer-events-none absolute bottom-3 left-3 rounded-xl border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+        <p className="mb-1.5 font-medium">Views intensity (log scale)</p>
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <span aria-hidden className="size-3.5 rounded-[4px] bg-[var(--map-empty)]" />
+          <span className="mr-1 tabular-nums">0</span>
+          {steps.map((t) => (
+            <span key={t} aria-hidden className="size-3.5 rounded-[4px]" style={{ background: heatColor(t) }} />
+          ))}
+          <span className="ml-1 tabular-nums">{max ? fmt.format(max) : "High"}</span>
         </span>
       </figcaption>
     </figure>

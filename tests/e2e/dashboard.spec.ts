@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { addPageView } from "./db";
-import { DEMO, login } from "./helpers";
+import { addPageView, setPlanByUsername } from "./db";
+import { DEMO, login, TEST_PASSWORD, uniqueName } from "./helpers";
 
 const CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 
@@ -87,4 +87,35 @@ test("numbers update in the background without reloading the page", async ({ pag
   await addPageView(DEMO.username);
   await expect.poll(async () => Number((await total.innerText()).replace(/D/g, "")), { timeout: 30_000, intervals: [2_000] }).toBe(before + 1);
   expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
+});
+
+test.describe("world map", () => {
+  test("hovering a country shows its name and views for the selected range", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.context().clearCookies(); // sign out the demo account and use a fresh Pro account
+    const name = uniqueName("geo");
+    await page.goto("/signup");
+    await page.getByLabel("Email").fill(`${name}@tendril.test`);
+    await page.getByLabel("Password").fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await page.getByLabel("Username").fill(name);
+    await expect(page.getByText("Available")).toBeVisible();
+    await page.getByRole("button", { name: "Claim and continue" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/editor/);
+    await setPlanByUsername(name, "PRO");
+    for (let i = 0; i < 3; i++) await addPageView(name, "BR");
+    await addPageView(name, "MA");
+
+    await page.goto("/dashboard?range=24h&tz=UTC");
+    const totals = page.getByTestId("geo-totals");
+    await expect(totals).toContainText("Countries: 2");
+    await expect(totals).toContainText("Total views: 4");
+    await page.locator('path[data-country="076"]').hover();
+    const tip = page.getByRole("tooltip");
+    await expect(tip).toContainText("Brazil");
+    await expect(tip).toContainText("Total: 3 views");
+    await page.locator('path[data-country="504"]').hover();
+    await expect(tip).toContainText("Morocco");
+    await expect(tip).toContainText("Total: 1 view");
+  });
 });

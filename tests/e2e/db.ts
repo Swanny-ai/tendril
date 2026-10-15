@@ -20,3 +20,13 @@ export async function addPageView(username: string, country = "MA"): Promise<voi
     [username, country],
   );
 }
+
+/** Puts a user (by username) on a plan directly, as the Stripe webhook would. */
+export async function setPlanByUsername(username: string, plan: "FREE" | "PRO"): Promise<void> {
+  await pool.query(
+    `INSERT INTO "Subscription" (id, "userId", plan, status, "updatedAt")
+     SELECT 'sub_test_' || p."userId", p."userId", $2::"Plan", 'active', now() FROM "Page" p WHERE p.username = $1
+     ON CONFLICT ("userId") DO UPDATE SET plan = $2::"Plan", status = 'active'`,
+    [username, plan],
+  );
+}

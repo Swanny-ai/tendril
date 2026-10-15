@@ -104,7 +104,7 @@ export default async function SmartLinksPage() {
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
                       <td className="py-3 text-right">
-                        <LinkRowActions id={l.id} url={`${appUrl}/l/${l.slug}`} enabled={l.enabled} />
+                        <LinkRowActions id={l.id} slug={l.slug} url={`${appUrl}/l/${l.slug}`} enabled={l.enabled} />
                       </td>
                     </tr>
                   );

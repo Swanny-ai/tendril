@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { DEMO, login, TEST_PASSWORD, uniqueName } from "./helpers";
 
@@ -49,7 +50,7 @@ test("visitors see the warning, can continue or leave, and stats count it", asyn
   await newCreator(page);
   const slug = uniqueName("vip").replace(/_/g, "-");
   await createLink(page, slug, "https://example.com/vip", "Sorbet");
-  await expect(page.getByRole("cell", { name: new RegExp(`/l/${slug}`) })).toBeVisible();
+  await expect(page.getByRole("cell", { name: new RegExp(`/l/${slug}`) }).first()).toBeVisible();
   await expect(page.getByText("18+ · Sorbet")).toBeVisible();
 
   // Visitor flow (separate, signed-out browser)
@@ -163,4 +164,24 @@ test("Clear Blue template renders the reference age gate", async ({ page, browse
   await expect(button).toHaveCSS("background-color", "rgb(0, 175, 240)");
   await expect(v.getByRole("link", { name: "Take me back" })).toHaveCount(0);
   await visitor.close();
+});
+
+test("each smart link has a QR code with PNG and SVG downloads", async ({ page }) => {
+  await login(page, DEMO.email, DEMO.password);
+  await page.goto("/dashboard/links");
+  await page.getByRole("button", { name: /QR code for .*\/l\/demo-vip$/ }).click();
+  await expect(page.getByRole("img", { name: /QR code for .*\/l\/demo-vip$/ })).toBeVisible();
+  const png = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PNG" }).click();
+  expect((await png).suggestedFilename()).toBe("qr-demo-vip.png");
+  const svgDl = page.waitForEvent("download");
+  await page.getByRole("button", { name: "SVG" }).click();
+  const svg = await svgDl;
+  expect(svg.suggestedFilename()).toBe("qr-demo-vip.svg");
+  expect(await readFile(await svg.path(), "utf8")).toContain("<svg");
+
+  await page.goto("/dashboard/links");
+  await page.getByRole("link", { name: "Edit link" }).first().click();
+  await expect(page.getByRole("heading", { name: /^Edit \/l\// })).toBeVisible();
+  await expect(page.getByRole("button", { name: /QR code for .*\/l\/demo-/ }).filter({ hasText: "QR code" })).toBeVisible();
 });
