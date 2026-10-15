@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Auth.js (Prisma adapter) ----------
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  emailVerified    DateTime?
+  name             String?
+  image            String?
+  passwordHash     String?
+  sessionVersion   Int           @default(0)
+  stripeCustomerId String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  accounts         Account[]
+  sessions         Session[]
+  page             Page?
+  subscription     Subscription?
+  authTokens       AuthToken[]
+  smartLinks       SmartLink[]
+}
+
+enum AuthTokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFY
+}
+
+// Single-use tokens for password reset and email verification. Only a SHA-256
+// hash is stored; the raw token exists only in the emailed link.
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      AuthTokenType
+  tokenHash String        @unique
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, type])
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ---------- Pages & blocks ----------
+
+model Page {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username       String   @unique
+  displayName    String   @default("")
+  bio            String   @default("")
+  avatarUrl      String?
+  themeKey       String   @default("paper")
+  themeOverrides Json?
+  seoTitle       String?
+  seoDescription String?
+  published      Boolean  @default(true)
+  showBadge      Boolean  @default(true)
+  // Warning template for content-warning links on the bio page (null = match the page theme)
+  warningTemplate String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  blocks         Block[]
+}
+
+enum BlockType {
+  LINK
+  HEADER
+  TEXT
+  SOCIAL_ROW
+}
+
+model Block {
+  id                 String       @id @default(cuid())
+  pageId             String
+  page               Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type               BlockType
+  position           Int
+  enabled            Boolean      @default(true)
+  title              String       @default("")
+  url                String?
+  data               Json         @default("{}")
+  contentWarning     Boolean      @default(false)
+  contentWarningText String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  clicks             ClickEvent[]
+
+  @@index([pageId, position])
+}
+
+// ---------- Analytics ----------
+
+model PageView {
+  id           BigInt   @id @default(autoincrement())
+  pageId       String
+  ts           DateTime @default(now())
+  visitorHash  String
+  referrerHost String?
+  source       String
+  country      String?
+  device       String
+  os           String?
+  browser      String?
+  isBot        Boolean  @default(false)
+
+  @@index([pageId, ts])
+}
+
+model ClickEvent {
+  id               BigInt   @id @default(autoincrement())
+  pageId           String
+  blockId          String
+  block            Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  ts               DateTime @default(now())
+  visitorHash      String
+  country          String?
+  device           String
+  os               String?
+  browser          String?
+  warningConfirmed Boolean  @default(false)
+  isBot            Boolean  @default(false)
+
+  @@index([pageId, ts])
+  @@index([blockId, ts])
+}
+
+model WarningView {
+  id          BigInt   @id @default(autoincrement())
+  pageId      String
+  blockId     String
+  ts          DateTime @default(now())
+  visitorHash String
+
+  @@index([blockId, ts])
+}
+
+model DailyStat {
+  pageId     String
+  day        DateTime @db.Date
+  views      Int      @default(0)
+  uniques    Int      @default(0)
+  clicks     Int      @default(0)
+  byReferrer Json     @default("{}")
+  byCountry  Json     @default("{}")
+  byDevice   Json     @default("{}")
+  byBlock    Json     @default("{}")
+
+  @@id([pageId, day])
+}
+
+model DailySalt {
+  day  DateTime @id @db.Date
+  salt String
+}
+
+// ---------- Billing ----------
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 Plan      @default(FREE)
+  status               String
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  updatedAt            DateTime  @updatedAt
+}
+
+model StripeEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
+}
+
+// ---------- Smart links (short links with an optional 18+ warning page) ----------
+
+model SmartLink {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String         @unique
+  destinationUrl  String
+  label           String         @default("")
+  enabled         Boolean        @default(true)
+  // Adult content warning: on by default for every new link
+  adultWarning    Boolean        @default(true)
+  warningTemplate String         @default("dusk")
+  warningTitle    String?
+  warningMessage  String?
+  warningButton   String?
+  showBadge       Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  events          SmartLinkEvent[]
+
+  @@index([userId, createdAt])
+}
+
+// kind: "view" (warning shown), "confirm" (visitor confirmed 18+), "redirect" (sent to destination), "leave"
+model SmartLinkEvent {
+  id          BigInt    @id @default(autoincrement())
+  linkId      String
+  link        SmartLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  kind        String
+  ts          DateTime  @default(now())
+  visitorHash String
+  country     String?
+  device      String
+  os          String?
+  browser     String?
+  isBot       Boolean   @default(false)
+
+  @@index([linkId, ts])
+}

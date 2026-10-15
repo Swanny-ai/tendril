@@ -1,0 +1,66 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { deleteSmartLinkAction, toggleSmartLinkAction } from "./actions";
+
+export function LinkRowActions({ id, url, enabled }: { id: string; url: string; enabled: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Switch
+        checked={enabled}
+        disabled={pending}
+        aria-label={enabled ? "Pause link" : "Activate link"}
+        onCheckedChange={(v) =>
+          start(async () => {
+            const res = await toggleSmartLinkAction(id, v);
+            if (!res.ok) toast.error(res.error);
+            router.refresh();
+          })
+        }
+      />
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Copy link"
+        onClick={async () => {
+          await navigator.clipboard.writeText(url);
+          toast.success("Link copied");
+        }}
+      >
+        <Copy />
+      </Button>
+      <Link href={`/dashboard/links/${id}`} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Edit link">
+        <Pencil />
+      </Link>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Delete link"
+        disabled={pending}
+        onClick={() => {
+          toast("Delete this link? It stops working right away.", {
+            action: {
+              label: "Delete",
+              onClick: () =>
+                start(async () => {
+                  await deleteSmartLinkAction(id);
+                  toast.success("Link deleted");
+                  router.refresh();
+                }),
+            },
+          });
+        }}
+      >
+        <Trash2 />
+      </Button>
+    </div>
+  );
+}
