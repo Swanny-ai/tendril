@@ -3,7 +3,10 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { ShieldAlert } from "lucide-react";
+import { DeepLinkFallback } from "@/components/deep-link-fallback";
+import { appUrl } from "@/config/brand";
 import { recordWarningView } from "@/lib/analytics/record";
+import { inAppDeepLink } from "@/lib/deeplink";
 import { getRedirectTarget } from "@/lib/pages";
 import { pickLang, templateCopy } from "@/warning-templates/copy";
 import { getWarningTemplate } from "@/warning-templates/templates";
@@ -22,6 +25,11 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
 
   const h = new Headers(await headers());
   after(() => recordWarningView({ headers: h }, target.pageId, target.blockId).catch(() => {}));
+
+  // Inside Instagram/TikTok/...: confirming opens the destination in the default browser.
+  const deepLink = target.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/go/${target.blockId}?ok=1`) : null;
+  const continueHref = deepLink ?? `/go/${target.blockId}?ok=1`;
+  const fallback = deepLink ? <DeepLinkFallback stayHref={`/go/${target.blockId}?ok=1`} /> : null;
 
   const t = target.theme;
   const name = target.displayName || `@${target.username}`;
@@ -49,10 +57,11 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
           leave={copy.leave}
           destinationLabel={copy.destination}
           destinationHost={host}
-          continueHref={`/go/${target.blockId}?ok=1`}
+          continueHref={continueHref}
           leaveHref={`/${target.username}`}
           showBadge={false}
         />
+        {fallback}
       </main>
     );
   }
@@ -75,7 +84,7 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
         ) : null}
         <div className="mt-7 flex flex-col gap-3">
           <a
-            href={`/go/${target.blockId}?ok=1`}
+            href={continueHref}
             rel="nofollow"
             className="flex min-h-12 items-center justify-center px-5 py-3 font-semibold"
             style={{ background: t.buttonBg, color: t.buttonText, border: `1.5px solid ${t.buttonBorder}`, borderRadius: t.radius }}
@@ -87,6 +96,7 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
           </a>
         </div>
       </div>
+      {fallback}
     </main>
   );
 }

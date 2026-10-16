@@ -85,6 +85,7 @@ export type RedirectTarget = {
   contentWarningText: string | null;
   theme: ThemeTokens;
   warningTemplate: string | null;
+  openInBrowser: boolean;
 };
 
 /** Uncached loader (used by the proxy, where "use cache" is not available). */
@@ -114,6 +115,7 @@ export async function loadRedirectTarget(blockId: string): Promise<RedirectTarge
     contentWarningText: PLAN_LIMITS[plan].customWarningText ? block.contentWarningText : null,
     theme: resolveTheme(block.page.themeKey, block.page.themeOverrides, PLAN_LIMITS[plan].customTheme),
     warningTemplate: block.page.warningTemplate,
+    openInBrowser: block.page.openInBrowser,
   };
 }
 

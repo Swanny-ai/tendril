@@ -6,6 +6,8 @@
 // iOS 17+: the x-safari-https:// scheme opens Safari. Older iOS versions and some app
 // versions ignore it, so callers should always offer a manual fallback.
 
+import { detectInAppBrowser } from "./in-app";
+
 export type MobilePlatform = "android" | "ios" | "other";
 
 export function platformFromUserAgent(ua: string): MobilePlatform {
@@ -32,4 +34,13 @@ export function openInBrowserUrl(target: string, platform: MobilePlatform): stri
     return `x-safari-${url.toString()}`;
   }
   return null;
+}
+
+/**
+ * The "open in default browser" URL for `target`, but only for visitors inside a social
+ * app's built-in browser on a phone. Everyone else gets null (use the normal link).
+ */
+export function inAppDeepLink(userAgent: string, target: string): string | null {
+  if (!detectInAppBrowser(userAgent)) return null;
+  return openInBrowserUrl(target, platformFromUserAgent(userAgent));
 }

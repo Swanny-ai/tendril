@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openInBrowserUrl, platformFromUserAgent } from "@/lib/deeplink";
+import { inAppDeepLink, openInBrowserUrl, platformFromUserAgent } from "@/lib/deeplink";
 
 const ANDROID_IG =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 Instagram 350.0.0.0";
@@ -31,5 +31,16 @@ describe("openInBrowserUrl", () => {
     expect(openInBrowserUrl(target, "other")).toBeNull();
     expect(openInBrowserUrl("javascript:alert(1)", "android")).toBeNull();
     expect(openInBrowserUrl("not a url", "ios")).toBeNull();
+  });
+});
+
+describe("inAppDeepLink", () => {
+  it("only applies inside social apps on phones", () => {
+    const target = "https://tendril.example/l/vip?ok=1&ib=1";
+    expect(inAppDeepLink(IOS_IG, target)).toBe("x-safari-https://tendril.example/l/vip?ok=1&ib=1");
+    expect(inAppDeepLink(ANDROID_IG, target)).toMatch(/^intent:\/\/tendril\.example\/l\/vip\?ok=1&ib=1#Intent;scheme=https;/);
+    const safari = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+    expect(inAppDeepLink(safari, target)).toBeNull();
+    expect(inAppDeepLink(DESKTOP, target)).toBeNull();
   });
 });

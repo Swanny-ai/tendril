@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
+import { DeepLinkFallback } from "@/components/deep-link-fallback";
+import { appUrl } from "@/config/brand";
+import { inAppDeepLink } from "@/lib/deeplink";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 import { pickLang, templateCopy } from "@/warning-templates/copy";
 import { getWarningTemplate } from "@/warning-templates/templates";
@@ -22,6 +25,10 @@ export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/w
   const copy = templateCopy(template, lang);
   after(() => recordSmartLinkEvent(h, link.id, "view").catch(() => {}));
 
+  // Inside Instagram/TikTok/...: confirming opens the destination in the default browser
+  // (Safari on iPhone). ok=1 records the confirmation there; ib=1 skips the in-app step.
+  const deepLink = link.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/l/${slug}?ok=1&ib=1`) : null;
+
   let host = "";
   try {
     host = new URL(link.destinationUrl).host.replace(/^www\./, "");
@@ -40,10 +47,11 @@ export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/w
         leave={copy.leave}
         destinationLabel={copy.destination}
         destinationHost={host}
-        continueHref={`/l/${slug}?ok=1`}
+        continueHref={deepLink ?? `/l/${slug}?ok=1`}
         leaveHref={`/l/${slug}/left`}
         showBadge={link.showBadge}
       />
+      {deepLink ? <DeepLinkFallback stayHref={`/l/${slug}?ok=1&ib=1`} /> : null}
     </main>
   );
 }

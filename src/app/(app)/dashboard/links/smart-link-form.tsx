@@ -148,8 +148,8 @@ export function SmartLinkForm({ id, initial, limits }: { id?: string; initial: S
                   <Smartphone className="size-4 text-primary" aria-hidden /> Deep link: open in phone browser
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  When someone taps this link inside Instagram, TikTok or Facebook, they see a page with an &ldquo;Open in browser&rdquo; button that opens it in
-                  their default browser (Chrome or Safari), where they&apos;re signed in and payments work.
+                  When someone taps this link inside Instagram, TikTok or Facebook, it opens in their default browser (Safari on iPhone, Chrome or similar on
+                  Android), where they&apos;re signed in and payments work.
                 </CardDescription>
               </div>
               <Switch checked={v.openInBrowser} onCheckedChange={(openInBrowser) => set({ openInBrowser })} aria-label="Open in phone browser" />
@@ -158,7 +158,10 @@ export function SmartLinkForm({ id, initial, limits }: { id?: string; initial: S
           {v.openInBrowser ? (
             <CardContent>
               <ol className="grid gap-2 text-sm sm:grid-cols-3">
-                {["Visitor taps your link in the app", "Your page shows an “Open in browser” button", "The link opens in their default browser"].map((step, i) => (
+                {(v.adultWarning
+                  ? ["Visitor taps your link in the app", "They see your 18+ page right there in the app", "Confirming opens the link in their default browser (Safari on iPhone)"]
+                  : ["Visitor taps your link in the app", "Your page shows an “Open in browser” button", "The link opens in their default browser"]
+                ).map((step, i) => (
                   <li key={step} className="flex items-start gap-2 rounded-lg border p-3">
                     <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{i + 1}</span>
                     {step}

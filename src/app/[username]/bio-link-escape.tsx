@@ -21,7 +21,9 @@ export function BioLinkEscape() {
 
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      const a = (e.target as Element).closest?.('a[href^="/go/"]') as HTMLAnchorElement | null;
+      // Links with a content warning stay in the app: the warning shows here and its confirm
+      // button opens the default browser (see /go/[blockId]/warning).
+      const a = (e.target as Element).closest?.('a[href^="/go/"]:not([data-warning])') as HTMLAnchorElement | null;
       if (!a) return;
       const deepLink = openInBrowserUrl(a.href, platform);
       if (!deepLink) return;

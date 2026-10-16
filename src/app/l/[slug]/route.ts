@@ -38,9 +38,10 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
     });
   };
 
-  // Deep link: inside Instagram, TikTok, Facebook... show a page with an "Open in browser"
-  // button that moves the visitor to the phone's default browser.
-  if (link.openInBrowser && !confirmed && !escaped && detectInAppBrowser(headers.get("user-agent") ?? "")) {
+  // Deep link: inside Instagram, TikTok, Facebook... links without an 18+ warning get a page
+  // with an "Open in browser" button. Links with a warning show the warning here instead, and
+  // its confirm button opens the destination in the default browser (see the warning page).
+  if (link.openInBrowser && !link.adultWarning && !confirmed && !escaped && detectInAppBrowser(headers.get("user-agent") ?? "")) {
     log(["hit"]);
     return new Response(null, { status: 302, headers: { ...NO_STORE, Location: `/l/${slug}/open` } });
   }

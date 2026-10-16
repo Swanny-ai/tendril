@@ -159,7 +159,7 @@ export function PublicPage({ page, preview = false }: { page: RenderPage; previe
                 {content}
               </span>
             ) : (
-              <a key={b.id} href={`/go/${b.id}`} className={`${cls} hover:-translate-y-0.5`} style={btn} rel="nofollow">
+              <a key={b.id} href={`/go/${b.id}`} className={`${cls} hover:-translate-y-0.5`} style={btn} rel="nofollow" data-warning={b.contentWarning ? "" : undefined}>
                 {content}
               </a>
             );

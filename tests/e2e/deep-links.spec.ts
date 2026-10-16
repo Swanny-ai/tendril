@@ -7,7 +7,7 @@ const IG_ANDROID =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 Instagram 350.0.0.0";
 const PHONE_SAFARI = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 
-async function newCreatorWithLink(page: Page) {
+async function newCreatorWithLink(page: Page, warning = false) {
   const name = uniqueName("dl");
   await page.goto("/signup");
   await page.getByLabel("Email").fill(`${name}@tendril.test`);
@@ -24,7 +24,7 @@ async function newCreatorWithLink(page: Page) {
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
   await page.getByLabel("Destination URL").fill("https://example.com/shop");
   await expect(page.getByRole("switch", { name: "Open in phone browser" })).toBeChecked(); // on by default
-  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  if (!warning) await page.getByRole("switch", { name: "Adult content warning" }).click();
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page).toHaveURL(/\/dashboard\/links$/);
   return { name, slug };
@@ -92,5 +92,59 @@ test("bio page: link taps inside Instagram try the phone browser first", async (
   await expect(visitor.getByRole("dialog", { name: "Open in your browser" })).toBeVisible();
   await expect(visitor).toHaveURL(new RegExp(`/${DEMO.username}$`));
   await expect(visitor.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", href ?? "");
+  await ctx.close();
+});
+
+test("18+ links: the warning shows inside Instagram and confirming opens the default browser", async ({ page, browser }) => {
+  const { slug } = await newCreatorWithLink(page, true);
+
+  // In-app visitors go straight to the warning (no extra page).
+  const inApp = await page.request.get(`/l/${slug}`, { maxRedirects: 0, headers: { "user-agent": IG_IOS } });
+  expect(inApp.headers()["location"]).toBe(`/l/${slug}/warning`);
+
+  // iPhone in Instagram: "I'm 18+" points at Safari, landing on the destination via ok=1.
+  const ios = await browser.newContext({ userAgent: IG_IOS, viewport: { width: 390, height: 844 } });
+  const iosPage = await ios.newPage();
+  await iosPage.goto(`/l/${slug}/warning`);
+  const confirm = iosPage.getByRole("link", { name: /18 or older/i });
+  const safariHref = (await confirm.getAttribute("href")) ?? "";
+  expect(safariHref.startsWith("x-safari-http")).toBe(true);
+  expect(safariHref.endsWith(`/l/${slug}?ok=1&ib=1`)).toBe(true);
+  await confirm.click();
+  await expect(iosPage.getByRole("dialog", { name: "Open in your browser" })).toBeVisible(); // test browser can't open Safari
+  await expect(iosPage.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", `/l/${slug}?ok=1&ib=1`);
+  await ios.close();
+
+  // Android in Instagram: an intent link to the default browser.
+  const android = await browser.newContext({ userAgent: IG_ANDROID });
+  const androidPage = await android.newPage();
+  await androidPage.goto(`/l/${slug}/warning`);
+  const intent = (await androidPage.getByRole("link", { name: /18 or older/i }).getAttribute("href")) ?? "";
+  expect(intent.startsWith("intent://")).toBe(true);
+  expect(intent).toContain(`/l/${slug}?ok=1&ib=1#Intent;`);
+  await android.close();
+
+  // In Safari itself the button is a normal link, and it lands on the destination.
+  const safari = await browser.newContext({ userAgent: PHONE_SAFARI });
+  const safariPage = await safari.newPage();
+  await safariPage.goto(`/l/${slug}/warning`);
+  await expect(safariPage.getByRole("link", { name: /18 or older/i })).toHaveAttribute("href", `/l/${slug}?ok=1`);
+  await safari.close();
+  const landed = await page.request.get(`/l/${slug}?ok=1&ib=1`, { maxRedirects: 0, headers: { "user-agent": PHONE_SAFARI } });
+  expect(landed.headers()["location"]).toBe("https://example.com/shop");
+});
+
+test("bio page: links with a content warning show it inside Instagram, then open the default browser", async ({ browser }) => {
+  const ctx = await browser.newContext({ userAgent: IG_IOS, viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/${DEMO.username}`);
+  const warned = visitor.locator('a[href^="/go/"][data-warning]').first();
+  const href = (await warned.getAttribute("href")) ?? "";
+  await warned.click();
+  await expect(visitor).toHaveURL(new RegExp(`${href}/warning$`)); // stayed in the app
+  const confirm = visitor.getByRole("main").getByRole("link").first();
+  const target = (await confirm.getAttribute("href")) ?? "";
+  expect(target.startsWith("x-safari-http")).toBe(true);
+  expect(target.endsWith(`${href}?ok=1`)).toBe(true);
   await ctx.close();
 });
