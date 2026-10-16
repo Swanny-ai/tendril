@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { OpenInBrowserCard } from "@/components/open-in-browser-card";
 import { appHost, appUrl } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
-import { getSmartLink } from "@/lib/smart-links";
+import { isLinkEntry, publicLinkBase } from "@/lib/link-paths";
+import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Open in your browser", robots: { index: false, follow: false } };
@@ -17,13 +18,17 @@ export default async function OpenInBrowserPage(props: PageProps<"/l/[slug]/open
   const { slug } = await props.params;
   const link = await getSmartLink(slug);
   if (!link || !link.openInBrowser) notFound();
-  const host = (await headers()).get("host");
+  const h = new Headers(await headers());
+  const host = h.get("host");
   const origin = isAppHost(host, appHost) ? appUrl : `https://${host}`;
+  const base = publicLinkBase(h, slug, appHost);
+  // On a custom domain this page can be the first thing a visitor sees: count the visit.
+  if (isLinkEntry(h, appHost)) after(() => recordSmartLinkEvent(h, link.id, "hit").catch(() => {}));
 
   return (
     <OpenInBrowserCard
-      target={`${origin}/l/${slug}?ib=1`}
-      stayHref={`/l/${slug}?ib=1`}
+      target={`${origin}${base}?ib=1`}
+      stayHref={`${base}?ib=1`}
       name={link.owner?.name ?? link.label ?? slug}
       username={link.owner?.username ?? null}
       avatarUrl={link.owner?.avatarUrl ?? null}

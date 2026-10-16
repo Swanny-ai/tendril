@@ -182,6 +182,24 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   expect(root.status()).toBe(302);
   expect(root.headers()["location"]).toBe("https://example.com/root");
 
+  // With the 18+ warning on, the warning shows at the link's own clean address (no /l/…/warning),
+  // and its button continues from there.
+  const warned = uniqueName("warn").replace(/_/g, "-");
+  await page.goto("/dashboard/links/new");
+  await page.getByLabel("Domain").selectOption({ label: host });
+  await page.getByLabel("Link name").fill(warned);
+  await page.getByLabel("Destination URL").fill("https://example.com/warned");
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  const warnedPage = await page.request.get(`/${warned}`, { maxRedirects: 0, headers: { host } });
+  expect(warnedPage.status()).toBe(200);
+  const html = await warnedPage.text();
+  expect(html).toContain(`href="/${warned}?ok=1"`);
+  expect(html).not.toContain(`/l/${warned}/warning`);
+  const confirmed = await page.request.get(`/${warned}?ok=1`, { maxRedirects: 0, headers: { host } });
+  expect(confirmed.status()).toBe(302);
+  expect(confirmed.headers()["location"]).toBe("https://example.com/warned");
+
   // Only one link can be a domain's root.
   await page.goto("/dashboard/links/new");
   await page.getByLabel("Domain").selectOption({ label: host });

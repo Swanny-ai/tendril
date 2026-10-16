@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
 import { apexOfWww, isAppHost } from "@/lib/domain-names";
+import { detectInAppBrowser } from "@/lib/in-app";
+import { LINK_BASE_HEADER, LINK_ENTRY_HEADER } from "@/lib/link-paths";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
 //    domain's home page shows their "Root" smart link if they set one, else their bio page.
+//    Links keep a clean address there: the 18+ page shows at example.com/ or example.com/vip,
+//    not at /l/vip/warning.
 // 2. Warning pages render per request and stream, so a missing link would otherwise be sent
 //    as a 200 "not found" page; checking here returns a real 404 status first.
 // Lookups go through small API routes because some hosts (Netlify) run the proxy as an edge
@@ -42,6 +46,45 @@ async function domainInfo(request: NextRequest, host: string): Promise<DomainInf
   return res.ok ? ((await res.json()) as DomainInfo) : null;
 }
 
+/** Request headers for a custom-domain request, without our internal headers a visitor could fake. */
+function cleanHeaders(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.delete(LINK_BASE_HEADER);
+  headers.delete(LINK_ENTRY_HEADER);
+  return headers;
+}
+
+/**
+ * A visitor opens a smart link on a custom domain at `base` ("/" for a Root link, "/vip" for a
+ * path). The 18+ page or the "open in browser" page is rendered right there (a rewrite, so the
+ * address stays clean); otherwise /l/<slug> sends them on to the destination.
+ */
+async function linkEntry(request: NextRequest, slug: string, base: string) {
+  const url = request.nextUrl.clone();
+  const headers = cleanHeaders(request);
+  headers.set(LINK_BASE_HEADER, base);
+  const q = request.nextUrl.searchParams;
+  if (q.get("ok") !== "1" && q.get("ib") !== "1") {
+    let info: { adultWarning: boolean; openInBrowser: boolean } | null | undefined;
+    try {
+      const res = await fetch(new URL(`/api/link-status?${new URLSearchParams({ kind: "smart", id: slug, page: "entry" })}`, apiBase(request)));
+      info = res.status === 404 ? null : res.ok ? await res.json() : undefined;
+    } catch {
+      info = undefined; // lookup failed: let /l/<slug> decide
+    }
+    if (info === null) return notFound();
+    const step = info?.adultWarning ? "warning" : info?.openInBrowser && detectInAppBrowser(request.headers.get("user-agent") ?? "") ? "open" : null;
+    if (step) {
+      headers.set(LINK_ENTRY_HEADER, "1"); // this view is also the visit
+      url.pathname = `/l/${slug}/${step}`;
+      url.search = "";
+      return NextResponse.rewrite(url, { request: { headers } });
+    }
+  }
+  url.pathname = `/l/${slug}`;
+  return NextResponse.rewrite(url, { request: { headers } });
+}
+
 async function customDomain(request: NextRequest, host: string) {
   const parts = request.nextUrl.pathname.split("/").filter(Boolean);
   const url = request.nextUrl.clone();
@@ -59,10 +102,7 @@ async function customDomain(request: NextRequest, host: string) {
   if (parts.length === 0) {
     try {
       const data = info !== undefined ? info : await domainInfo(request, host);
-      if (data?.rootSlug) {
-        url.pathname = `/l/${data.rootSlug}`; // the domain itself is a smart link ("Root")
-        return NextResponse.rewrite(url);
-      }
+      if (data?.rootSlug) return linkEntry(request, data.rootSlug, "/"); // the domain itself is a smart link ("Root")
       if (!data?.username) return notFound("This domain isn't connected to a page yet.");
       url.pathname = `/${data.username}`;
       return NextResponse.rewrite(url);
@@ -70,21 +110,24 @@ async function customDomain(request: NextRequest, host: string) {
       return notFound("This domain isn't connected to a page yet.");
     }
   }
-  if (PASSTHROUGH.has(parts[0])) return NextResponse.next();
-  if (parts[0] === "l") return smartLinkPages(request, parts) ?? NextResponse.next();
+  if (PASSTHROUGH.has(parts[0])) return NextResponse.next({ request: { headers: cleanHeaders(request) } });
+  if (parts[0] === "l") return smartLinkPages(request, parts, cleanHeaders(request)) ?? NextResponse.next({ request: { headers: cleanHeaders(request) } });
 
-  // /<slug> and /<slug>/(warning|open|left) are the creator's smart links.
-  if (parts.length === 1 || (parts.length === 2 && ["warning", "open", "left"].includes(parts[1]))) {
-    if (parts.length === 2 && !(await exists(request, "smart", parts[0], parts[1]))) return notFound();
+  // /<slug> is the creator's smart link; /<slug>/(warning|open|left) its steps.
+  if (parts.length === 1) return linkEntry(request, parts[0], `/${parts[0]}`);
+  if (parts.length === 2 && ["warning", "open", "left"].includes(parts[1])) {
+    if (!(await exists(request, "smart", parts[0], parts[1]))) return notFound();
+    const headers = cleanHeaders(request);
+    headers.set(LINK_BASE_HEADER, `/${parts[0]}`);
     url.pathname = `/l/${parts.join("/")}`;
-    return NextResponse.rewrite(url);
+    return NextResponse.rewrite(url, { request: { headers } });
   }
   return notFound();
 }
 
-function smartLinkPages(request: NextRequest, parts: string[]) {
+function smartLinkPages(request: NextRequest, parts: string[], headers?: Headers) {
   if (parts[0] === "l" && parts.length === 3) {
-    return exists(request, "smart", parts[1], parts[2]).then((ok) => (ok ? NextResponse.next() : notFound()));
+    return exists(request, "smart", parts[1], parts[2]).then((ok) => (ok ? NextResponse.next(headers ? { request: { headers } } : undefined) : notFound()));
   }
   return null;
 }

@@ -24,6 +24,10 @@ export async function GET(request: NextRequest) {
     if (!link) return reply(false);
     if (page === "warning") return reply(link.adultWarning);
     if (page === "open") return reply(link.openInBrowser);
+    // Which first step a visitor gets on a custom domain (the proxy renders it at the clean address).
+    if (page === "entry") {
+      return Response.json({ adultWarning: link.adultWarning, openInBrowser: link.openInBrowser }, { headers: { "Cache-Control": "no-store" } });
+    }
     return reply(true);
   }
   if (kind === "block" && ID.test(id)) {
