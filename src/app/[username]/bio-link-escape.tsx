@@ -25,13 +25,13 @@ export function BioLinkEscape() {
       // button opens the default browser (see /go/[blockId]/warning).
       const a = (e.target as Element).closest?.('a[href^="/go/"]:not([data-warning])') as HTMLAnchorElement | null;
       if (!a) return;
-      const deepLink = openInBrowserUrl(a.href, platform);
+      const deepLink = openInBrowserUrl(a.href, platform, ua);
       if (!deepLink) return;
       e.preventDefault();
       window.location.href = deepLink;
       window.setTimeout(() => {
         if (document.visibilityState === "visible") setHelp({ href: a.getAttribute("href") ?? "/", android: platform === "android" });
-      }, 1500);
+      }, 2500);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

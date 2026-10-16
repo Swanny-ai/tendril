@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { MoreHorizontal, MoreVertical, X } from "lucide-react";
+import { DEEP_LINK_SELECTOR } from "@/lib/deeplink";
 
 /**
  * Safety net for deep links. When the visitor taps a link that should open their default
- * browser (intent:// on Android, x-safari-https:// on iPhone) but the social app ignores it,
+ * browser (see lib/deeplink.ts) but the social app ignores it,
  * the page is still on screen a moment later: show the manual steps and a way to continue here.
  */
 export function DeepLinkFallback({ stayHref }: { stayHref: string }) {
@@ -13,12 +14,12 @@ export function DeepLinkFallback({ stayHref }: { stayHref: string }) {
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      const a = (e.target as Element).closest?.('a[href^="intent:"], a[href^="x-safari-"]') as HTMLAnchorElement | null;
+      const a = (e.target as Element).closest?.(DEEP_LINK_SELECTOR) as HTMLAnchorElement | null;
       if (!a) return;
       const android = a.getAttribute("href")!.startsWith("intent:");
       window.setTimeout(() => {
         if (document.visibilityState === "visible") setShow({ android });
-      }, 1500);
+      }, 2500); // leaves time for the app's own "open in browser?" prompt
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

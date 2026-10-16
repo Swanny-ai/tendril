@@ -5,6 +5,9 @@ import { DEMO, TEST_PASSWORD, uniqueName } from "./helpers";
 const IG_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0";
 const IG_ANDROID =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 Instagram 350.0.0.0";
+/** Where an instagram://extbrowser/?url=... link sends the visitor. */
+const extTarget = (href: string) => (href.startsWith("instagram://extbrowser/?url=") ? decodeURIComponent(href.slice("instagram://extbrowser/?url=".length)) : "");
+
 const PHONE_SAFARI = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 
 async function newCreatorWithLink(page: Page, warning = false) {
@@ -52,8 +55,7 @@ test("smart links: in-app visitors get the open-in-browser step, others go strai
   await expect(visitor.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", `/l/${slug}?ib=1`);
   const open = visitor.getByRole("link", { name: "Open in Safari" });
   const safariHref = (await open.getAttribute("href")) ?? "";
-  expect(safariHref.startsWith("x-safari-http")).toBe(true);
-  expect(safariHref.endsWith(`/l/${slug}?ib=1`)).toBe(true);
+  expect(extTarget(safariHref).endsWith(`/l/${slug}?ib=1`)).toBe(true); // Instagram's own "open in browser" link
   // The test browser can't open Safari, so the manual steps appear.
   await open.click();
   await expect(visitor.getByText("Didn't open?")).toBeVisible();
@@ -108,8 +110,7 @@ test("18+ links: the warning shows inside Instagram and confirming opens the def
   await iosPage.goto(`/l/${slug}/warning`);
   const confirm = iosPage.getByRole("link", { name: /18 or older/i });
   const safariHref = (await confirm.getAttribute("href")) ?? "";
-  expect(safariHref.startsWith("x-safari-http")).toBe(true);
-  expect(safariHref.endsWith(`/l/${slug}?ok=1&ib=1`)).toBe(true);
+  expect(extTarget(safariHref).endsWith(`/l/${slug}?ok=1&ib=1`)).toBe(true); // Instagram's own "open in browser" link
   await confirm.click();
   await expect(iosPage.getByRole("dialog", { name: "Open in your browser" })).toBeVisible(); // test browser can't open Safari
   await expect(iosPage.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", `/l/${slug}?ok=1&ib=1`);
@@ -144,7 +145,6 @@ test("bio page: links with a content warning show it inside Instagram, then open
   await expect(visitor).toHaveURL(new RegExp(`${href}/warning$`)); // stayed in the app
   const confirm = visitor.getByRole("main").getByRole("link").first();
   const target = (await confirm.getAttribute("href")) ?? "";
-  expect(target.startsWith("x-safari-http")).toBe(true);
-  expect(target.endsWith(`${href}?ok=1`)).toBe(true);
+  expect(extTarget(target).endsWith(`${href}?ok=1`)).toBe(true);
   await ctx.close();
 });

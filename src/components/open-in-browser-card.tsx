@@ -30,9 +30,10 @@ type Props = {
 export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl, label }: Props) {
   const platform = useSyncExternalStore<MobilePlatform>(noop, () => platformFromUserAgent(navigator.userAgent), () => "other");
   const app = useSyncExternalStore(noop, () => detectInAppBrowser(navigator.userAgent), () => null);
+  const ua = useSyncExternalStore(noop, () => navigator.userAgent, () => "");
   const [showHelp, setShowHelp] = useState(false);
   const tried = useRef(false);
-  const deepLink = openInBrowserUrl(target, platform);
+  const deepLink = openInBrowserUrl(target, platform, ua);
   const browser = platform === "ios" ? "Safari" : "your browser";
 
   // If the app ignores the request (older iOS, some app versions), show the manual steps.
@@ -40,7 +41,7 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
     if (!deepLink) return;
     window.setTimeout(() => {
       if (document.visibilityState === "visible") setShowHelp(true);
-    }, 1500);
+    }, 2500);
   };
 
   // Android usually allows opening the browser straight away; try once on arrival.
