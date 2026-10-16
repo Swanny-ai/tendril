@@ -70,14 +70,17 @@ async function vercelAdd(name: string, redirect?: string): Promise<HostResult> {
   }
 }
 
-async function vercelRemove(name: string) {
+async function vercelRemove(name: string): Promise<HostResult> {
   const api = vercelApi(`/v9/projects/{project}/domains/${encodeURIComponent(name)}`);
-  if (!api) return;
+  if (!api) return "manual";
   try {
     const res = await fetch(api.url, { method: "DELETE", headers: api.headers });
-    if (!res.ok && res.status !== 404) console.error(`[domains] Vercel remove ${name} failed: ${res.status}`);
+    if (res.ok || res.status === 404) return "ok"; // 404: already gone
+    console.error(`[domains] Vercel remove ${name} failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
+    return "error";
   } catch (e) {
     console.error("[domains] Vercel request failed", e);
+    return "error";
   }
 }
 
@@ -187,15 +190,19 @@ export async function addHostedDomain(hostname: string): Promise<HostResult> {
   });
 }
 
-/** Removes the domain (and its www form, unless kept) from the host. */
-export async function removeHostedDomain(hostname: string, keep: string[] = []) {
+/** Removes the domain (and its www form, unless kept) from the host. "manual" = no API token set. */
+export async function removeHostedDomain(hostname: string, keep: string[] = []): Promise<HostResult> {
   const names = servedHosts(hostname).filter((h) => !keep.includes(h));
   if (host === "vercel") {
     // www first: Vercel won't remove a domain that another one redirects to.
-    for (const h of names.reverse()) await vercelRemove(h);
-    return;
+    let result: HostResult = "ok";
+    for (const h of names.reverse()) {
+      const r = await vercelRemove(h);
+      if (r !== "ok") result = r;
+    }
+    return result;
   }
-  await updateNetlifyAliases((aliases) => {
+  return updateNetlifyAliases((aliases) => {
     let changed = false;
     for (const h of names) if (aliases.delete(h)) changed = true;
     return changed;

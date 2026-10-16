@@ -207,6 +207,17 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await page.getByLabel("Destination URL").fill("https://example.com/other");
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByText(/already uses this domain's root/).first()).toBeVisible();
+
+  // Removing the domain removes it everywhere: it stops serving, and its links (the Root one
+  // included) fall back to the Tendril address.
+  await page.goto("/dashboard/domains");
+  await page.getByRole("button", { name: `Remove ${host}` }).click();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByText(`${host} was removed`)).toBeVisible();
+  await expect(page.getByRole("list", { name: "Your domains" }).getByText(host, { exact: true })).toHaveCount(0);
+  expect((await page.request.get("/", { maxRedirects: 0, headers: { host } })).status()).toBe(404);
+  await page.goto("/dashboard/links");
+  await expect(page.getByRole("link", { name: `${host}/`, exact: true })).toHaveCount(0);
 });
 
 test("verified badge: Pro creators switch it on, Free sees it locked", async ({ page }) => {

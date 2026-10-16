@@ -152,6 +152,7 @@ export function DomainActions({ id, hostname, verified }: { id: string; hostname
                 start(async () => {
                   const res = await removeDomainAction(id);
                   if (!res.ok) return void toast.error(res.error);
+                  if (res.message) toast.success(res.message, { duration: 8000 });
                   router.refresh();
                 }),
             },

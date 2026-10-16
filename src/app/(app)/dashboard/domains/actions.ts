@@ -58,12 +58,21 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   const userId = await requireUserId();
   const domain = await db.domain.findFirst({ where: { id, userId }, include: { smartLinks: { select: { slug: true } } } });
   if (!domain) return { ok: false, error: "That domain no longer exists." };
-  await db.domain.delete({ where: { id } }); // links fall back to the Tendril domain
-  // Keep www on the host if it's also connected as a domain of its own.
+
+  // 1. Remove it from the host (Vercel/Netlify) first, so a failure leaves everything as it was.
+  //    Keep www there if it's also connected as a domain of its own.
   const www = wwwOf(domain.hostname);
   const keep = www && (await db.domain.findUnique({ where: { hostname: www }, select: { id: true } })) ? [www] : [];
-  await removeHostedDomain(domain.hostname, keep);
+  const hosted = await removeHostedDomain(domain.hostname, keep);
+  if (hosted === "error") return { ok: false, error: "Couldn't remove the domain from the hosting right now. Please try again." };
+
+  // 2. Remove it from Tendril. Its links fall back to the Tendril domain; a Root link becomes a normal link.
+  await db.smartLink.updateMany({ where: { domainId: id }, data: { atRoot: false } });
+  await db.domain.delete({ where: { id } });
   for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
   revalidatePath("/dashboard/domains");
-  return { ok: true };
+  revalidatePath("/dashboard/links");
+  return hosted === "manual"
+    ? { ok: true, message: `${domain.hostname} was removed from Tendril. The hosting API token isn't set, so remove it from the hosting dashboard too.` }
+    : { ok: true, message: `${domain.hostname} was removed everywhere.` };
 }
