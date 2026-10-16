@@ -38,7 +38,7 @@ export function PersonalCard({ page, preview }: LayoutProps) {
             <img src={photo} alt="" className="absolute inset-0 size-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/70" />
             <div className="absolute inset-x-0 top-0 flex flex-col items-center px-4 pt-6 text-center">
-              <NameHeading preview={preview} className="text-2xl font-extrabold tracking-tight drop-shadow-lg">
+              <NameHeading preview={preview} verified={page.verified} className="text-2xl font-extrabold tracking-tight drop-shadow-lg">
                 {displayName(page)}
               </NameHeading>
               {page.tagline ? <p className="text-xs font-medium text-white/80">{page.tagline}</p> : null}

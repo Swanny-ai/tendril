@@ -12,6 +12,7 @@ import { Embed } from "./layouts/shared";
 import { SimpleStack } from "./layouts/simple-stack";
 import { Spotlight } from "./layouts/spotlight";
 import { SocialGlyph, socialMeta } from "./social";
+import { VerifiedBadge } from "./verified-badge";
 
 export type RenderBlock = {
   id: string;
@@ -34,6 +35,8 @@ export type RenderPage = {
   layout?: string;
   heroUrl?: string | null;
   tagline?: string;
+  /** Show the blue verified check (page verified by the site owner, badge not hidden). */
+  verified?: boolean;
 };
 
 const FONT_STACK: Record<ThemeTokens["font"], string> = {
@@ -107,10 +110,11 @@ function ClassicPage({ page, preview }: { page: RenderPage; preview: boolean }) 
           </div>
         )}
         {preview ? (
-          <p className="mt-4 text-center text-2xl font-semibold">{name}</p>
+          <p className="mt-4 text-center text-2xl font-semibold">{name}{page.verified ? <> <VerifiedBadge size={22} /></> : null}</p>
         ) : (
           <h1 className="mt-4 text-center text-2xl font-semibold" style={{ fontFamily: "inherit" }}>
             {name}
+            {page.verified ? <> <VerifiedBadge size={22} /></> : null}
           </h1>
         )}
         {page.bio ? (

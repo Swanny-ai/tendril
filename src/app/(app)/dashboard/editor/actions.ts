@@ -208,6 +208,19 @@ export async function setWarningTemplateAction(key: string | null): Promise<Acti
   }
 }
 
+/** Show or hide the verified badge. Only possible on pages the site owner has verified. */
+export async function setShowVerifiedAction(show: boolean): Promise<ActionResult> {
+  try {
+    const { page } = await ownPage();
+    if (!page.verifiedAt) return { ok: false, error: "This page isn't verified." };
+    await db.page.update({ where: { id: page.id }, data: { showVerified: show === true } });
+    await invalidatePageFromAction(page.id);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export async function setLayoutAction(layout: string): Promise<ActionResult> {
   try {
     const { page } = await ownPage();

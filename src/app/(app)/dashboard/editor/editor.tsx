@@ -135,6 +135,7 @@ function PhonePreview({ limits, publicUrl }: { plan: PlanName; limits: Limits; p
       avatarUrl: profile.avatarUrl,
       heroUrl: profile.heroUrl,
       tagline: profile.tagline,
+      verified: profile.verified && profile.showVerified,
       layout: theme.layout,
       showBadge: limits.removeBadge ? theme.showBadge : true,
       theme: resolveTheme(theme.themeKey, theme.overrides, limits.customTheme),

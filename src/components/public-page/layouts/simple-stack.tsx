@@ -40,7 +40,7 @@ export function SimpleStack({ page, preview }: LayoutProps) {
       <div className="h-36 w-full bg-[radial-gradient(80%_120%_at_20%_0%,#ffe9a8_0%,transparent_60%),radial-gradient(80%_120%_at_90%_10%,#c9bdfb_0%,transparent_60%),#efeaf9]" />
       <div className="mx-auto -mt-16 flex w-full max-w-[480px] flex-col items-center px-5 pb-10">
         <Avatar page={page} size={104} ring="#ffffff" className="shadow-lg" />
-        <NameHeading preview={preview} className="mt-3 text-center text-2xl font-bold">
+        <NameHeading preview={preview} verified={page.verified} className="mt-3 text-center text-2xl font-bold">
           {displayName(page)}
         </NameHeading>
         {page.tagline ? <p className="mt-0.5 text-sm font-medium text-[#5b3fd1]">{page.tagline}</p> : null}

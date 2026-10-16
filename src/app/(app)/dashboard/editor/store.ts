@@ -10,6 +10,9 @@ export type EditorProfile = {
   avatarUrl: string | null;
   heroUrl: string | null;
   tagline: string;
+  /** Granted by the site owner; the creator can only show or hide it. */
+  verified: boolean;
+  showVerified: boolean;
   seoTitle: string;
   seoDescription: string;
   published: boolean;
@@ -36,7 +39,7 @@ type EditorState = {
 
 export const useEditor = create<EditorState>((set) => ({
   username: "",
-  profile: { displayName: "", bio: "", avatarUrl: null, heroUrl: null, tagline: "", seoTitle: "", seoDescription: "", published: true },
+  profile: { displayName: "", bio: "", avatarUrl: null, heroUrl: null, tagline: "", verified: false, showVerified: true, seoTitle: "", seoDescription: "", published: true },
   theme: { themeKey: "paper", overrides: {}, showBadge: true, warningTemplate: null, openInBrowser: true, layout: "classic" },
   blocks: [],
   pending: 0,

@@ -39,7 +39,7 @@ export function ModernCard({ page, preview }: LayoutProps) {
           <img src={heroImage(page, "modern-card")} alt="" className="aspect-[4/5] w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0d]" />
           <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-5 pb-2">
-            <NameHeading preview={preview} className="text-center text-3xl font-extrabold tracking-tight drop-shadow-lg">
+            <NameHeading preview={preview} verified={page.verified} className="text-center text-3xl font-extrabold tracking-tight drop-shadow-lg">
               {displayName(page)}
             </NameHeading>
             {page.tagline ? <p className="mt-1 text-sm font-medium text-white/75">{page.tagline}</p> : null}

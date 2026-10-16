@@ -54,7 +54,7 @@ export function Spotlight({ page, preview }: LayoutProps) {
       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/80" />
       <div className="relative mx-auto flex w-full max-w-[440px] flex-col items-center px-5 pt-10 pb-10">
         <Avatar page={page} size={76} ring={ACCENT} />
-        <NameHeading preview={preview} className="mt-3 text-center text-2xl font-bold drop-shadow-lg">
+        <NameHeading preview={preview} verified={page.verified} className="mt-3 text-center text-2xl font-bold drop-shadow-lg">
           {displayName(page)}
         </NameHeading>
         <p className="text-sm text-white/80">@{page.username}</p>

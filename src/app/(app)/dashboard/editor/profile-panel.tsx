@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { updateProfileAction, uploadAvatarAction, uploadHeroAction } from "./actions";
+import { VerifiedBadge } from "@/components/public-page/verified-badge";
+import { setShowVerifiedAction, updateProfileAction, uploadAvatarAction, uploadHeroAction } from "./actions";
 import { queueSave, runSave, useEditor, type EditorProfile } from "./store";
 
 export function ProfilePanel() {
@@ -127,6 +128,33 @@ export function ProfilePanel() {
             <p className="text-xs text-muted-foreground">A short line under your name, shown by the photo templates.</p>
           </div>
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <VerifiedBadge size={18} /> Verified badge
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {profile.verified
+                  ? "This page is verified. The blue check shows next to your name."
+                  : "Not verified yet. The blue check tells visitors a page is genuinely yours, so it's granted by Tendril after we confirm your identity, not switched on by yourself."}
+              </CardDescription>
+            </div>
+            {profile.verified ? (
+              <Switch
+                aria-label="Show verified badge"
+                checked={profile.showVerified}
+                onCheckedChange={(v) => {
+                  setProfile({ showVerified: v });
+                  void runSave(() => setShowVerifiedAction(v), (m) => toast.error(m));
+                }}
+              />
+            ) : null}
+          </div>
+        </CardHeader>
       </Card>
 
       <Card>

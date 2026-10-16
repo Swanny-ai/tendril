@@ -62,7 +62,7 @@ export function ProCard({ page, preview }: LayoutProps) {
           <img src={heroImage(page, "pro-card")} alt="" className="aspect-[5/6] w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#0c0c0e]" />
           <div className="absolute inset-x-0 bottom-0 flex flex-col items-center px-5 pb-1">
-            <NameHeading preview={preview} className="text-center text-2xl font-black tracking-[.35em] uppercase drop-shadow-lg">
+            <NameHeading preview={preview} verified={page.verified} className="text-center text-2xl font-black tracking-[.35em] uppercase drop-shadow-lg">
               {displayName(page)}
             </NameHeading>
             <p className="mt-1 text-xs text-white/70">@{page.username}</p>

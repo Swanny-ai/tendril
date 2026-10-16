@@ -30,6 +30,7 @@ export type PublicPageData = {
   layout: string;
   heroUrl: string | null;
   tagline: string;
+  verified: boolean;
   theme: ThemeTokens;
   blocks: PublicBlock[];
 };
@@ -58,6 +59,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     layout: page.layout,
     heroUrl: page.heroUrl,
     tagline: page.tagline,
+    verified: !!page.verifiedAt && page.showVerified,
     theme: resolveTheme(page.themeKey, page.themeOverrides, PLAN_LIMITS[plan].customTheme),
     blocks: page.blocks
       .filter((b) => visible.has(b.id))

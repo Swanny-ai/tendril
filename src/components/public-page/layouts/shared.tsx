@@ -5,6 +5,7 @@ import { brand } from "@/config/brand";
 import { cardImage, embedSource, youtubeThumbnail } from "@/lib/blocks";
 import type { RenderBlock, RenderPage } from "../public-page";
 import { socialColor, SocialGlyph, socialMeta } from "../social";
+import { VerifiedBadge } from "../verified-badge";
 
 export type LayoutProps = { page: RenderPage; preview: boolean };
 
@@ -23,14 +24,25 @@ export function heroImage(page: RenderPage, layout: string) {
   return page.heroUrl || `/templates/${layout}.jpg`;
 }
 
-export function NameHeading({ preview, className, style, children }: { preview: boolean; className?: string; style?: CSSProperties; children: ReactNode }) {
+export function NameHeading({ preview, className, style, children, verified }: { preview: boolean; className?: string; style?: CSSProperties; children: ReactNode; verified?: boolean }) {
+  const content = (
+    <>
+      {children}
+      {verified ? (
+        <>
+          {" "}
+          <VerifiedBadge size={22} />
+        </>
+      ) : null}
+    </>
+  );
   return preview ? (
     <p className={className} style={style}>
-      {children}
+      {content}
     </p>
   ) : (
     <h1 className={className} style={style}>
-      {children}
+      {content}
     </h1>
   );
 }

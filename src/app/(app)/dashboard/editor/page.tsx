@@ -40,6 +40,8 @@ export default async function EditorPage() {
             avatarUrl: page.avatarUrl,
             heroUrl: page.heroUrl,
             tagline: page.tagline,
+          verified: !!page.verifiedAt,
+          showVerified: page.showVerified,
             seoTitle: page.seoTitle ?? "",
             seoDescription: page.seoDescription ?? "",
             published: page.published,
