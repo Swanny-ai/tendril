@@ -9,6 +9,7 @@ import { PageLinkBar } from "./page-link-bar";
 import { PageSwitcher } from "./page-switcher";
 import { UserMenu } from "./user-menu";
 import { VerifyBanner } from "./verify-banner";
+import { canSendEmail } from "@/lib/mailer";
 
 export const instant = false;
 
@@ -44,7 +45,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <UserMenu username={page.username} />
           </div>
         </header>
-        {!user.emailVerified ? <VerifyBanner email={user.email} /> : null}
+        {/* Only ask for confirmation when the site can actually send the email. */}
+        {!user.emailVerified && canSendEmail() ? <VerifyBanner email={user.email} /> : null}
         <div className="border-b px-2 md:hidden">
           <DashboardNav horizontal />
         </div>

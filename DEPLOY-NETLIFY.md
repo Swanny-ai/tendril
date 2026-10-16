@@ -84,12 +84,21 @@ settings) out of the build. `.env` files are already in `.gitignore`.
    **Deploys → Trigger deploy** so the site picks it up.
 4. Upgrade from **Dashboard → Billing** with the test card `4242 4242 4242 4242`.
 
-## 6. Emails (optional)
+## 6. Emails (free, with Brevo)
 
-Without email, everything works except **forgot password** and **verify email**. Those pages
-still respond normally, but no email is sent. To turn email on, create a Resend API key, set
-`RESEND_API_KEY`, and set `MAIL_FROM`. Until you verify your own domain in Resend, use
-`MAIL_FROM="Tendril <onboarding@resend.dev>"`.
+Without email, "forgot password" and "confirm your email" don't send anything (the confirm
+banner stays hidden until email works). Brevo's free plan sends 300 emails a day and doesn't
+need your own domain:
+
+1. Sign up at brevo.com (free plan).
+2. **Senders, Domains & Dedicated IPs → Senders → Add a sender**: enter the address emails
+   should come from (for example your Gmail) and confirm the email Brevo sends you.
+3. **SMTP & API → API Keys → Generate a new API key**. Copy it.
+4. In Netlify, add `BREVO_API_KEY` (the key, marked secret) and set `MAIL_FROM` to
+   `Tendril <the-address-you-verified@gmail.com>`, then trigger a deploy.
+
+Emails sent "from" a Gmail address through Brevo can land in spam at first; owning a domain
+and verifying it in Brevo fixes that later.
 
 ## Updating the site
 

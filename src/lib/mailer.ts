@@ -2,20 +2,45 @@ import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { appUrl, brand } from "@/config/brand";
+import { parseMailFrom } from "@/lib/mail-address";
 
 export type Email = { to: string; subject: string; text: string; html: string };
 
 // Transport selection:
-//  - "resend": RESEND_API_KEY is set (production)
+//  - "brevo":  BREVO_API_KEY is set. Free plan (300 emails/day) and works without owning a domain:
+//              verify the MAIL_FROM address once in Brevo and it can send to anyone.
+//  - "resend": RESEND_API_KEY is set (needs your own verified domain to email other people)
 //  - "file":   development default; appends to .mail-outbox.jsonl so you (and e2e tests) can open links
 //  - "disabled": production without a provider; nothing is sent and links are never logged
-type Transport = "resend" | "file" | "disabled";
+type Transport = "brevo" | "resend" | "file" | "disabled";
 
 function transport(): Transport {
   const forced = process.env.MAIL_TRANSPORT;
-  if (forced === "resend" || forced === "file" || forced === "disabled") return forced;
+  if (forced === "brevo" || forced === "resend" || forced === "file" || forced === "disabled") return forced;
+  if (process.env.BREVO_API_KEY) return "brevo";
   if (process.env.RESEND_API_KEY) return "resend";
   return process.env.NODE_ENV === "production" ? "disabled" : "file";
+}
+
+/** True when emails actually go out (used to explain things in the UI). */
+export function canSendEmail() {
+  const t = transport();
+  return t === "brevo" || t === "resend" || t === "file";
+}
+
+async function sendWithBrevo(email: Email): Promise<boolean> {
+  const sender = parseMailFrom(process.env.MAIL_FROM, brand.name);
+  if (!sender) {
+    console.error("[mail] MAIL_FROM must be an address you verified in Brevo, e.g. Tendril <you@gmail.com>");
+    return false;
+  }
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": process.env.BREVO_API_KEY ?? "", "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ sender, to: [{ email: email.to }], subject: email.subject, htmlContent: email.html, textContent: email.text }),
+  });
+  if (!res.ok) console.error(`[mail] Brevo error ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return res.ok;
 }
 
 export function outboxPath() {
@@ -30,9 +55,10 @@ export async function sendEmail(email: Email): Promise<boolean> {
     return true;
   }
   if (t === "disabled") {
-    console.warn(`[mail] not sent (no RESEND_API_KEY): subject="${email.subject}"`);
+    console.warn(`[mail] not sent (no BREVO_API_KEY or RESEND_API_KEY): subject="${email.subject}"`);
     return false;
   }
+  if (t === "brevo") return sendWithBrevo(email);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
