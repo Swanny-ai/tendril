@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { isClaimable, normalizeHostname, wwwOf } from "@/lib/domain-names";
-import { addNetlifyDomainAlias, refreshDomain, removeNetlifyDomainAlias } from "@/lib/domains";
+import { addHostedDomain, refreshDomain, removeHostedDomain } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -25,7 +25,7 @@ export async function addDomainAction(input: string): Promise<DomainResult> {
   if (await db.domain.findUnique({ where: { hostname }, select: { id: true } })) return { ok: false, error: "That domain is already connected to an account." };
 
   // Register it with the host right away so HTTPS can be issued as soon as DNS points here.
-  if ((await addNetlifyDomainAlias(hostname)) === "taken") {
+  if ((await addHostedDomain(hostname)) === "taken") {
     return { ok: false, error: "That domain is already used by another website. Remove it there first." };
   }
   await db.domain.create({ data: { userId, hostname } });
@@ -59,10 +59,10 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   const domain = await db.domain.findFirst({ where: { id, userId }, include: { smartLinks: { select: { slug: true } } } });
   if (!domain) return { ok: false, error: "That domain no longer exists." };
   await db.domain.delete({ where: { id } }); // links fall back to the Tendril domain
-  // Keep www on Netlify if it's also connected as a domain of its own.
+  // Keep www on the host if it's also connected as a domain of its own.
   const www = wwwOf(domain.hostname);
   const keep = www && (await db.domain.findUnique({ where: { hostname: www }, select: { id: true } })) ? [www] : [];
-  await removeNetlifyDomainAlias(domain.hostname, keep);
+  await removeHostedDomain(domain.hostname, keep);
   for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
   revalidatePath("/dashboard/domains");
   return { ok: true };

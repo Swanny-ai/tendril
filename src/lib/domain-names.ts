@@ -23,6 +23,7 @@ export function isAppHost(host: string | null | undefined, appHost: string): boo
     h === "[::1]" ||
     h.endsWith(".localhost") ||
     h.endsWith(".netlify.app") ||
+    h.endsWith(".vercel.app") ||
     h.endsWith(".netlify.live")
   );
 }

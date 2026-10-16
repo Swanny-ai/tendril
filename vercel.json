@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bash scripts/migrate-deploy.sh && npm run build",
+  "crons": [
+    {
+      "path": "/api/cron/rollup",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

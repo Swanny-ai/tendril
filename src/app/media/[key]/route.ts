@@ -10,7 +10,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/media/[key]">) 
       "Content-Type": image.contentType,
       // Keys are random and never reused, so the file can be cached forever.
       "Cache-Control": "public, max-age=31536000, immutable",
-      // Let Netlify's CDN keep a copy so the database is only read once per image.
+      // Let the host's CDN keep a copy so the database is only read once per image.
+      "CDN-Cache-Control": "public, max-age=31536000, immutable",
       "Netlify-CDN-Cache-Control": "public, max-age=31536000, immutable, durable",
       "X-Content-Type-Options": "nosniff",
     },

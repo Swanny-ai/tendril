@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { wwwOf, type DomainStage } from "@/lib/domain-names";
-import { addNetlifyDomainAlias, answers, dnsOptionsFor, netlifyConfigured, refreshDomain } from "@/lib/domains";
+import { addHostedDomain, answers, dnsOptionsFor, hostingConfigured, refreshDomain } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -45,9 +45,9 @@ export default async function DomainsPage() {
     domains.map((d, i) => {
       const www = wwwOf(d.hostname);
       if (!www || statuses[i].stage !== "connected") return Promise.resolve(null);
-      // Domains connected before www support may lack it on Netlify; adding is a no-op once present.
+      // Domains connected before www support may lack it on the host; adding is a no-op once present.
       return answers("https", www).then(async (ok) => {
-        if (!ok) await addNetlifyDomainAlias(d.hostname);
+        if (!ok) await addHostedDomain(d.hostname);
         return ok;
       });
     }),
@@ -88,7 +88,7 @@ export default async function DomainsPage() {
           {domains.map((d, i) => {
             const dnsOptions = dnsOptionsFor(d.hostname);
             const www = wwwOf(d.hostname);
-            const { stage, problem } = statuses[i];
+            const { stage, problem, ownership } = statuses[i];
             const connected = stage === "connected";
             return (
               <li key={d.id}>
@@ -149,11 +149,19 @@ export default async function DomainsPage() {
                         <p>Your domain works. We&apos;re issuing its HTTPS certificate, which usually takes a few minutes.</p>
                       )}
 
+                      {ownership?.length ? (
+                        <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">
+                          <p className="text-sm font-medium">One more record: this domain was used on another account before.</p>
+                          <p className="text-xs">Add this TXT record to prove it&apos;s yours. You can remove it once the domain is connected.</p>
+                          <DnsRecords hostname={d.hostname} options={[{ key: "a", label: "TXT", records: ownership }]} />
+                        </div>
+                      ) : null}
+
                       {problem === "taken" ? (
                         <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
                           This domain is already attached to another website or hosting account. Remove it there, then press Check now.
                         </p>
-                      ) : stage === "connecting" && !netlifyConfigured() ? (
+                      ) : stage === "connecting" && !hostingConfigured() ? (
                         <p className="text-xs text-muted-foreground">This is taking longer than usual. If it doesn&apos;t finish within an hour, contact support.</p>
                       ) : null}
 

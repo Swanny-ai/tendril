@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Applies pending Prisma migrations during the Netlify build.
+# Applies pending Prisma migrations during the Netlify or Vercel build.
 # Neon's free databases sleep when idle and can take a few seconds to wake, so retry a few times.
 set -u
 for attempt in 1 2 3 4 5; do
