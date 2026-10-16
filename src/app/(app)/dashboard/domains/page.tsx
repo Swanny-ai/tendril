@@ -1,19 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, Clock, Globe } from "lucide-react";
+import { CheckCircle2, Circle, Globe, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
-import { checkServing, dnsRecordFor } from "@/lib/domains";
+import type { DomainStage } from "@/lib/domain-names";
+import { dnsRecordFor, netlifyConfigured, refreshDomain } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
-import { AddDomainForm, DomainActions } from "./domain-controls";
+import { AddDomainForm, AutoRefresh, DomainActions } from "./domain-controls";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Custom domains" };
+
+const STEPS: { stage: Exclude<DomainStage, "connected">; label: string }[] = [
+  { stage: "dns", label: "DNS record" },
+  { stage: "connecting", label: "Connecting" },
+  { stage: "https", label: "HTTPS" },
+];
+const ORDER: DomainStage[] = ["dns", "connecting", "https", "connected"];
+
+const BADGE: Record<DomainStage, string> = {
+  dns: "Waiting for DNS",
+  connecting: "Connecting",
+  https: "Setting up HTTPS",
+  connected: "Connected",
+};
 
 export default async function DomainsPage() {
   const userId = await requireUserId();
@@ -22,9 +37,9 @@ export default async function DomainsPage() {
     db.domain.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { _count: { select: { smartLinks: true } } } }),
   ]);
   const max = PLAN_LIMITS[plan].customDomains;
-  // Whether each DNS-verified domain really loads Tendril right now (Netlify may not serve it yet).
-  const serving = await Promise.all(domains.map((d) => (d.verifiedAt ? checkServing(d.hostname) : Promise.resolve(false))));
-  const autoNetlify = Boolean(process.env.NETLIFY_API_TOKEN);
+  // Each visit (and the auto-refresh below) moves pending domains forward on its own.
+  const statuses = await Promise.all(domains.map((d) => refreshDomain(d)));
+  const pending = statuses.some((s) => s.stage !== "connected");
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -54,12 +69,14 @@ export default async function DomainsPage() {
         </CardContent>
       </Card>
 
+      {pending ? <AutoRefresh seconds={20} /> : null}
+
       {domains.length ? (
         <ul className="space-y-4" aria-label="Your domains">
           {domains.map((d, i) => {
             const record = dnsRecordFor(d.hostname);
-            const verified = !!d.verifiedAt;
-            const live = verified && serving[i];
+            const { stage, problem } = statuses[i];
+            const connected = stage === "connected";
             return (
               <li key={d.id}>
                 <Card>
@@ -70,59 +87,77 @@ export default async function DomainsPage() {
                           <Globe className="size-4" /> {d.hostname}
                         </CardTitle>
                         <CardDescription className="mt-1 flex items-center gap-2">
-                          {live ? (
-                            <Badge className="bg-[var(--sage-text)] text-white">
-                              <CheckCircle2 /> Connected
-                            </Badge>
-                          ) : verified ? (
-                            <Badge variant="secondary">
-                              <Clock /> Waiting for Netlify
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">
-                              <Clock /> Waiting for DNS
-                            </Badge>
-                          )}
+                          <Badge className={connected ? "bg-[var(--sage-text)] text-white" : ""} variant={connected ? "default" : "secondary"}>
+                            {connected ? <CheckCircle2 /> : <Loader2 className="animate-spin" />} {BADGE[stage]}
+                          </Badge>
                           {d._count.smartLinks} {d._count.smartLinks === 1 ? "link" : "links"}
                         </CardDescription>
                       </div>
-                      <DomainActions id={d.id} hostname={d.hostname} verified={live} />
+                      <DomainActions id={d.id} hostname={d.hostname} verified={connected} />
                     </div>
                   </CardHeader>
-                  {!live ? (
-                    <CardContent className="space-y-3 text-sm">
-                      {verified ? <p className="font-medium">DNS is set up correctly. One step left:</p> : null}
-                      <p>At your domain provider (GoDaddy, Namecheap, Cloudflare…), add this DNS record, then press Verify:</p>
-                      <div className="overflow-x-auto rounded-lg border">
-                        <table className="w-full text-left">
-                          <thead className="bg-muted/60 text-xs text-muted-foreground uppercase">
-                            <tr>
-                              <th className="px-3 py-2">Type</th>
-                              <th className="px-3 py-2">Name / Host</th>
-                              <th className="px-3 py-2">Value / Points to</th>
-                            </tr>
-                          </thead>
-                          <tbody className="font-mono">
-                            <tr>
-                              <td className="px-3 py-2">{record.type}</td>
-                              <td className="px-3 py-2">{record.name}</td>
-                              <td className="px-3 py-2 break-all">{record.value}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        On Cloudflare, set the record to &ldquo;DNS only&rdquo; (grey cloud). Changes usually show up within minutes, sometimes up to an hour.
-                        {autoNetlify ? " HTTPS is set up automatically once it's connected." : ""}
-                      </p>
-                      {!autoNetlify ? (
-                        <p className={verified ? "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950" : "rounded-lg bg-muted px-3 py-2 text-xs"}>
-                          {verified ? "Required: " : "One-time step: "}in Netlify, open your site → <strong>Domain management</strong> →{" "}
-                          <strong>Add a domain alias</strong> and enter <span className="font-mono">{d.hostname}</span>, then press Verify. Until then
-                          visitors see Netlify&apos;s &ldquo;Not found&rdquo; page. (Add a <span className="font-mono">NETLIFY_API_TOKEN</span> to the
-                          site&apos;s environment and Tendril will do this for you.)
+                  {!connected ? (
+                    <CardContent className="space-y-4 text-sm">
+                      <ol className="flex flex-wrap gap-x-6 gap-y-2" aria-label={`Setup progress for ${d.hostname}`}>
+                        {STEPS.map((s) => {
+                          const done = ORDER.indexOf(stage) > ORDER.indexOf(s.stage);
+                          const current = s.stage === stage;
+                          return (
+                            <li key={s.stage} className={`flex items-center gap-1.5 ${done || current ? "text-foreground" : "text-muted-foreground"}`}>
+                              {done ? (
+                                <CheckCircle2 className="size-4 text-[var(--sage-text)]" />
+                              ) : current ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <Circle className="size-4" />
+                              )}
+                              {s.label}
+                            </li>
+                          );
+                        })}
+                      </ol>
+
+                      {stage === "dns" ? (
+                        <>
+                          <p>At your domain provider (GoDaddy, Namecheap, Cloudflare, Spaceship…), add this DNS record:</p>
+                          <div className="overflow-x-auto rounded-lg border">
+                            <table className="w-full text-left">
+                              <thead className="bg-muted/60 text-xs text-muted-foreground uppercase">
+                                <tr>
+                                  <th className="px-3 py-2">Type</th>
+                                  <th className="px-3 py-2">Name / Host</th>
+                                  <th className="px-3 py-2">Value / Points to</th>
+                                </tr>
+                              </thead>
+                              <tbody className="font-mono">
+                                <tr>
+                                  <td className="px-3 py-2">{record.type}</td>
+                                  <td className="px-3 py-2">{record.name}</td>
+                                  <td className="px-3 py-2 break-all">{record.value}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Remove any other A, AAAA or CNAME records for this name. On Cloudflare, set the record to &ldquo;DNS only&rdquo; (grey cloud).
+                            Changes usually show up within minutes, sometimes up to an hour.
+                          </p>
+                        </>
+                      ) : stage === "connecting" ? (
+                        <p>Your DNS record is set up. We&apos;re connecting the domain to Tendril.</p>
+                      ) : (
+                        <p>Your domain works. We&apos;re issuing its HTTPS certificate, which usually takes a few minutes.</p>
+                      )}
+
+                      {problem === "taken" ? (
+                        <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
+                          This domain is already attached to another website or hosting account. Remove it there, then press Check now.
                         </p>
+                      ) : stage === "connecting" && !netlifyConfigured() ? (
+                        <p className="text-xs text-muted-foreground">This is taking longer than usual. If it doesn&apos;t finish within an hour, contact support.</p>
                       ) : null}
+
+                      <p className="text-xs text-muted-foreground">This page checks again every 20 seconds. You can also leave and come back later; it picks up where it left off.</p>
                     </CardContent>
                   ) : null}
                 </Card>

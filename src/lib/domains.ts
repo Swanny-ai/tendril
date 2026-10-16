@@ -2,7 +2,7 @@ import "server-only";
 import dns from "node:dns/promises";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
-import { isApex, NETLIFY_APEX_IP } from "@/lib/domain-names";
+import { domainStage, isApex, NETLIFY_APEX_IP, type DomainStage } from "@/lib/domain-names";
 
 /** The DNS record a creator adds at their registrar for `hostname`. */
 export function dnsRecordFor(hostname: string) {
@@ -31,41 +31,96 @@ export async function checkDns(hostname: string): Promise<{ ok: boolean; found: 
   return { ok: false, found };
 }
 
-/**
- * True when the domain really loads this app. DNS can be right while the host (Netlify) still
- * doesn't know the domain, which shows visitors a "Not found" page.
- */
-export async function checkServing(hostname: string): Promise<boolean> {
+/** True when `scheme://hostname` really loads this app (and, for https, has a valid certificate). */
+async function answers(scheme: "http" | "https", hostname: string): Promise<boolean> {
   try {
-    const res = await fetch(`http://${hostname}/api/ping`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    const res = await fetch(`${scheme}://${hostname}/api/ping`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
     if (!res.ok) return false;
     return ((await res.json()) as { app?: string }).app === "tendril";
   } catch {
-    return false;
+    return false; // includes certificate errors while HTTPS is still being issued
   }
 }
 
-/**
- * Adds the domain to the Netlify site so Netlify serves it (and issues HTTPS).
- * Needs NETLIFY_API_TOKEN (a personal access token) in the site's environment; without it
- * the creator gets instructions to add the domain in Netlify themselves.
- */
-export async function addNetlifyDomainAlias(hostname: string): Promise<"added" | "manual" | "error"> {
+// ---------- Netlify ----------
+// With NETLIFY_API_TOKEN set, Tendril adds and removes creators' domains on the Netlify site
+// itself, and Netlify issues their HTTPS certificates. Nobody has to open the Netlify dashboard.
+
+export function netlifyConfigured() {
+  return Boolean(process.env.NETLIFY_API_TOKEN);
+}
+
+async function netlifySite(): Promise<{ api: string; headers: Record<string, string> } | null> {
   const token = process.env.NETLIFY_API_TOKEN;
-  const siteId = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
-  if (!token || !siteId) return "manual";
-  const api = `https://api.netlify.com/api/v1/sites/${siteId}`;
-  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  if (!token) return null;
+  // Netlify's API accepts the site's own hostname in place of its id.
+  const siteId = process.env.SITE_ID || process.env.NETLIFY_SITE_ID || appHost;
+  return { api: `https://api.netlify.com/api/v1/sites/${siteId}`, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } };
+}
+
+async function updateNetlifyAliases(change: (aliases: Set<string>) => boolean): Promise<"ok" | "manual" | "taken" | "error"> {
+  const site = await netlifySite();
+  if (!site) return "manual";
   try {
-    const site = (await (await fetch(api, { headers })).json()) as { domain_aliases?: string[] };
-    const aliases = new Set(site.domain_aliases ?? []);
-    if (aliases.has(hostname)) return "added";
-    aliases.add(hostname);
-    const res = await fetch(api, { method: "PATCH", headers, body: JSON.stringify({ domain_aliases: [...aliases] }) });
-    return res.ok ? "added" : "error";
-  } catch {
+    const res = await fetch(site.api, { headers: site.headers, cache: "no-store" });
+    if (!res.ok) {
+      console.error(`[domains] Netlify site lookup failed: ${res.status}`);
+      return "error";
+    }
+    const current = (await res.json()) as { domain_aliases?: string[] };
+    const aliases = new Set(current.domain_aliases ?? []);
+    if (!change(aliases)) return "ok";
+    const patch = await fetch(site.api, { method: "PATCH", headers: site.headers, body: JSON.stringify({ domain_aliases: [...aliases] }) });
+    if (patch.ok) return "ok";
+    const body = (await patch.text()).slice(0, 300);
+    console.error(`[domains] Netlify alias update failed: ${patch.status} ${body}`);
+    // Netlify refuses a domain that another Netlify site already uses.
+    return patch.status === 422 && /already|taken|in use/i.test(body) ? "taken" : "error";
+  } catch (e) {
+    console.error("[domains] Netlify request failed", e);
     return "error";
   }
+}
+
+/** Adds the domain to the Netlify site so Netlify serves it and issues HTTPS. */
+export function addNetlifyDomainAlias(hostname: string) {
+  return updateNetlifyAliases((aliases) => {
+    if (aliases.has(hostname)) return false;
+    aliases.add(hostname);
+    return true;
+  });
+}
+
+/** Removes the domain from the Netlify site (used when a creator removes it). */
+export function removeNetlifyDomainAlias(hostname: string) {
+  return updateNetlifyAliases((aliases) => aliases.delete(hostname));
+}
+
+// ---------- Status ----------
+
+export type DomainStatus = { stage: DomainStage; found: string[]; problem?: "taken" | "setup" };
+
+/**
+ * Moves a domain forward as far as it can: DNS → added on Netlify → HTTPS ready → connected.
+ * Marks it verified (usable for links) only once it loads over HTTPS. Safe to call repeatedly.
+ */
+export async function refreshDomain(domain: { id: string; hostname: string; verifiedAt: Date | null }): Promise<DomainStatus> {
+  if (domain.verifiedAt) return { stage: "connected", found: [] };
+  const dnsCheck = await checkDns(domain.hostname);
+  if (!dnsCheck.ok) return { stage: domainStage({ dns: false, http: false, https: false }), found: dnsCheck.found };
+
+  let http = await answers("http", domain.hostname);
+  let problem: DomainStatus["problem"];
+  if (!http) {
+    // DNS is right but the host doesn't serve the domain yet: (re)add it on Netlify.
+    const added = await addNetlifyDomainAlias(domain.hostname);
+    if (added === "taken") problem = "taken";
+    else if (added !== "ok") problem = "setup";
+    http = await answers("http", domain.hostname);
+  }
+  const https = http && (await answers("https", domain.hostname));
+  if (https) await db.domain.update({ where: { id: domain.id }, data: { verifiedAt: new Date() } });
+  return { stage: domainStage({ dns: true, http, https }), found: dnsCheck.found, problem: https ? undefined : problem };
 }
 
 /** A verified custom domain by hostname (for serving requests on it). */

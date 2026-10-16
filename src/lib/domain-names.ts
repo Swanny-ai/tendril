@@ -39,3 +39,12 @@ export function isApex(hostname: string): boolean {
   const twoPartSuffix = parts.length >= 3 && /^(co|com|net|org|gov|ac|edu)$/.test(parts[parts.length - 2]) && parts[parts.length - 1].length === 2;
   return parts.length === (twoPartSuffix ? 3 : 2);
 }
+
+/** Where a custom domain is in its setup, from the checks that have passed. */
+export type DomainStage = "dns" | "connecting" | "https" | "connected";
+
+export function domainStage(checks: { dns: boolean; http: boolean; https: boolean }): DomainStage {
+  if (!checks.dns) return "dns";
+  if (!checks.http) return "connecting";
+  return checks.https ? "connected" : "https";
+}

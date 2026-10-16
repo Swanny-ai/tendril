@@ -103,6 +103,23 @@ need your own domain:
 Emails sent "from" a Gmail address through Brevo can land in spam at first; owning a domain
 and verifying it in Brevo fixes that later.
 
+## 7. Creators' custom domains (automatic)
+
+Pro creators can connect their own domains under **Dashboard → Custom domains**. For Tendril
+to add each domain to Netlify by itself (so Netlify serves it and issues HTTPS), give it a
+Netlify token once:
+
+1. In Netlify, open your avatar → **User settings → Applications → Personal access tokens →
+   New access token**. Name it `tendril-domains`, choose an expiry, and copy it.
+2. In the site's **Environment variables**, add `NETLIFY_API_TOKEN` with that token (mark it
+   secret), then trigger a deploy.
+
+After that, a creator only adds the DNS record shown on the page. The page moves through
+"Waiting for DNS → Connecting → Setting up HTTPS → Connected" on its own, and removing a domain
+also removes it from Netlify. Without the token, you have to add each domain yourself under
+**Domain management → Add a domain alias**. Netlify limits how many domain aliases one site can
+have; check its docs if you expect many creators.
+
 ## Updating the site
 
 Commit and push to `main`. Netlify rebuilds and runs any new migrations automatically.

@@ -123,9 +123,10 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await page.getByRole("button", { name: "Add domain" }).click();
   await expect(page.getByRole("list", { name: "Your domains" }).getByText(pending, { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Waiting for DNS")).toBeVisible();
+  await expect(page.getByRole("list", { name: /Setup progress for/ })).toBeVisible();
   await expect(page.getByRole("cell", { name: "CNAME" })).toBeVisible();
-  await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByText(/No DNS record found yet|Not pointing at Tendril yet/)).toBeVisible();
+  await page.getByRole("button", { name: "Check now" }).click();
+  await expect(page.getByText(/No matching DNS record yet|Not pointing at Tendril yet/)).toBeVisible();
 
   // A connected domain can be picked for a smart link, and serves it.
   const host = `go-${name.replace(/_/g, "-")}.test`;

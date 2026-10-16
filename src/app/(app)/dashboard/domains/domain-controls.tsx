@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addDomainAction, removeDomainAction, verifyDomainAction } from "./actions";
 
-const NETLIFY_NOTE = "Also add it in Netlify: your site → Domain management → Add a domain alias.";
+/** Re-renders the page (which re-checks pending domains) every few seconds while it's open. */
+export function AutoRefresh({ seconds }: { seconds: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, seconds * 1000);
+    return () => clearInterval(t);
+  }, [router, seconds]);
+  return null;
+}
 
 export function AddDomainForm({ disabled }: { disabled: boolean }) {
   const router = useRouter();
@@ -24,7 +34,7 @@ export function AddDomainForm({ disabled }: { disabled: boolean }) {
           const res = await addDomainAction(value);
           if (!res.ok) return void toast.error(res.error);
           setValue("");
-          toast.success(res.netlify === "manual" ? `Domain added. Now add the DNS record. ${NETLIFY_NOTE}` : "Domain added. Now add the DNS record below.");
+          toast.success("Domain added. Now add the DNS record shown below.");
           router.refresh();
         });
       }}
@@ -52,13 +62,13 @@ export function DomainActions({ id, hostname, verified }: { id: string; hostname
         onClick={() =>
           start(async () => {
             const res = await verifyDomainAction(id);
-            if (!res.ok) return void toast.error(res.error, { duration: 8000 });
-            toast.success(res.netlify === "manual" ? `${res.message} ${NETLIFY_NOTE}` : (res.message ?? "Connected."), { duration: 8000 });
+            if (!res.ok) return void toast.info(res.error, { duration: 8000 });
+            toast.success(res.message ?? "Connected.", { duration: 8000 });
             router.refresh();
           })
         }
       >
-        {pending ? <Loader2 className="animate-spin" /> : <RefreshCw />} {verified ? "Check again" : "Verify"}
+        {pending ? <Loader2 className="animate-spin" /> : <RefreshCw />} {verified ? "Check again" : "Check now"}
       </Button>
       <Button
         size="sm"
