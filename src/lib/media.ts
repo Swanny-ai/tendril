@@ -1,21 +1,13 @@
 import "server-only";
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { db } from "@/lib/db";
 
-// Image storage for avatars, cover photos and link images.
-// On Netlify: Netlify Blobs (the server's disk is read-only there), served by /media/<key>.
-// Locally: public/uploads, served as static files.
+// Image storage for avatars, cover photos and link images, kept in Postgres and served by
+// /media/<key>. This works the same locally and on serverless hosts (whose disks are
+// read-only), and needs no extra service. Images are small (max 4 MB) and CDN-cached.
 
 export const IMAGE_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-
-const onNetlify = () => Boolean(process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY === "true" || process.env.NETLIFY_SITE_ID);
-
-async function store() {
-  const { getStore } = await import("@netlify/blobs");
-  return getStore("media");
-}
 
 export type ImageCheck = { ok: true; ext: string } | { ok: false; error: string };
 
@@ -27,39 +19,18 @@ export function checkImage(file: unknown): ImageCheck {
   return { ok: true, ext };
 }
 
-/** Saves an uploaded image and returns its public URL. `prefix` groups files by owner. */
-export async function saveImage(prefix: string, file: File, ext: string): Promise<string> {
-  const name = `${prefix}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  const bytes = await file.arrayBuffer();
-  if (onNetlify()) {
-    await (await store()).set(name, bytes, { metadata: { contentType: file.type } });
-    return `/media/${name}`;
-  }
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, name), Buffer.from(bytes));
-  return `/uploads/${name}`;
+const KEY = /^[a-z0-9]+-[a-f0-9]{16}\.(jpg|png|webp|gif)$/i;
+
+/** Saves an uploaded image for a page and returns its public URL. */
+export async function saveImage(pageId: string, file: File, ext: string): Promise<string> {
+  const key = `${pageId}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+  await db.media.create({ data: { key, pageId, contentType: file.type, bytes: new Uint8Array(await file.arrayBuffer()) } });
+  return `/media/${key}`;
 }
 
 /** Reads a stored image for /media/<key>. */
-export async function readImage(key: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
-  if (!/^[a-z0-9]+-[a-f0-9]{16}\.(jpg|png|webp|gif)$/i.test(key)) return null;
-  if (onNetlify()) {
-    try {
-      const res = await (await store()).getWithMetadata(key, { type: "arrayBuffer" });
-      if (!res) return null;
-      return { body: res.data, contentType: String(res.metadata?.contentType ?? "application/octet-stream") };
-    } catch (e) {
-      console.error("media read failed", key, e);
-      return null;
-    }
-  }
-  try {
-    const buf = await fs.readFile(path.join(process.cwd(), "public", "uploads", key));
-    const ext = key.split(".").pop()!.toLowerCase();
-    const type = Object.entries(IMAGE_TYPES).find(([, e]) => e === ext)?.[0] ?? "application/octet-stream";
-    return { body: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, contentType: type };
-  } catch {
-    return null;
-  }
+export async function readImage(key: string): Promise<{ body: Uint8Array; contentType: string } | null> {
+  if (!KEY.test(key)) return null;
+  const row = await db.media.findUnique({ where: { key }, select: { bytes: true, contentType: true } });
+  return row ? { body: row.bytes, contentType: row.contentType } : null;
 }

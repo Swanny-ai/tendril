@@ -43,6 +43,7 @@ export async function deleteAccountAction(_prev: SettingsState, form: FormData):
           db.pageView.deleteMany({ where: { pageId: page.id } }),
           db.warningView.deleteMany({ where: { pageId: page.id } }),
           db.dailyStat.deleteMany({ where: { pageId: page.id } }),
+          db.media.deleteMany({ where: { pageId: page.id } }),
         ]
       : []),
     db.user.delete({ where: { id: userId } }),

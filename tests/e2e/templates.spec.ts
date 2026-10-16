@@ -76,7 +76,11 @@ test("cover photo, video embed and countdown blocks", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard\/editor/);
 
   await page.goto(`/${name}`);
-  await expect(page.locator('img[src^="/uploads/"]').first()).toBeVisible();
+  const cover = page.locator('img[src^="/media/"]').first();
+  await expect(cover).toBeVisible();
+  const res = await page.request.get((await cover.getAttribute("src"))!);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("image/png");
   await expect(page.getByText("Painter · Lisbon")).toBeVisible();
   await expect(page.locator('iframe[src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"]')).toHaveCount(1);
   await expect(page.getByRole("timer")).toContainText("Offer ends in");

@@ -278,3 +278,15 @@ model SmartLinkEvent {
 
   @@index([linkId, ts])
 }
+
+// Uploaded images (avatars, cover photos, link images), served by /media/<key>.
+// Kept in Postgres so uploads work the same locally and on serverless hosts.
+model Media {
+  key         String   @id
+  pageId      String
+  contentType String
+  bytes       Bytes
+  createdAt   DateTime @default(now())
+
+  @@index([pageId])
+}
