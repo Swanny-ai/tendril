@@ -61,7 +61,7 @@ export async function checkDns(hostname: string): Promise<{ ok: boolean; found: 
       found.push(...ips.map((ip) => `A ${ip}`));
       // A flattened root CNAME resolves to the app host's addresses.
       const app = await appHostIps();
-      if (ips.includes(dnsTargets.apexIp) || (ips.length && ips.every((ip) => app.includes(ip)))) ok = true;
+      if (ips.some((ip) => dnsTargets.apexIps.includes(ip)) || (ips.length && ips.every((ip) => app.includes(ip)))) ok = true;
     } catch {
       /* no A record */
     }

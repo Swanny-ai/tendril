@@ -42,6 +42,6 @@ signing secret into `STRIPE_WEBHOOK_SECRET` and redeploy.
 ## 5. Creators' custom domains
 
 New domains are added to the Vercel project automatically and get their own HTTPS certificate.
-The DNS records shown to creators are `A @ → 76.76.21.21` or `CNAME → cname.vercel-dns.com`
+The DNS records shown to creators are `A @ → 216.198.79.1` (the older `76.76.21.21` also works) or `CNAME → cname.vercel-dns.com`
 (plus `www`). Domains connected while Tendril ran on Netlify must switch their DNS records to
 these values once.

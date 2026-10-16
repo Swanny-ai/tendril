@@ -13,11 +13,11 @@ export type DnsRecord = { type: string; name: string; value: string };
 
 export const host = process.env.VERCEL ? ("vercel" as const) : ("netlify" as const);
 
-/** DNS targets creators point at. */
+/** DNS targets creators point at (apexIps: the one shown first, then older ones that still work). */
 export const dnsTargets =
   host === "vercel"
-    ? { apexIp: "76.76.21.21", cname: "cname.vercel-dns.com" }
-    : { apexIp: NETLIFY_APEX_IP, cname: appHost };
+    ? { apexIp: "216.198.79.1", apexIps: ["216.198.79.1", "76.76.21.21"], cname: "cname.vercel-dns.com" }
+    : { apexIp: NETLIFY_APEX_IP, apexIps: [NETLIFY_APEX_IP], cname: appHost };
 
 /** True when a CNAME target belongs to the current host. */
 export function isOurCname(target: string) {
