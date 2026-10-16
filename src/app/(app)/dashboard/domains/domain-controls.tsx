@@ -2,12 +2,81 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { DnsOption } from "@/lib/domains";
+import { cn } from "@/lib/utils";
 import { addDomainAction, removeDomainAction, verifyDomainAction } from "./actions";
+
+/** The DNS records to add, with a choice between an A record and a CNAME for root domains. */
+export function DnsRecords({ hostname, options }: { hostname: string; options: DnsOption[] }) {
+  const [key, setKey] = useState(options[0].key);
+  const [copied, setCopied] = useState<string | null>(null);
+  const option = options.find((o) => o.key === key) ?? options[0];
+  return (
+    <div className="space-y-2">
+      {options.length > 1 ? (
+        <div className="inline-flex rounded-lg border bg-muted p-0.5" role="radiogroup" aria-label={`Record type for ${hostname}`}>
+          {options.map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              role="radio"
+              aria-checked={o.key === option.key}
+              onClick={() => setKey(o.key)}
+              className={cn(
+                "rounded-md px-3 py-1 text-sm font-medium",
+                o.key === option.key ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-left">
+          <thead className="bg-muted/60 text-xs text-muted-foreground uppercase">
+            <tr>
+              <th className="px-3 py-2">Type</th>
+              <th className="px-3 py-2">Name / Host</th>
+              <th className="px-3 py-2">Value / Points to</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {option.records.map((r) => (
+              <tr key={`${r.type}-${r.name}`} className="border-t first:border-t-0">
+                <td className="px-3 py-2">{r.type}</td>
+                <td className="px-3 py-2">{r.name}</td>
+                <td className="px-3 py-2 break-all">
+                  <span className="inline-flex items-center gap-1.5">
+                    {r.value}
+                    <button
+                      type="button"
+                      aria-label={`Copy ${r.value}`}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(r.value);
+                        setCopied(`${r.type}-${r.name}`);
+                        setTimeout(() => setCopied(null), 1500);
+                      }}
+                    >
+                      {copied === `${r.type}-${r.name}` ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {option.note ? <p className="text-xs text-muted-foreground">{option.note}</p> : null}
+    </div>
+  );
+}
 
 /** Re-renders the page (which re-checks pending domains) every few seconds while it's open. */
 export function AutoRefresh({ seconds }: { seconds: number }) {

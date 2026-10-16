@@ -7,11 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { wwwOf, type DomainStage } from "@/lib/domain-names";
-import { addNetlifyDomainAlias, answers, dnsRecordsFor, netlifyConfigured, refreshDomain } from "@/lib/domains";
+import { addNetlifyDomainAlias, answers, dnsOptionsFor, netlifyConfigured, refreshDomain } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
-import { AddDomainForm, AutoRefresh, DomainActions } from "./domain-controls";
+import { AddDomainForm, AutoRefresh, DnsRecords, DomainActions } from "./domain-controls";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Custom domains" };
@@ -86,7 +86,7 @@ export default async function DomainsPage() {
       {domains.length ? (
         <ul className="space-y-4" aria-label="Your domains">
           {domains.map((d, i) => {
-            const records = dnsRecordsFor(d.hostname);
+            const dnsOptions = dnsOptionsFor(d.hostname);
             const www = wwwOf(d.hostname);
             const { stage, problem } = statuses[i];
             const connected = stage === "connected";
@@ -132,27 +132,11 @@ export default async function DomainsPage() {
 
                       {stage === "dns" ? (
                         <>
-                          <p>At your domain provider (GoDaddy, Namecheap, Cloudflare, Spaceship…), add {records.length > 1 ? "these DNS records" : "this DNS record"}:</p>
-                          <div className="overflow-x-auto rounded-lg border">
-                            <table className="w-full text-left">
-                              <thead className="bg-muted/60 text-xs text-muted-foreground uppercase">
-                                <tr>
-                                  <th className="px-3 py-2">Type</th>
-                                  <th className="px-3 py-2">Name / Host</th>
-                                  <th className="px-3 py-2">Value / Points to</th>
-                                </tr>
-                              </thead>
-                              <tbody className="font-mono">
-                                {records.map((r) => (
-                                  <tr key={r.name} className="border-t first:border-t-0">
-                                    <td className="px-3 py-2">{r.type}</td>
-                                    <td className="px-3 py-2">{r.name}</td>
-                                    <td className="px-3 py-2 break-all">{r.value}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                          <p>
+                            At your domain provider (GoDaddy, Namecheap, Cloudflare, Spaceship…), add{" "}
+                            {dnsOptions.length > 1 ? "one of these setups" : "this DNS record"}:
+                          </p>
+                          <DnsRecords hostname={d.hostname} options={dnsOptions} />
                           <p className="text-xs text-muted-foreground">
                             {www ? <>The www record makes <span className="font-mono">{www}</span> open your domain too. </> : null}
                             Remove any other A, AAAA or CNAME records for these names. On Cloudflare, set the record to &ldquo;DNS only&rdquo; (grey cloud).

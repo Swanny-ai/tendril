@@ -128,6 +128,18 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await page.getByRole("button", { name: "Check now" }).click();
   await expect(page.getByText(/No matching DNS record yet|Not pointing at Tendril yet/)).toBeVisible();
 
+  // A root domain offers an A record or a CNAME on the root, both with a www record.
+  const apex = `${name.replace(/_/g, "-")}-site.test`;
+  await page.getByLabel("Domain", { exact: true }).fill(apex);
+  await page.getByRole("button", { name: "Add domain" }).click();
+  const recordType = page.getByRole("radiogroup", { name: `Record type for ${apex}` });
+  await expect(recordType).toBeVisible();
+  await expect(page.getByRole("cell", { name: "75.2.60.5" })).toBeVisible();
+  await recordType.getByRole("radio", { name: "CNAME" }).click();
+  await expect(page.getByText(/allows a CNAME on the root/)).toBeVisible();
+  await expect(page.getByRole("cell", { name: "@" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "www" })).toBeVisible();
+
   // A connected domain can be picked for a smart link, and serves it.
   const host = `go-${name.replace(/_/g, "-")}.test`;
   await connectDomain(name, host);

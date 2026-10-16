@@ -4,16 +4,41 @@ import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { domainStage, isApex, NETLIFY_APEX_IP, wwwOf, type DomainStage } from "@/lib/domain-names";
 
+export type DnsRecord = { type: string; name: string; value: string };
+export type DnsOption = { key: "a" | "cname"; label: string; records: DnsRecord[]; note?: string };
+
 /**
- * The DNS records a creator adds at their registrar. An apex domain (example.com) also gets a
- * www record, so www.example.com works too and redirects to it.
+ * Ways a creator can point their domain here. A subdomain uses a CNAME. An apex domain
+ * (example.com) can use an A record (works everywhere) or a CNAME at the root, which some
+ * providers allow (CNAME flattening / ALIAS / ANAME). Both also get a www record, so
+ * www.example.com works too and redirects to it.
  */
-export function dnsRecordsFor(hostname: string) {
-  if (!isApex(hostname)) return [{ type: "CNAME", name: hostname.split(".").slice(0, -2).join("."), value: appHost }];
+export function dnsOptionsFor(hostname: string): DnsOption[] {
+  if (!isApex(hostname)) {
+    return [{ key: "cname", label: "CNAME", records: [{ type: "CNAME", name: hostname.split(".").slice(0, -2).join("."), value: appHost }] }];
+  }
+  const www = { type: "CNAME", name: "www", value: appHost };
   return [
-    { type: "A", name: "@", value: NETLIFY_APEX_IP },
-    { type: "CNAME", name: "www", value: appHost },
+    { key: "a", label: "A record", records: [{ type: "A", name: "@", value: NETLIFY_APEX_IP }, www] },
+    {
+      key: "cname",
+      label: "CNAME",
+      records: [{ type: "CNAME", name: "@", value: appHost }, www],
+      note: "Only if your provider allows a CNAME on the root (@): Cloudflare, Spaceship and Namecheap do (it may be called CNAME flattening, ALIAS or ANAME). Otherwise use the A record.",
+    },
   ];
+}
+
+// The app host's own IP addresses: a root CNAME that the provider flattens shows up as these.
+let appIps: { ips: string[]; at: number } | null = null;
+async function appHostIps(): Promise<string[]> {
+  if (appIps && Date.now() - appIps.at < 10 * 60_000) return appIps.ips;
+  try {
+    appIps = { ips: await dns.resolve4(appHost), at: Date.now() };
+  } catch {
+    appIps = { ips: [], at: Date.now() };
+  }
+  return appIps.ips;
 }
 
 /** Checks whether the domain already points at Tendril. */
@@ -30,6 +55,9 @@ export async function checkDns(hostname: string): Promise<{ ok: boolean; found: 
     const ips = await dns.resolve4(hostname);
     found.push(...ips.map((ip) => `A ${ip}`));
     if (ips.includes(NETLIFY_APEX_IP)) return { ok: true, found };
+    // A flattened root CNAME resolves to the app host's addresses.
+    const app = await appHostIps();
+    if (ips.length && ips.every((ip) => app.includes(ip))) return { ok: true, found };
   } catch {
     /* no A record */
   }
