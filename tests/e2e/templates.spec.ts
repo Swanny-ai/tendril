@@ -144,6 +144,10 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   const onDomain = await page.request.get(`/${slug}`, { maxRedirects: 0, headers: { host } });
   expect(onDomain.status()).toBe(302);
   expect(onDomain.headers()["location"]).toBe("https://example.com/shop");
+  // www.<domain> sends visitors to the domain itself, keeping the path.
+  const www = await page.request.get(`/${slug}?ref=1`, { maxRedirects: 0, headers: { host: `www.${host}` } });
+  expect(www.status()).toBe(301);
+  expect(www.headers()["location"]).toBe(`https://${host}/${slug}?ref=1`);
   // Someone else's link doesn't resolve on this domain.
   expect((await page.request.get("/demo-shop", { maxRedirects: 0, headers: { host } })).status()).toBe(404);
   // The domain's home page shows the creator's bio page.

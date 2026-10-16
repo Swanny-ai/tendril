@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { domainStage } from "@/lib/domain-names";
+import { apexOfWww, domainStage, wwwOf } from "@/lib/domain-names";
 
 describe("domainStage", () => {
   it("follows DNS, then hosting, then HTTPS", () => {
@@ -7,5 +7,16 @@ describe("domainStage", () => {
     expect(domainStage({ dns: true, http: false, https: false })).toBe("connecting");
     expect(domainStage({ dns: true, http: true, https: false })).toBe("https");
     expect(domainStage({ dns: true, http: true, https: true })).toBe("connected");
+  });
+});
+
+describe("www helpers", () => {
+  it("pairs apex domains with their www form", () => {
+    expect(wwwOf("sarahjames.me")).toBe("www.sarahjames.me");
+    expect(wwwOf("shop.co.uk")).toBe("www.shop.co.uk");
+    expect(wwwOf("links.sarahjames.me")).toBeNull();
+    expect(apexOfWww("www.sarahjames.me")).toBe("sarahjames.me");
+    expect(apexOfWww("www.links.sarahjames.me")).toBeNull();
+    expect(apexOfWww("sarahjames.me")).toBeNull();
   });
 });

@@ -48,3 +48,15 @@ export function domainStage(checks: { dns: boolean; http: boolean; https: boolea
   if (!checks.http) return "connecting";
   return checks.https ? "connected" : "https";
 }
+
+/** "www.example.com" for an apex domain, so visitors who type www reach it too; else null. */
+export function wwwOf(hostname: string): string | null {
+  return isApex(hostname) ? `www.${hostname}` : null;
+}
+
+/** "example.com" when `host` is the www form of an apex domain, else null. */
+export function apexOfWww(host: string): string | null {
+  if (!host.startsWith("www.")) return null;
+  const rest = host.slice(4);
+  return isApex(rest) ? rest : null;
+}

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
-import { isAppHost } from "@/lib/domain-names";
+import { apexOfWww, isAppHost } from "@/lib/domain-names";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
 //    domain's home page shows their "Root" smart link if they set one, else their bio page.
@@ -35,14 +35,30 @@ async function exists(request: NextRequest, kind: "smart" | "block", id: string,
 // Paths that are app plumbing and work the same on every host.
 const PASSTHROUGH = new Set(["_next", "api", "media", "flags", "videos", "templates", "favicon.ico", "robots.txt", "go"]);
 
+type DomainInfo = { rootSlug?: string | null; username?: string | null; redirectTo?: string };
+
+async function domainInfo(request: NextRequest, host: string): Promise<DomainInfo | null> {
+  const res = await fetch(new URL(`/api/domain-status?host=${encodeURIComponent(host)}`, apiBase(request)));
+  return res.ok ? ((await res.json()) as DomainInfo) : null;
+}
+
 async function customDomain(request: NextRequest, host: string) {
   const parts = request.nextUrl.pathname.split("/").filter(Boolean);
   const url = request.nextUrl.clone();
 
+  // www.example.com → example.com (same path), when the creator connected example.com.
+  let info: DomainInfo | null | undefined;
+  if (apexOfWww(host)) {
+    info = await domainInfo(request, host).catch(() => null);
+    if (info?.redirectTo) {
+      const to = new URL(`https://${info.redirectTo}${request.nextUrl.pathname}${request.nextUrl.search}`);
+      return NextResponse.redirect(to, 301);
+    }
+  }
+
   if (parts.length === 0) {
     try {
-      const res = await fetch(new URL(`/api/domain-status?host=${encodeURIComponent(host)}`, apiBase(request)));
-      const data = res.ok ? ((await res.json()) as { rootSlug?: string | null; username: string | null }) : null;
+      const data = info !== undefined ? info : await domainInfo(request, host);
       if (data?.rootSlug) {
         url.pathname = `/l/${data.rootSlug}`; // the domain itself is a smart link ("Root")
         return NextResponse.rewrite(url);

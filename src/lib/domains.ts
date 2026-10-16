@@ -2,13 +2,18 @@ import "server-only";
 import dns from "node:dns/promises";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
-import { domainStage, isApex, NETLIFY_APEX_IP, type DomainStage } from "@/lib/domain-names";
+import { domainStage, isApex, NETLIFY_APEX_IP, wwwOf, type DomainStage } from "@/lib/domain-names";
 
-/** The DNS record a creator adds at their registrar for `hostname`. */
-export function dnsRecordFor(hostname: string) {
-  return isApex(hostname)
-    ? { type: "A", name: "@", value: NETLIFY_APEX_IP }
-    : { type: "CNAME", name: hostname.split(".").slice(0, -2).join("."), value: appHost };
+/**
+ * The DNS records a creator adds at their registrar. An apex domain (example.com) also gets a
+ * www record, so www.example.com works too and redirects to it.
+ */
+export function dnsRecordsFor(hostname: string) {
+  if (!isApex(hostname)) return [{ type: "CNAME", name: hostname.split(".").slice(0, -2).join("."), value: appHost }];
+  return [
+    { type: "A", name: "@", value: NETLIFY_APEX_IP },
+    { type: "CNAME", name: "www", value: appHost },
+  ];
 }
 
 /** Checks whether the domain already points at Tendril. */
@@ -32,7 +37,7 @@ export async function checkDns(hostname: string): Promise<{ ok: boolean; found: 
 }
 
 /** True when `scheme://hostname` really loads this app (and, for https, has a valid certificate). */
-async function answers(scheme: "http" | "https", hostname: string): Promise<boolean> {
+export async function answers(scheme: "http" | "https", hostname: string): Promise<boolean> {
   try {
     const res = await fetch(`${scheme}://${hostname}/api/ping`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
     if (!res.ok) return false;
@@ -82,18 +87,28 @@ async function updateNetlifyAliases(change: (aliases: Set<string>) => boolean): 
   }
 }
 
-/** Adds the domain to the Netlify site so Netlify serves it and issues HTTPS. */
+/** Hostnames Netlify must serve for a domain: an apex domain brings its www form along. */
+function servedHosts(hostname: string) {
+  const www = wwwOf(hostname);
+  return www ? [hostname, www] : [hostname];
+}
+
+/** Adds the domain (and www for an apex domain) to the Netlify site so Netlify serves it and issues HTTPS. */
 export function addNetlifyDomainAlias(hostname: string) {
   return updateNetlifyAliases((aliases) => {
-    if (aliases.has(hostname)) return false;
-    aliases.add(hostname);
-    return true;
+    const missing = servedHosts(hostname).filter((h) => !aliases.has(h));
+    for (const h of missing) aliases.add(h);
+    return missing.length > 0;
   });
 }
 
-/** Removes the domain from the Netlify site (used when a creator removes it). */
-export function removeNetlifyDomainAlias(hostname: string) {
-  return updateNetlifyAliases((aliases) => aliases.delete(hostname));
+/** Removes the domain (and its www form, unless kept) from the Netlify site. */
+export function removeNetlifyDomainAlias(hostname: string, keep: string[] = []) {
+  return updateNetlifyAliases((aliases) => {
+    let changed = false;
+    for (const h of servedHosts(hostname)) if (!keep.includes(h) && aliases.delete(h)) changed = true;
+    return changed;
+  });
 }
 
 // ---------- Status ----------

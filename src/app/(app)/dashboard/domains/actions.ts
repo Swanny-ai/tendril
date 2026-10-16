@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
-import { isClaimable, normalizeHostname } from "@/lib/domain-names";
+import { isClaimable, normalizeHostname, wwwOf } from "@/lib/domain-names";
 import { addNetlifyDomainAlias, refreshDomain, removeNetlifyDomainAlias } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -59,7 +59,10 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   const domain = await db.domain.findFirst({ where: { id, userId }, include: { smartLinks: { select: { slug: true } } } });
   if (!domain) return { ok: false, error: "That domain no longer exists." };
   await db.domain.delete({ where: { id } }); // links fall back to the Tendril domain
-  await removeNetlifyDomainAlias(domain.hostname);
+  // Keep www on Netlify if it's also connected as a domain of its own.
+  const www = wwwOf(domain.hostname);
+  const keep = www && (await db.domain.findUnique({ where: { hostname: www }, select: { id: true } })) ? [www] : [];
+  await removeNetlifyDomainAlias(domain.hostname, keep);
   for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
   revalidatePath("/dashboard/domains");
   return { ok: true };
