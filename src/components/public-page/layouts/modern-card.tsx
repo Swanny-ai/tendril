@@ -1,4 +1,5 @@
 // Modern Card: a full-width photo hero that fades into the name, details and stacked links.
+import { cardImage } from "@/lib/blocks";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
 import { Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
@@ -17,7 +18,7 @@ export function ModernCard({ page, preview }: LayoutProps) {
       return (
         <LinkShell key={b.id} block={b} preview={preview} className="group relative block overflow-hidden rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={b.data.imageUrl} alt="" className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" />
+          <img src={cardImage(b) ?? undefined} alt="" className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" />
           <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/85 to-transparent px-4 pt-8 pb-3 text-sm font-semibold text-white">
             <span className="truncate">{b.title || b.url}</span> {b.contentWarning ? <SensitiveTag /> : null}
           </span>

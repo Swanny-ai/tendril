@@ -1,5 +1,6 @@
 // Spotlight Card: an immersive full-screen photo background with glass buttons,
 // a highlighted featured card and an optional countdown.
+import { cardImage } from "@/lib/blocks";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
 import { Avatar, Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
@@ -28,7 +29,7 @@ export function Spotlight({ page, preview }: LayoutProps) {
       return (
         <LinkShell key={b.id} block={b} preview={preview} className="group relative block overflow-hidden rounded-2xl border-2 shadow-[0_10px_40px_-10px_rgba(244,114,182,.6)]" style={{ borderColor: ACCENT }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={b.data.imageUrl} alt="" className="aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" />
+          <img src={cardImage(b) ?? undefined} alt="" className="aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" loading="lazy" />
           <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-4 pt-8 pb-3 text-sm font-bold text-white">
             {b.title || b.url} {b.contentWarning ? <SensitiveTag /> : null}
           </span>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { OpenInBrowserCard } from "@/components/open-in-browser-card";
-import { appUrl } from "@/config/brand";
+import { appHost, appUrl } from "@/config/brand";
+import { isAppHost } from "@/lib/domain-names";
 import { getSmartLink } from "@/lib/smart-links";
 
 export const instant = false;
@@ -15,10 +17,12 @@ export default async function OpenInBrowserPage(props: PageProps<"/l/[slug]/open
   const { slug } = await props.params;
   const link = await getSmartLink(slug);
   if (!link || !link.openInBrowser) notFound();
+  const host = (await headers()).get("host");
+  const origin = isAppHost(host, appHost) ? appUrl : `https://${host}`;
 
   return (
     <OpenInBrowserCard
-      target={`${appUrl}/l/${slug}?ib=1`}
+      target={`${origin}/l/${slug}?ib=1`}
       stayHref={`/l/${slug}?ib=1`}
       name={link.owner?.name ?? link.label ?? slug}
       username={link.owner?.username ?? null}

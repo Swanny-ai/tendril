@@ -2,9 +2,11 @@ import { Logo } from "@/components/brand/logo";
 import { appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
+import { listPages } from "@/lib/current-page";
 import { requirePage } from "@/lib/session";
 import { DashboardNav } from "./nav";
 import { PageLinkBar } from "./page-link-bar";
+import { PageSwitcher } from "./page-switcher";
 import { UserMenu } from "./user-menu";
 import { VerifyBanner } from "./verify-banner";
 
@@ -12,9 +14,10 @@ export const instant = false;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, page } = await requirePage();
-  const [plan, user] = await Promise.all([
+  const [plan, user, pages] = await Promise.all([
     getPlan(userId),
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true } }),
+    listPages(userId),
   ]);
   const publicUrl = `${appUrl}/${page.username}`;
 
@@ -33,7 +36,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="md:hidden">
             <Logo href="/dashboard" />
           </div>
-          <PageLinkBar url={publicUrl} />
+          <PageSwitcher pages={pages} currentId={page.id} />
+          <div className="hidden min-w-0 sm:block">
+            <PageLinkBar url={publicUrl} />
+          </div>
           <div className="ml-auto">
             <UserMenu username={page.username} />
           </div>

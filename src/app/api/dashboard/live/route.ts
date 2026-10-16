@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (!rateLimit(`live:${owner.userId}:${clientIp(request.headers)}`, 60, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: NO_STORE });
   }
-  const sources = await getSources(owner.userId, owner);
+  const sources = await getSources(owner.userId);
   const live = await getLiveStats(owner, sources, owner.withGeo);
   return NextResponse.json(live, { headers: NO_STORE });
 }

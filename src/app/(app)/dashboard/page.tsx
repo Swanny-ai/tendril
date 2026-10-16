@@ -54,7 +54,7 @@ function ProLock({ what }: { what: string }) {
 }
 
 export default async function GlobalDashboardPage(props: PageProps<"/dashboard">) {
-  const { userId, page } = await requirePage();
+  const { userId } = await requirePage();
   const q = await props.searchParams;
   const plan = await getPlan(userId);
   const limits = PLAN_LIMITS[plan];
@@ -62,8 +62,8 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
   const tz = tzParam ?? "UTC";
   const now = new Date();
   const range = resolveRange({ range: q.range, from: q.from, to: q.to }, tz, now, limits.analyticsDays);
-  const owner = { userId, pageId: page.id };
-  const sources = await getSources(userId, page);
+  const owner = { userId };
+  const sources = await getSources(userId);
   const [stats, live] = await Promise.all([getGlobalStats(owner, sources, range, tz, limits.breakdowns), getLiveStats(owner, sources, limits.breakdowns)]);
   const { totals } = stats;
   const tzLabel = TIMEZONE_OPTIONS.find((o) => o.tz === tz)?.label ?? tz;

@@ -26,7 +26,7 @@ import { SOCIAL_LABELS } from "@/components/public-page/social";
 import type { PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
 import { SOCIAL_NETWORKS, type SocialNetwork } from "@/lib/validation";
-import { embedSource } from "@/lib/blocks";
+import { embedSource, youtubeId, youtubeThumbnail } from "@/lib/blocks";
 import { createBlockAction, deleteBlockAction, reorderBlocksAction, updateBlockAction, uploadBlockImageAction, type EditorBlock } from "./actions";
 import type { Limits } from "./editor";
 import { queueSave, runSave, useEditor } from "./store";
@@ -409,21 +409,25 @@ function SocialEditor({ block, onSave }: { block: EditorBlock; onSave: (s: { net
 
 function ImageCardEditor({ block, onSave }: { block: EditorBlock; onSave: (data: { imageUrl?: string; style?: "button" | "card" }) => void }) {
   const [busy, setBusy] = useState(false);
-  const card = block.data.style === "card";
+  const card = (block.data.style ?? (youtubeId(block.url) ? "card" : "button")) === "card";
+  const cover = youtubeThumbnail(block.url);
+  const picture = block.data.imageUrl || cover;
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <Label htmlFor={`card-${block.id}`}>Show as image card</Label>
-          <p className="text-sm text-muted-foreground">A picture with the title, used by the photo templates.</p>
+          <p className="text-sm text-muted-foreground">
+            {cover && !block.data.imageUrl ? "Using the video's cover. Upload an image to replace it." : "A picture with the title, used by the photo templates."}
+          </p>
         </div>
         <Switch id={`card-${block.id}`} aria-label="Show as image card" checked={card} onCheckedChange={(v) => onSave({ style: v ? "card" : "button" })} />
       </div>
       {card ? (
         <div className="flex items-center gap-3">
-          {block.data.imageUrl ? (
+          {picture ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={block.data.imageUrl} alt="" className="size-16 rounded-lg border object-cover" />
+            <img src={picture} alt="" className="size-16 rounded-lg border object-cover" />
           ) : (
             <div className="grid size-16 place-items-center rounded-lg border border-dashed text-muted-foreground">
               <ImagePlus className="size-5" />

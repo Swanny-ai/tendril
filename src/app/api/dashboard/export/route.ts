@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams;
   const tz = isValidTimeZone(q.get("tz")) ? q.get("tz")! : "UTC";
   const range = resolveRange({ range: q.get("range"), from: q.get("from"), to: q.get("to") }, tz, new Date(), owner.maxDays);
-  const sources = await getSources(owner.userId, owner);
+  const sources = await getSources(owner.userId);
   const stats = await getGlobalStats(owner, sources, range, tz, owner.withGeo);
 
   const lines = [

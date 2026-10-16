@@ -26,6 +26,10 @@ async function validate(userId: string, input: SmartLinkInput) {
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
+  if (data.domainId) {
+    const domain = await db.domain.findFirst({ where: { id: data.domainId, userId, verifiedAt: { not: null } }, select: { id: true } });
+    if (!domain) return { error: { ok: false as const, error: "That domain isn't connected yet.", field: "domainId" } };
+  }
 
   return {
     data: {
@@ -39,6 +43,7 @@ async function validate(userId: string, input: SmartLinkInput) {
       warningButton: data.warningButton || null,
       showBadge: data.showBadge,
       openInBrowser: data.openInBrowser,
+      domainId: data.domainId || null,
       enabled: data.enabled,
     },
     limits,

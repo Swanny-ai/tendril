@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, LayoutDashboard, LayoutTemplate, Link2, PencilRuler, Settings } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Globe, LayoutDashboard, LayoutTemplate, Link2, PencilRuler, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { href: "/dashboard/editor", label: "Editor", icon: PencilRuler },
   { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate },
   { href: "/dashboard/links", label: "Smart links", icon: Link2 },
+  { href: "/dashboard/domains", label: "Custom domains", icon: Globe },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -31,11 +32,17 @@ export function DashboardNav({ horizontal = false }: { horizontal?: boolean }) {
               active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            <Icon className="size-4" />
+            <NavIcon icon={Icon} />
             {label}
           </Link>
         );
       })}
     </nav>
   );
+}
+
+/** The item's icon, swapped for a spinner while its page loads, so every click shows a response. */
+function NavIcon({ icon: Icon }: { icon: typeof Loader2 }) {
+  const { pending } = useLinkStatus();
+  return pending ? <Loader2 className="size-4 animate-spin" aria-label="Loading" /> : <Icon className="size-4" />;
 }

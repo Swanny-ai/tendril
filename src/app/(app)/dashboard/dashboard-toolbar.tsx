@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CalendarRange, Download, Globe, Plus, RefreshCw } from "lucide-react";
@@ -40,19 +40,11 @@ export function DashboardToolbar({ range, rangeLabel, from, to, tz, maxDays }: P
       params.set("from", next.from ?? from ?? "");
       params.set("to", next.to ?? to ?? "");
     }
-    params.set("tz", next.tz ?? tz ?? localTimeZone());
+    params.set("tz", next.tz ?? tz ?? "UTC");
     startTransition(() => router.replace(`${pathname}?${params}`, { scroll: false }));
   };
 
-  // Default to the visitor's own time zone ("My local time"), like a wall clock.
-  useEffect(() => {
-    if (!tz) {
-      const params = new URLSearchParams(window.location.search);
-      params.set("tz", localTimeZone());
-      router.replace(`${pathname}?${params}`, { scroll: false });
-    }
-  }, [tz, pathname, router]);
-
+  // Times are shown in UTC unless the creator picks another zone (including their local one).
   const current = tz ?? "UTC";
   const local = useSyncExternalStore(subscribeNever, localTimeZone, () => null);
   const exportParams = new URLSearchParams({ range, tz: current, ...(range === "custom" && from && to ? { from, to } : {}) });

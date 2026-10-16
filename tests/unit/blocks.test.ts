@@ -29,3 +29,14 @@ describe("timeLeft", () => {
     expect(timeLeft(undefined, now).done).toBe(true);
   });
 });
+
+describe("YouTube covers", () => {
+  it("uses the video's thumbnail for YouTube links unless an image was uploaded", async () => {
+    const { cardImage, youtubeThumbnail } = await import("@/lib/blocks");
+    expect(youtubeThumbnail("https://youtu.be/dQw4w9WgXcQ")).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect(cardImage({ type: "LINK", url: "https://youtu.be/dQw4w9WgXcQ", data: {} })).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect(cardImage({ type: "LINK", url: "https://youtu.be/dQw4w9WgXcQ", data: { imageUrl: "/media/x.png" } })).toBe("/media/x.png");
+    expect(cardImage({ type: "LINK", url: "https://youtu.be/dQw4w9WgXcQ", data: { style: "button" } })).toBeNull();
+    expect(cardImage({ type: "LINK", url: "https://example.com", data: {} })).toBeNull();
+  });
+});

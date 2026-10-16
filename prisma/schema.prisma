@@ -22,10 +22,11 @@ model User {
   updatedAt        DateTime      @updatedAt
   accounts         Account[]
   sessions         Session[]
-  page             Page?
+  pages            Page[]
   subscription     Subscription?
   authTokens       AuthToken[]
   smartLinks       SmartLink[]
+  domains          Domain[]
 }
 
 enum AuthTokenType {
@@ -88,7 +89,7 @@ model VerificationToken {
 
 model Page {
   id             String   @id @default(cuid())
-  userId         String   @unique
+  userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   username       String   @unique
   displayName    String   @default("")
@@ -113,6 +114,8 @@ model Page {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   blocks         Block[]
+
+  @@index([userId, createdAt])
 }
 
 enum BlockType {
@@ -255,6 +258,9 @@ model SmartLink {
   showBadge       Boolean        @default(true)
   // Inside Instagram/TikTok/etc., show a page that opens the link in the default browser
   openInBrowser   Boolean        @default(true)
+  // Custom domain the link is shared on (null = the Tendril domain)
+  domainId        String?
+  domain          Domain?        @relation(fields: [domainId], references: [id], onDelete: SetNull)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   events          SmartLinkEvent[]
@@ -289,4 +295,17 @@ model Media {
   createdAt   DateTime @default(now())
 
   @@index([pageId])
+}
+
+// A creator's own domain (e.g. links.example.com), pointed at Tendril with a DNS record.
+model Domain {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hostname   String      @unique
+  verifiedAt DateTime?
+  createdAt  DateTime    @default(now())
+  smartLinks SmartLink[]
+
+  @@index([userId])
 }

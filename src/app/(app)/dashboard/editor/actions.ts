@@ -3,6 +3,7 @@
 import { appHost } from "@/config/brand";
 import { embedSource, type BlockData, type BlockKind } from "@/lib/blocks";
 import { db } from "@/lib/db";
+import { getCurrentPage } from "@/lib/current-page";
 import { checkImage, saveImage } from "@/lib/media";
 import { blockTag, invalidatePageFromAction } from "@/lib/pages";
 import { updateTag } from "next/cache";
@@ -18,7 +19,7 @@ export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; 
 
 async function ownPage() {
   const userId = await requireUserId();
-  const page = await db.page.findUnique({ where: { userId } });
+  const page = await getCurrentPage(userId);
   if (!page) throw new Error("No page");
   return { userId, page };
 }

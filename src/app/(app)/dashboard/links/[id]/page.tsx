@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { QrCodeButton } from "@/components/qr-code-button";
 import { appUrl } from "@/config/brand";
+import { smartLinkUrl } from "@/lib/domains";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -17,7 +18,8 @@ export default async function EditSmartLinkPage(
 ) {
   const { userId } = await requirePage();
   const { id } = await props.params;
-  const link = await db.smartLink.findFirst({ where: { id, userId } });
+  const link = await db.smartLink.findFirst({ where: { id, userId }, include: { domain: { select: { hostname: true } } } });
+  const domains = await db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } });
   if (!link) notFound();
   const limits = PLAN_LIMITS[await getPlan(userId)];
   return (
@@ -33,12 +35,13 @@ export default async function EditSmartLinkPage(
           <h1 className="mt-1 text-2xl font-semibold">Edit /l/{link.slug}</h1>
         </div>
         <QrCodeButton
-          url={`${appUrl}/l/${link.slug}`}
+          url={smartLinkUrl(link.slug, link.domain, appUrl)}
           filename={`qr-${link.slug}`}
           label="QR code"
         />
       </div>
       <SmartLinkForm
+        domains={domains}
         id={link.id}
         limits={limits}
         initial={{
@@ -47,6 +50,7 @@ export default async function EditSmartLinkPage(
           label: link.label,
           adultWarning: link.adultWarning,
           openInBrowser: link.openInBrowser,
+          domainId: link.domainId,
           warningTemplate: link.warningTemplate,
           warningTitle: link.warningTitle ?? "",
           warningMessage: link.warningMessage ?? "",

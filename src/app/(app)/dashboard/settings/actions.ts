@@ -14,9 +14,9 @@ export async function deleteAccountAction(_prev: SettingsState, form: FormData):
   const userId = await requireUserId();
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { page: { select: { username: true } }, subscription: { select: { stripeSubscriptionId: true, status: true } } },
+    select: { pages: { select: { username: true }, orderBy: { createdAt: "asc" } }, subscription: { select: { stripeSubscriptionId: true, status: true } } },
   });
-  const expected = user.page?.username ?? "delete";
+  const expected = user.pages[0]?.username ?? "delete";
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== expected) {
     return { error: `Type ${expected} to confirm.` };
   }
@@ -35,20 +35,16 @@ export async function deleteAccountAction(_prev: SettingsState, form: FormData):
 
   // Cascades remove the page, blocks, sessions and subscription row. Raw analytics
   // rows reference pageId without a foreign key, so delete them explicitly.
-  const page = await db.page.findUnique({ where: { userId }, select: { id: true } });
+  const pageIds = (await db.page.findMany({ where: { userId }, select: { id: true } })).map((p) => p.id);
   const smartSlugs = (await db.smartLink.findMany({ where: { userId }, select: { slug: true } })).map((l) => l.slug);
   await db.$transaction([
-    ...(page
-      ? [
-          db.pageView.deleteMany({ where: { pageId: page.id } }),
-          db.warningView.deleteMany({ where: { pageId: page.id } }),
-          db.dailyStat.deleteMany({ where: { pageId: page.id } }),
-          db.media.deleteMany({ where: { pageId: page.id } }),
-        ]
-      : []),
+    db.pageView.deleteMany({ where: { pageId: { in: pageIds } } }),
+    db.warningView.deleteMany({ where: { pageId: { in: pageIds } } }),
+    db.dailyStat.deleteMany({ where: { pageId: { in: pageIds } } }),
+    db.media.deleteMany({ where: { pageId: { in: pageIds } } }),
     db.user.delete({ where: { id: userId } }),
   ]);
-  if (user.page) expireUsername(user.page.username);
+  for (const p of user.pages) expireUsername(p.username);
   for (const slug of smartSlugs) revalidateTag(smartLinkTag(slug), { expire: 0 });
   await signOut({ redirectTo: "/?deleted=1" });
   return { ok: true };

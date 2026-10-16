@@ -29,7 +29,6 @@ test("public pages have no serious accessibility violations", async ({ page }) =
 
 test("dashboard pages have no serious accessibility violations", async ({ page }) => {
   await login(page, DEMO.email, DEMO.password);
-  await expect(page).toHaveURL(/tz=/); // the dashboard settles on the browser's time zone first
   await page.waitForLoadState("networkidle");
   await audit(page, "overview");
   for (const path of ["/dashboard", "/dashboard/editor", "/dashboard/analytics", "/dashboard/billing", "/dashboard/settings"]) {

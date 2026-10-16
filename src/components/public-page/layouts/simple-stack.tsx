@@ -1,4 +1,5 @@
 // Simple Stack: a calm, light link page. Soft rounded buttons, image cards and media.
+import { cardImage } from "@/lib/blocks";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
 import { Avatar, Badge, displayName, Embed, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
@@ -21,7 +22,7 @@ export function SimpleStack({ page, preview }: LayoutProps) {
       return (
         <LinkShell key={b.id} block={b} preview={preview} className="block overflow-hidden rounded-2xl bg-white shadow-[0_8px_24px_-10px_rgba(20,20,40,.35)] transition-transform hover:-translate-y-0.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={b.data.imageUrl} alt="" className="aspect-[16/9] w-full object-cover" loading="lazy" />
+          <img src={cardImage(b) ?? undefined} alt="" className="aspect-[16/9] w-full object-cover" loading="lazy" />
           <span className="flex items-center justify-center gap-2 px-4 py-3 text-[15px] font-semibold text-[#1c1a24]">
             {b.title || b.url} {b.contentWarning ? <SensitiveTag /> : null}
           </span>

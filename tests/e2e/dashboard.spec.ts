@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("shows key numbers, chart, top performers and live panels", async ({ page }) => {
-  await expect(page).toHaveURL(/tz=/); // defaults to the browser's own time zone
+  await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveText(/UTC/); // UTC by default
   for (const label of ["Total views", "Active links", "Avg views per link", "Growth"]) {
     await expect(page.getByRole("region", { name: "Key numbers" }).getByText(label, { exact: true })).toBeVisible();
   }
@@ -80,7 +80,6 @@ test("the live API requires sign-in", async ({ browser }) => {
 
 test("numbers update in the background without reloading the page", async ({ page }) => {
   test.setTimeout(60_000);
-  await expect(page).toHaveURL(/tz=/);
   await page.evaluate(() => ((window as unknown as { __noReload: boolean }).__noReload = true));
   const total = page.getByRole("region", { name: "Key numbers" }).locator("p.font-heading").first();
   const before = Number((await total.innerText()).replace(/D/g, ""));

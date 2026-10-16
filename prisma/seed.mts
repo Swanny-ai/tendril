@@ -22,7 +22,7 @@ async function main() {
       name: "Demo Creator",
       emailVerified: new Date(),
       passwordHash: await bcrypt.hash(DEMO_PASSWORD, 12),
-      page: {
+      pages: {
         create: {
           username: DEMO_USERNAME,
           displayName: "Demo Creator",
@@ -41,7 +41,7 @@ async function main() {
         },
       },
     },
-    include: { page: { include: { blocks: true } } },
+    include: { pages: { include: { blocks: true } } },
   });
 
   await db.smartLink.deleteMany({ where: { slug: { in: ["demo-vip", "demo-shop"] } } });
@@ -52,7 +52,7 @@ async function main() {
     ],
   });
 
-  const page = user.page!;
+  const page = user.pages[0];
   const links = page.blocks.filter((b) => b.type === "LINK");
   const referrers = [
     ["instagram.com", "social"], ["l.instagram.com", "social"], ["tiktok.com", "social"],

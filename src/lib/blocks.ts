@@ -14,6 +14,29 @@ export type BlockData = {
   until?: string;
 };
 
+/** YouTube video id from a watch / youtu.be / shorts / embed link, or null. */
+export function youtubeId(raw: string | null | undefined): string | null {
+  const e = embedSource(raw);
+  return e?.provider === "youtube" ? e.src.split("/").pop()! : null;
+}
+
+/** The video's cover image for YouTube links. */
+export function youtubeThumbnail(raw: string | null | undefined): string | null {
+  const id = youtubeId(raw);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+/**
+ * Picture for a link shown as an image card: the uploaded image, or a YouTube video's cover.
+ * YouTube links are cards by default (until the creator switches them back to a button).
+ */
+export function cardImage(block: { type: string; url: string | null; data: BlockData }): string | null {
+  if (block.type !== "LINK") return null;
+  const style = block.data.style ?? (youtubeId(block.url) ? "card" : "button");
+  if (style !== "card") return null;
+  return block.data.imageUrl || youtubeThumbnail(block.url);
+}
+
 /** Player URL for a YouTube or Spotify page link, or null if it isn't one we can embed. */
 export function embedSource(raw: string | null | undefined): { provider: "youtube" | "spotify"; src: string; aspect: string } | null {
   if (!raw) return null;

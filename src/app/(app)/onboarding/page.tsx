@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Claim your link" };
 
 export default async function OnboardingPage(props: PageProps<"/onboarding">) {
   const userId = await requireUserId();
-  if (await db.page.findUnique({ where: { userId }, select: { id: true } })) redirect("/dashboard");
+  if (await db.page.findFirst({ where: { userId }, select: { id: true } })) redirect("/dashboard");
   const { u } = await props.searchParams;
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-12">

@@ -13,7 +13,7 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
   const parsed = usernameSchema.safeParse(form.get("username"));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const existingPage = await db.page.findUnique({ where: { userId } });
+  const existingPage = await db.page.findFirst({ where: { userId }, select: { id: true } });
   if (existingPage) redirect("/dashboard");
 
   const taken = await db.page.findUnique({ where: { username: parsed.data } });

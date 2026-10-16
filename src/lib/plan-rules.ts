@@ -7,6 +7,8 @@ export const PLAN_LIMITS = {
   FREE: {
     maxBlocks: 12,
     maxSmartLinks: 3,
+    maxPages: 2,
+    customDomains: 0,
     analyticsDays: 30,
     breakdowns: false,
     customTheme: false,
@@ -16,6 +18,8 @@ export const PLAN_LIMITS = {
   PRO: {
     maxBlocks: 200,
     maxSmartLinks: 100,
+    maxPages: 25,
+    customDomains: 5,
     analyticsDays: 365,
     breakdowns: true,
     customTheme: true,

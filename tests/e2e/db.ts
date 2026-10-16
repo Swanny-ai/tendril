@@ -36,3 +36,12 @@ export async function setPlanByUsername(username: string, plan: "FREE" | "PRO"):
     [username, plan],
   );
 }
+
+/** Connects a custom domain directly (as if DNS had been verified). */
+export async function connectDomain(username: string, hostname: string): Promise<void> {
+  await db().query(
+    `INSERT INTO "Domain" (id, "userId", hostname, "verifiedAt", "createdAt")
+     SELECT 'dom_' || md5(random()::text), p."userId", $2, now(), now() FROM "Page" p WHERE p.username = $1`,
+    [username, hostname],
+  );
+}

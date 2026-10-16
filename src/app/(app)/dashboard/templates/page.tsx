@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicPage, type RenderPage } from "@/components/public-page/public-page";
 import { buttonVariants } from "@/components/ui/button";
+import { appHost } from "@/config/brand";
 import { requirePage } from "@/lib/session";
 import { PAGE_TEMPLATES, type PageTemplate } from "@/templates/link-in-bio";
 import { THEME_PRESETS } from "@/themes/presets";
@@ -40,7 +41,7 @@ export default async function TemplatesPage() {
         <div>
           <h1 className="text-2xl font-semibold">Templates</h1>
           <p className="text-muted-foreground">
-            Pick a look for your page. Your links stay as they are; empty pages get sample links to start from.
+            Each template becomes its own page with its own link, filled with sample content you can edit.
           </p>
         </div>
         {page.layout !== "classic" ? (
@@ -72,7 +73,13 @@ export default async function TemplatesPage() {
               <h2 className="text-lg font-semibold">{t.name}</h2>
               <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">{t.description}</p>
               <div className="mt-5">
-                <UseTemplateButton templateKey={t.key} name={t.name} active={page.layout === t.key} />
+                <UseTemplateButton
+                  templateKey={t.key}
+                  name={t.name}
+                  active={page.layout === t.key}
+                  appHost={appHost}
+                  suggestion={`${page.username.slice(0, 18)}_${t.key.split("-")[0]}`}
+                />
               </div>
             </div>
           </li>

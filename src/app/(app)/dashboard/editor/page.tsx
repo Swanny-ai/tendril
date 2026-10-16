@@ -6,6 +6,7 @@ import { getPlan } from "@/lib/plans";
 import { requirePage } from "@/lib/session";
 import { sanitizeOverrides } from "@/themes/presets";
 import type { EditorBlock } from "./actions";
+import { DeletePage } from "./delete-page";
 import { Editor } from "./editor";
 
 export const instant = false;
@@ -13,31 +14,45 @@ export const metadata: Metadata = { title: "Editor" };
 
 export default async function EditorPage() {
   const { userId, page } = await requirePage();
-  const [plan, blocks] = await Promise.all([
+  const [plan, blocks, pageCount] = await Promise.all([
     getPlan(userId),
-    db.block.findMany({ where: { pageId: page.id }, orderBy: { position: "asc" } }),
+    db.block.findMany({
+      where: { pageId: page.id },
+      orderBy: { position: "asc" },
+    }),
+    db.page.count({ where: { userId } }),
   ]);
 
   return (
-    <Editor
-      publicUrl={`${appUrl}/${page.username}`}
-      plan={plan}
-      limits={PLAN_LIMITS[plan]}
-      initial={{
-        username: page.username,
-        profile: {
-          displayName: page.displayName,
-          bio: page.bio,
-          avatarUrl: page.avatarUrl,
-          heroUrl: page.heroUrl,
-          tagline: page.tagline,
-          seoTitle: page.seoTitle ?? "",
-          seoDescription: page.seoDescription ?? "",
-          published: page.published,
-        },
-        theme: { themeKey: page.themeKey, overrides: sanitizeOverrides(page.themeOverrides), showBadge: page.showBadge, warningTemplate: page.warningTemplate, openInBrowser: page.openInBrowser, layout: page.layout },
-        blocks: blocks.map(
-          (b): EditorBlock => ({
+    <>
+      <Editor
+        key={
+          page.id /* remount when switching pages so the editor loads that page */
+        }
+        publicUrl={`${appUrl}/${page.username}`}
+        plan={plan}
+        limits={PLAN_LIMITS[plan]}
+        initial={{
+          username: page.username,
+          profile: {
+            displayName: page.displayName,
+            bio: page.bio,
+            avatarUrl: page.avatarUrl,
+            heroUrl: page.heroUrl,
+            tagline: page.tagline,
+            seoTitle: page.seoTitle ?? "",
+            seoDescription: page.seoDescription ?? "",
+            published: page.published,
+          },
+          theme: {
+            themeKey: page.themeKey,
+            overrides: sanitizeOverrides(page.themeOverrides),
+            showBadge: page.showBadge,
+            warningTemplate: page.warningTemplate,
+            openInBrowser: page.openInBrowser,
+            layout: page.layout,
+          },
+          blocks: blocks.map((b): EditorBlock => ({
             id: b.id,
             type: b.type,
             position: b.position,
@@ -47,9 +62,16 @@ export default async function EditorPage() {
             data: (b.data ?? {}) as EditorBlock["data"],
             contentWarning: b.contentWarning,
             contentWarningText: b.contentWarningText,
-          }),
-        ),
-      }}
-    />
+          })),
+        }}
+      />
+      {pageCount > 1 ? (
+        <DeletePage
+          key={`delete-${page.id}`}
+          pageId={page.id}
+          username={page.username}
+        />
+      ) : null}
+    </>
   );
 }

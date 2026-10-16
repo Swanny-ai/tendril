@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { DeepLinkFallback } from "@/components/deep-link-fallback";
-import { appUrl } from "@/config/brand";
+import { appHost, appUrl } from "@/config/brand";
+import { isAppHost } from "@/lib/domain-names";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 import { pickLang, templateCopy } from "@/warning-templates/copy";
@@ -27,7 +28,8 @@ export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/w
 
   // Inside Instagram/TikTok/...: confirming opens the destination in the default browser
   // (Safari on iPhone). ok=1 records the confirmation there; ib=1 skips the in-app step.
-  const deepLink = link.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/l/${slug}?ok=1&ib=1`) : null;
+  const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${h.get("host")}`;
+  const deepLink = link.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${origin}/l/${slug}?ok=1&ib=1`) : null;
 
   let host = "";
   try {

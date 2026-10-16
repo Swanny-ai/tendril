@@ -2,24 +2,11 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Play } from "lucide-react";
 import { brand } from "@/config/brand";
-import { embedSource } from "@/lib/blocks";
+import { cardImage, embedSource, youtubeThumbnail } from "@/lib/blocks";
 import type { RenderBlock, RenderPage } from "../public-page";
-import { socialMeta } from "../social";
+import { socialColor, SocialGlyph, socialMeta } from "../social";
 
 export type LayoutProps = { page: RenderPage; preview: boolean };
-
-/** Brand-ish colours for the social monograms (no logos). */
-const SOCIAL_COLORS: Record<string, string> = {
-  instagram: "linear-gradient(135deg,#f9a03f,#e1306c 55%,#833ab4)",
-  tiktok: "#111111",
-  youtube: "#ff0033",
-  x: "#111111",
-  twitch: "#9146ff",
-  spotify: "#1db954",
-  github: "#24292f",
-  linkedin: "#0a66c2",
-  email: "#5b3fd1",
-};
 
 /** The page's first social-icons block is shown in the header; everything else flows below. */
 export function splitBlocks(blocks: RenderBlock[]) {
@@ -69,15 +56,15 @@ export function SocialIcons({ socials, preview, look }: { socials: { network: st
         const m = socialMeta(s.network);
         const style: CSSProperties =
           look === "color"
-            ? { background: SOCIAL_COLORS[s.network] ?? "#5b3fd1", color: "#fff" }
+            ? { background: socialColor(s.network), color: "#fff" }
             : look === "glass"
               ? { background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)", backdropFilter: "blur(8px)" }
               : look === "dark"
                 ? { background: "#1d1d21", color: "#fff", border: "1px solid rgba(255,255,255,.12)" }
                 : { color: "#fff" };
         const inner = (
-          <span className="grid size-9 place-items-center rounded-full text-[11px] font-bold" style={style}>
-            {m.mark}
+          <span className="grid size-9 place-items-center rounded-full" style={style}>
+            <SocialGlyph network={s.network} size={17} />
           </span>
         );
         return (
@@ -120,7 +107,7 @@ export function SensitiveTag() {
   );
 }
 
-export const isCard = (b: RenderBlock) => b.type === "LINK" && b.data.style === "card" && !!b.data.imageUrl;
+export const isCard = (b: RenderBlock) => cardImage(b) !== null;
 
 /** YouTube/Spotify player. In previews it shows a lightweight stand-in instead of loading the player. */
 export function Embed({ block, preview, className, captionClass }: { block: RenderBlock; preview: boolean; className?: string; captionClass?: string }) {
@@ -129,7 +116,10 @@ export function Embed({ block, preview, className, captionClass }: { block: Rend
   return (
     <figure className="w-full">
       {preview ? (
-        <div className={`relative grid w-full place-items-center bg-gradient-to-br from-[#2b2540] to-[#0f0d18] ${className ?? ""}`} style={{ aspectRatio: e.provider === "spotify" ? "5 / 2" : "16 / 9" }}>
+        <div
+          className={`relative grid w-full place-items-center bg-gradient-to-br from-[#2b2540] to-[#0f0d18] bg-cover bg-center ${className ?? ""}`}
+          style={{ aspectRatio: e.provider === "spotify" ? "5 / 2" : "16 / 9", backgroundImage: youtubeThumbnail(block.url) ? `url(${youtubeThumbnail(block.url)})` : undefined }}
+        >
           <span className="grid size-12 place-items-center rounded-full bg-white/90 text-black">
             <Play className="size-5 translate-x-px" fill="currentColor" />
           </span>

@@ -1,5 +1,6 @@
 // Pro Card: a dark, professional multi-link page. Photo header with a spaced-out name,
 // then image links arranged as a featured card and a two-column gallery.
+import { cardImage } from "@/lib/blocks";
 import type { ReactNode } from "react";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
@@ -9,7 +10,7 @@ function ImageTile({ b, preview, tall }: { b: RenderBlock; preview: boolean; tal
   return (
     <LinkShell block={b} preview={preview} className="group relative block overflow-hidden rounded-xl bg-[#18181b]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={b.data.imageUrl} alt="" className={`w-full object-cover transition-transform duration-300 group-hover:scale-[1.04] ${tall ? "aspect-[4/3]" : "aspect-square"}`} loading="lazy" />
+      <img src={cardImage(b) ?? undefined} alt="" className={`w-full object-cover transition-transform duration-300 group-hover:scale-[1.04] ${tall ? "aspect-[4/3]" : "aspect-square"}`} loading="lazy" />
       <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/85 to-transparent px-3 pt-8 pb-2.5 text-center text-xs font-semibold text-white">
         <span className="line-clamp-2">{b.title || b.url}</span> {b.contentWarning ? <SensitiveTag /> : null}
       </span>

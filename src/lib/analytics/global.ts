@@ -38,20 +38,24 @@ export function countryName(code: string | null): string {
   }
 }
 
-export async function getSources(userId: string, page: { username: string; displayName: string }): Promise<Source[]> {
-  const links = await db.smartLink.findMany({ where: { userId }, select: { id: true, slug: true, label: true }, orderBy: { createdAt: "asc" } });
+/** Everything that can get views: each of the account's bio pages and its smart links. */
+export async function getSources(userId: string): Promise<Source[]> {
+  const [pages, links] = await Promise.all([
+    db.page.findMany({ where: { userId }, select: { id: true, username: true, displayName: true }, orderBy: { createdAt: "asc" } }),
+    db.smartLink.findMany({ where: { userId }, select: { id: true, slug: true, label: true }, orderBy: { createdAt: "asc" } }),
+  ]);
   return [
-    { id: "page", kind: "page", label: page.displayName ? `${page.displayName} (bio page)` : "Bio page", path: `/${page.username}` },
+    ...pages.map((p) => ({ id: p.id, kind: "page" as const, label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}` })),
     ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/l/${l.slug}` })),
   ];
 }
 
-/** Unified view rows for one owner between two instants. */
-function viewRows(userId: string, pageId: string, from: Date, to: Date) {
+/** Unified view rows for one owner (all their pages and smart links) between two instants. */
+function viewRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
-    SELECT 'p' || pv.id::text AS id, pv.ts, pv.country, pv.device, pv."visitorHash" AS vh, 'page' AS src
+    SELECT 'p' || pv.id::text AS id, pv.ts, pv.country, pv.device, pv."visitorHash" AS vh, pv."pageId" AS src
     FROM "PageView" pv
-    WHERE pv."pageId" = ${pageId} AND pv."isBot" = false AND pv.ts >= ${from} AND pv.ts < ${to}
+    WHERE pv."pageId" IN (SELECT id FROM "Page" WHERE "userId" = ${userId}) AND pv."isBot" = false AND pv.ts >= ${from} AND pv.ts < ${to}
     UNION ALL
     SELECT 'l' || e.id::text, e.ts, e.country, e.device, e."visitorHash", e."linkId"
     FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
@@ -61,22 +65,22 @@ function viewRows(userId: string, pageId: string, from: Date, to: Date) {
 const n = (x: bigint | number | null | undefined) => Number(x ?? 0);
 
 export async function getGlobalStats(
-  owner: { userId: string; pageId: string },
+  owner: { userId: string },
   sources: Source[],
   range: ResolvedRange,
   tz: string,
   withGeo: boolean,
 ): Promise<GlobalStats> {
-  const { userId, pageId } = owner;
+  const { userId } = owner;
   const prev = previousPeriod(range);
-  const rows = viewRows(userId, pageId, range.from, range.to);
+  const rows = viewRows(userId, range.from, range.to);
   const fmt = range.bucket === "hour" ? 'YYYY-MM-DD"T"HH24' : "YYYY-MM-DD";
 
   const [totalRow, prevRow, bySource, byBucket, byCountry] = await Promise.all([
     db.$queryRaw<{ views: bigint; visitors: bigint }[]>`
       WITH v AS (${rows}) SELECT COUNT(*)::bigint AS views, COUNT(DISTINCT vh)::bigint AS visitors FROM v`,
     db.$queryRaw<{ views: bigint }[]>`
-      WITH v AS (${viewRows(userId, pageId, prev.from, prev.to)}) SELECT COUNT(*)::bigint AS views FROM v`,
+      WITH v AS (${viewRows(userId, prev.from, prev.to)}) SELECT COUNT(*)::bigint AS views FROM v`,
     db.$queryRaw<{ src: string; views: bigint }[]>`
       WITH v AS (${rows}) SELECT src, COUNT(*)::bigint AS views FROM v GROUP BY src`,
     db.$queryRaw<{ k: string; views: bigint }[]>`
@@ -121,21 +125,21 @@ export async function getGlobalStats(
 
 const MINUTE = 60_000;
 
-export async function getLiveStats(owner: { userId: string; pageId: string }, sources: Source[], withGeo: boolean, now = new Date()): Promise<LiveStats> {
-  const { userId, pageId } = owner;
+export async function getLiveStats(owner: { userId: string }, sources: Source[], withGeo: boolean, now = new Date()): Promise<LiveStats> {
+  const { userId } = owner;
   const end = new Date(Math.ceil((now.getTime() + 1) / MINUTE) * MINUTE); // end of the current minute
   const start = new Date(end.getTime() - 30 * MINUTE);
   const prevStart = new Date(start.getTime() - 30 * MINUTE);
-  const window = viewRows(userId, pageId, start, end);
+  const window = viewRows(userId, start, end);
 
   const [recent, perMinute, users, prevUsers, locations, links] = await Promise.all([
     db.$queryRaw<{ id: string; ts: Date; country: string | null; device: string; src: string }[]>`
-      WITH v AS (${viewRows(userId, pageId, new Date(now.getTime() - 7 * 86_400_000), end)})
+      WITH v AS (${viewRows(userId, new Date(now.getTime() - 7 * 86_400_000), end)})
       SELECT id, ts, country, device, src FROM v ORDER BY ts DESC LIMIT 10`,
     db.$queryRaw<{ minute: Date; views: bigint }[]>`
       WITH v AS (${window}) SELECT date_trunc('minute', ts) AS minute, COUNT(*)::bigint AS views FROM v GROUP BY 1`,
     db.$queryRaw<{ n: bigint }[]>`WITH v AS (${window}) SELECT COUNT(DISTINCT vh)::bigint AS n FROM v`,
-    db.$queryRaw<{ n: bigint }[]>`WITH v AS (${viewRows(userId, pageId, prevStart, start)}) SELECT COUNT(DISTINCT vh)::bigint AS n FROM v`,
+    db.$queryRaw<{ n: bigint }[]>`WITH v AS (${viewRows(userId, prevStart, start)}) SELECT COUNT(DISTINCT vh)::bigint AS n FROM v`,
     withGeo
       ? db.$queryRaw<{ country: string | null; views: bigint }[]>`
           WITH v AS (${window}) SELECT country, COUNT(*)::bigint AS views FROM v GROUP BY country ORDER BY views DESC LIMIT 5`

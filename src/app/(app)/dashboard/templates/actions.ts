@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@/generated/prisma/client";
+import { getCurrentPage } from "@/lib/current-page";
 import { db } from "@/lib/db";
 import { invalidatePageFromAction } from "@/lib/pages";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
@@ -19,10 +20,11 @@ export type ApplyResult = { ok: true; addedSamples: boolean } | { ok: false; err
 export async function applyTemplateAction(key: string): Promise<ApplyResult> {
   const userId = await requireUserId();
   if (!isLayoutKey(key)) return { ok: false, error: "Unknown template." };
-  const page = await db.page.findUnique({
-    where: { userId },
+  const current = await getCurrentPage(userId);
+  const page = current && (await db.page.findUnique({
+    where: { id: current.id },
     select: { id: true, blocks: { orderBy: { position: "asc" }, select: { type: true, title: true, url: true } } },
-  });
+  }));
   if (!page) return { ok: false, error: "Claim your page first." };
 
   const template = key === "classic" ? null : getPageTemplate(key);

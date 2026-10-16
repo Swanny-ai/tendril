@@ -2,7 +2,7 @@
 // Pure presentational component: no hooks, safe in Server and Client Components.
 import type { CSSProperties } from "react";
 import { brand } from "@/config/brand";
-import type { BlockData, BlockKind } from "@/lib/blocks";
+import { cardImage, type BlockData, type BlockKind } from "@/lib/blocks";
 import type { ThemeTokens } from "@/themes/presets";
 import { Countdown } from "./layouts/countdown";
 import { ModernCard } from "./layouts/modern-card";
@@ -11,7 +11,7 @@ import { ProCard } from "./layouts/pro-card";
 import { Embed } from "./layouts/shared";
 import { SimpleStack } from "./layouts/simple-stack";
 import { Spotlight } from "./layouts/spotlight";
-import { socialMeta } from "./social";
+import { SocialGlyph, socialMeta } from "./social";
 
 export type RenderBlock = {
   id: string;
@@ -147,7 +147,7 @@ function ClassicPage({ page, preview }: { page: RenderPage; preview: boolean }) 
                         className="flex size-11 items-center justify-center text-[13px] font-bold"
                         style={{ ...btn, borderRadius: Math.min(t.radius, 14) === 0 ? 0 : 999 }}
                       >
-                        {m.mark}
+                        <SocialGlyph network={s.network} size={18} />
                       </span>
                     );
                     return (
@@ -181,9 +181,9 @@ function ClassicPage({ page, preview }: { page: RenderPage; preview: boolean }) 
             // LINK
             const content = (
               <>
-                {b.data.style === "card" && b.data.imageUrl ? (
+                {cardImage(b) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.data.imageUrl} alt="" className="size-10 shrink-0 rounded-md object-cover" loading="lazy" />
+                  <img src={cardImage(b)!} alt="" className="size-10 shrink-0 rounded-md object-cover" loading="lazy" />
                 ) : null}
                 <span className="min-w-0 flex-1 truncate text-center">{b.title || b.url}</span>
                 {b.contentWarning ? (

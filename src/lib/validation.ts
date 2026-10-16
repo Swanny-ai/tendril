@@ -49,7 +49,8 @@ export function normalizeDestinationUrl(raw: string, ownHost?: string): { ok: tr
 }
 
 export const SOCIAL_NETWORKS = [
-  "instagram", "tiktok", "youtube", "x", "twitch", "spotify", "github", "linkedin", "email",
+  "instagram", "tiktok", "youtube", "x", "facebook", "snapchat", "threads", "telegram", "whatsapp", "discord",
+  "twitch", "spotify", "patreon", "onlyfans", "github", "linkedin", "email",
 ] as const;
 export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
 
@@ -115,6 +116,7 @@ export const smartLinkSchema = z.object({
   warningButton: z.string().trim().max(40).optional().nullable(),
   showBadge: z.boolean().default(true),
   openInBrowser: z.boolean().default(true),
+  domainId: z.string().max(40).nullable().optional(),
   enabled: z.boolean().default(true),
 });
 export type SmartLinkInput = z.input<typeof smartLinkSchema>;

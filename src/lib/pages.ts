@@ -149,11 +149,12 @@ export async function invalidatePageFromAction(pageId: string) {
  * Expires immediately: plan changes affect what the public page may show.
  */
 export async function invalidatePageFromRoute(where: { userId: string } | { username: string }) {
-  const page = await db.page.findUnique({ where, select: { username: true, blocks: { select: { id: true } } } });
-  if (!page) return false;
-  revalidateTag(pageTag(page.username), { expire: 0 });
-  for (const b of page.blocks) revalidateTag(blockTag(b.id), { expire: 0 });
-  return true;
+  const pages = await db.page.findMany({ where, select: { username: true, blocks: { select: { id: true } } } });
+  for (const page of pages) {
+    revalidateTag(pageTag(page.username), { expire: 0 });
+    for (const b of page.blocks) revalidateTag(blockTag(b.id), { expire: 0 });
+  }
+  return pages.length > 0;
 }
 
 /** Expire a username tag even if the page no longer exists (e.g. account deleted). */

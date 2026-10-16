@@ -13,6 +13,7 @@ export const metadata: Metadata = { title: "New smart link" };
 export default async function NewSmartLinkPage() {
   const { userId } = await requirePage();
   const limits = PLAN_LIMITS[await getPlan(userId)];
+  const domains = await db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } });
   const count = await db.smartLink.count({ where: { userId } });
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -33,12 +34,14 @@ export default async function NewSmartLinkPage() {
       ) : (
         <SmartLinkForm
           limits={limits}
+          domains={domains}
           initial={{
             slug: "",
             destinationUrl: "",
             label: "",
             adultWarning: true,
             openInBrowser: true,
+            domainId: null,
             warningTemplate: DEFAULT_WARNING_TEMPLATE,
             warningTitle: "",
             warningMessage: "",

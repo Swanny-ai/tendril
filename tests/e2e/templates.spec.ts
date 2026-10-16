@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { connectDomain, setPlanByUsername } from "./db";
 import { TEST_PASSWORD, uniqueName } from "./helpers";
 
 // 1x1 PNG
@@ -17,7 +18,7 @@ async function newCreator(page: Page) {
   return name;
 }
 
-test("the templates gallery applies a template, with sample links on an empty page", async ({ page }) => {
+test("each template creates its own page with its own link", async ({ page }) => {
   const name = await newCreator(page);
   await page.getByRole("link", { name: "Templates" }).click();
   await expect(page.getByRole("heading", { name: "Templates" })).toBeVisible();
@@ -26,9 +27,18 @@ test("the templates gallery applies a template, with sample links on an empty pa
   }
 
   await page.getByRole("button", { name: "Use the Spotlight Card template" }).click();
+  const dialog = page.getByRole("dialog", { name: "New page with Spotlight Card" });
+  const spot = `${name.slice(0, 18)}_spot`;
+  await dialog.getByLabel("Page link").fill(spot);
+  await expect(dialog.getByText("Available")).toBeVisible();
+  await dialog.getByRole("button", { name: "Create page" }).click();
   await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page.getByRole("button", { name: `Editing page /${spot}. Switch page` })).toBeVisible();
 
-  await page.goto(`/${name}`);
+  // The new page has its own link; the first page is untouched.
+  const first = await page.request.get(`/${name}`);
+  expect(await first.text()).toContain("My first link");
+  await page.goto(`/${spot}`);
   await expect(page.getByRole("link", { name: /My exclusive page/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Chat with me" })).toBeVisible();
   await expect(page.getByRole("timer")).toContainText("50% off ends in");
@@ -40,13 +50,15 @@ test("the templates gallery applies a template, with sample links on an empty pa
   await page.getByRole("combobox", { name: "Page template" }).click();
   await page.getByRole("option", { name: "Pro Card" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
-  await page.goto(`/${name}`);
+  await page.goto(`/${spot}`);
   await expect(page.locator('img[src="/templates/pro-card.jpg"]')).toHaveCount(1);
 
-  // Back to classic from the gallery.
-  await page.goto("/dashboard/templates");
-  await page.getByRole("button", { name: "Back to the classic layout" }).click();
-  await expect(page.getByRole("button", { name: "Back to the classic layout" })).toHaveCount(0);
+  // Switch back to the first page from the header.
+  await page.goto("/dashboard/editor");
+  await page.getByRole("button", { name: `Editing page /${spot}. Switch page` }).click();
+  await page.getByRole("menuitem", { name: new RegExp(`^/${name}(?!_)`) }).click();
+  await expect(page.getByRole("button", { name: `Editing page /${name}. Switch page` })).toBeVisible();
+
 });
 
 test("cover photo, video embed and countdown blocks", async ({ page }) => {
@@ -73,6 +85,7 @@ test("cover photo, video embed and countdown blocks", async ({ page }) => {
   // Use a photo template so the cover shows.
   await page.goto("/dashboard/templates");
   await page.getByRole("button", { name: "Use the Modern Card template" }).click();
+  await page.getByRole("button", { name: "Apply to the page I'm editing instead" }).click();
   await expect(page).toHaveURL(/\/dashboard\/editor/);
 
   await page.goto(`/${name}`);
@@ -93,4 +106,46 @@ test("embeds only accept YouTube and Spotify links", async ({ page }) => {
   await page.getByLabel("Video or music link").fill("https://example.com/video");
   await page.getByLabel("Video or music link").press("Enter");
   await expect(page.getByText("Paste a YouTube or Spotify link.")).toBeVisible();
+});
+
+test("custom domains: add, see DNS steps, use on a link, and serve links on that domain", async ({ page }) => {
+  const name = await newCreator(page);
+
+  // Free accounts see the upgrade prompt.
+  await page.goto("/dashboard/domains");
+  await expect(page.getByText("Custom domains are part of Pro.")).toBeVisible();
+
+  await setPlanByUsername(name, "PRO");
+  await page.reload();
+  const pending = `links-${name.replace(/_/g, "-")}.example.com`;
+  await page.getByLabel("Domain").fill(`https://${pending}/whatever`);
+  await page.getByRole("button", { name: "Add domain" }).click();
+  await expect(page.getByRole("list", { name: "Your domains" }).getByText(pending, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Waiting for DNS")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "CNAME" })).toBeVisible();
+  await page.getByRole("button", { name: "Verify" }).click();
+  await expect(page.getByText(/No DNS record found yet|Not pointing at Tendril yet/)).toBeVisible();
+
+  // A connected domain can be picked for a smart link, and serves it.
+  const host = `go-${name.replace(/_/g, "-")}.test`;
+  await connectDomain(name, host);
+  const slug = uniqueName("dom").replace(/_/g, "-");
+  await page.goto("/dashboard/links/new");
+  await page.getByLabel("Link name").fill(slug);
+  await page.getByLabel("Domain").selectOption({ label: `${host}/` });
+  await page.getByLabel("Destination URL").fill("https://example.com/shop");
+  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  await expect(page.getByRole("link", { name: `${host}/${slug}` })).toBeVisible();
+
+  const onDomain = await page.request.get(`/${slug}`, { maxRedirects: 0, headers: { host } });
+  expect(onDomain.status()).toBe(302);
+  expect(onDomain.headers()["location"]).toBe("https://example.com/shop");
+  // Someone else's link doesn't resolve on this domain.
+  expect((await page.request.get("/demo-shop", { maxRedirects: 0, headers: { host } })).status()).toBe(404);
+  // The domain's home page shows the creator's bio page.
+  const home = await page.request.get("/", { headers: { host } });
+  expect(home.status()).toBe(200);
+  expect(await home.text()).toContain(name);
 });

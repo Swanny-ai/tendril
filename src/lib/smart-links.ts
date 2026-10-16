@@ -21,6 +21,9 @@ export type SmartLinkTarget = {
   showBadge: boolean;
   openInBrowser: boolean;
   label: string;
+  userId: string;
+  /** Custom domain the link is shared on, if any. */
+  domainHost: string | null;
   /** The creator's bio-page identity, shown on the "open in browser" page. */
   owner: { name: string; username: string; avatarUrl: string | null } | null;
 };
@@ -30,10 +33,11 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
   const link = await db.smartLink.findUnique({
     where: { slug },
     include: {
+      domain: { select: { hostname: true } },
       user: {
         select: {
           subscription: { select: { plan: true, status: true } },
-          page: { select: { username: true, displayName: true, avatarUrl: true } },
+          pages: { select: { username: true, displayName: true, avatarUrl: true }, orderBy: { createdAt: "asc" }, take: 1 },
         },
       },
     },
@@ -61,8 +65,10 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
     showBadge: limits.removeBadge ? link.showBadge : true,
     openInBrowser: link.openInBrowser,
     label: link.label,
-    owner: link.user.page
-      ? { name: link.user.page.displayName || link.user.page.username, username: link.user.page.username, avatarUrl: link.user.page.avatarUrl }
+    userId: link.userId,
+    domainHost: link.domain?.hostname ?? null,
+    owner: link.user.pages[0]
+      ? { name: link.user.pages[0].displayName || link.user.pages[0].username, username: link.user.pages[0].username, avatarUrl: link.user.pages[0].avatarUrl }
       : null,
   };
 }

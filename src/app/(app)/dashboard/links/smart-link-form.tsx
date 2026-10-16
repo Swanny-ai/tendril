@@ -29,6 +29,7 @@ export type SmartLinkFormValues = {
   warningButton: string;
   showBadge: boolean;
   openInBrowser: boolean;
+  domainId: string | null;
   enabled: boolean;
 };
 
@@ -36,7 +37,7 @@ type Limits = { customWarningText: boolean; removeBadge: boolean };
 
 const copy = WARNING_COPY.en;
 
-export function SmartLinkForm({ id, initial, limits }: { id?: string; initial: SmartLinkFormValues; limits: Limits }) {
+export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: string; initial: SmartLinkFormValues; limits: Limits; domains?: { id: string; hostname: string }[] }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -108,7 +109,23 @@ export function SmartLinkForm({ id, initial, limits }: { id?: string; initial: S
             <div className="space-y-1.5">
               <Label htmlFor="slug">Link name</Label>
               <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
-                <span className="select-none border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{appHost}/l/</span>
+                {domains.length ? (
+                  <select
+                    aria-label="Domain"
+                    value={v.domainId ?? ""}
+                    onChange={(e) => set({ domainId: e.target.value || null })}
+                    className="h-9 max-w-56 shrink-0 cursor-pointer border-r bg-muted px-2 text-sm text-muted-foreground outline-none"
+                  >
+                    <option value="">{appHost}/l/</option>
+                    {domains.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.hostname}/
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="select-none border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{appHost}/l/</span>
+                )}
                 <Input
                   id="slug"
                   value={v.slug}
