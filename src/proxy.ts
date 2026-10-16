@@ -3,7 +3,7 @@ import { appHost, appUrl } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
-//    domain's home page shows their bio page.
+//    domain's home page shows their "Root" smart link if they set one, else their bio page.
 // 2. Warning pages render per request and stream, so a missing link would otherwise be sent
 //    as a 200 "not found" page; checking here returns a real 404 status first.
 // Lookups go through small API routes because some hosts (Netlify) run the proxy as an edge
@@ -42,7 +42,11 @@ async function customDomain(request: NextRequest, host: string) {
   if (parts.length === 0) {
     try {
       const res = await fetch(new URL(`/api/domain-status?host=${encodeURIComponent(host)}`, apiBase(request)));
-      const data = res.ok ? ((await res.json()) as { username: string | null }) : null;
+      const data = res.ok ? ((await res.json()) as { rootSlug?: string | null; username: string | null }) : null;
+      if (data?.rootSlug) {
+        url.pathname = `/l/${data.rootSlug}`; // the domain itself is a smart link ("Root")
+        return NextResponse.rewrite(url);
+      }
       if (!data?.username) return notFound("This domain isn't connected to a page yet.");
       url.pathname = `/${data.username}`;
       return NextResponse.rewrite(url);

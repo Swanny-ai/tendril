@@ -117,6 +117,7 @@ export const smartLinkSchema = z.object({
   showBadge: z.boolean().default(true),
   openInBrowser: z.boolean().default(true),
   domainId: z.string().max(40).nullable().optional(),
+  atRoot: z.boolean().default(false),
   enabled: z.boolean().default(true),
 });
 export type SmartLinkInput = z.input<typeof smartLinkSchema>;

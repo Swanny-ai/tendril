@@ -29,7 +29,7 @@ test("adult warning is on by default, with 13 designs and a live preview", async
   await newCreator(page);
   await page.goto("/dashboard/links/new");
   await expect(page.getByRole("switch", { name: "Adult content warning" })).toBeChecked();
-  await expect(page.getByRole("radio")).toHaveCount(13);
+  await expect(page.getByRole("radiogroup", { name: "Warning page design" }).getByRole("radio")).toHaveCount(13);
   await expect(page.getByRole("radio", { name: "Dusk" })).toHaveAttribute("aria-checked", "true");
 
   const preview = page.getByLabel("Warning page preview");

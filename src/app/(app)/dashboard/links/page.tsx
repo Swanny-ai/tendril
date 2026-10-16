@@ -86,7 +86,7 @@ export default async function SmartLinksPage() {
                     <tr key={l.id} className="border-b align-top last:border-0">
                       <td className="max-w-[300px] py-3 pr-4">
                         <Link href={`/dashboard/links/${l.id}`} className="font-medium hover:underline">
-                          {l.domain ? `${l.domain.hostname}/${l.slug}` : `/l/${l.slug}`}
+                          {l.domain ? (l.atRoot ? `${l.domain.hostname}/` : `${l.domain.hostname}/${l.slug}`) : `/l/${l.slug}`}
                         </Link>
                         <div className="truncate text-xs text-muted-foreground">{l.label || l.destinationUrl}</div>
                         {!l.enabled ? <div className="text-xs text-muted-foreground">Paused</div> : null}
@@ -105,7 +105,7 @@ export default async function SmartLinksPage() {
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
                       <td className="py-3 text-right">
-                        <LinkRowActions id={l.id} slug={l.slug} url={smartLinkUrl(l.slug, l.domain, appUrl)} enabled={l.enabled} />
+                        <LinkRowActions id={l.id} slug={l.slug} url={smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)} enabled={l.enabled} />
                       </td>
                     </tr>
                   );

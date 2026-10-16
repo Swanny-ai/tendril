@@ -134,7 +134,7 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   const slug = uniqueName("dom").replace(/_/g, "-");
   await page.goto("/dashboard/links/new");
   await page.getByLabel("Link name").fill(slug);
-  await page.getByLabel("Domain").selectOption({ label: `${host}/` });
+  await page.getByLabel("Domain").selectOption({ label: host });
   await page.getByLabel("Destination URL").fill("https://example.com/shop");
   await page.getByRole("switch", { name: "Adult content warning" }).click();
   await page.getByRole("button", { name: "Create link" }).click();
@@ -150,6 +150,29 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   const home = await page.request.get("/", { headers: { host } });
   expect(home.status()).toBe(200);
   expect(await home.text()).toContain(name);
+
+  // Root needs a custom domain; with one, the domain itself opens the link instead of the bio page.
+  await page.goto("/dashboard/links/new");
+  await expect(page.getByRole("radio", { name: "Root" })).toBeDisabled();
+  await page.getByLabel("Domain").selectOption({ label: host });
+  await page.getByRole("radio", { name: "Root" }).click();
+  await expect(page.getByText(`https://${host}/`)).toBeVisible();
+  await page.getByLabel("Destination URL").fill("https://example.com/root");
+  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  await expect(page.getByRole("link", { name: `${host}/`, exact: true })).toBeVisible();
+  const root = await page.request.get("/", { maxRedirects: 0, headers: { host } });
+  expect(root.status()).toBe(302);
+  expect(root.headers()["location"]).toBe("https://example.com/root");
+
+  // Only one link can be a domain's root.
+  await page.goto("/dashboard/links/new");
+  await page.getByLabel("Domain").selectOption({ label: host });
+  await page.getByRole("radio", { name: "Root" }).click();
+  await page.getByLabel("Destination URL").fill("https://example.com/other");
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page.getByText(/already uses this domain's root/).first()).toBeVisible();
 });
 
 test("verified badge: Pro creators switch it on, Free sees it locked", async ({ page }) => {

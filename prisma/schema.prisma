@@ -265,6 +265,8 @@ model SmartLink {
   // Custom domain the link is shared on (null = the Tendril domain)
   domainId        String?
   domain          Domain?        @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  // Root: the link is the whole custom domain (example.com/) instead of example.com/<slug>
+  atRoot          Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   events          SmartLinkEvent[]

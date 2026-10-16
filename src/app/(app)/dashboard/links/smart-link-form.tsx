@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Lock, Monitor, ShieldAlert, Smartphone, X } from "lucide-react";
+import { Check, ChevronsUpDown, Globe, Loader2, Lock, Monitor, ShieldAlert, Smartphone, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,12 +30,16 @@ export type SmartLinkFormValues = {
   showBadge: boolean;
   openInBrowser: boolean;
   domainId: string | null;
+  atRoot: boolean;
   enabled: boolean;
 };
 
 type Limits = { customWarningText: boolean; removeBadge: boolean };
 
 const copy = WARNING_COPY.en;
+
+/** Internal name for a Root link (visitors never see it; the warning pages use it). */
+const rootSlug = () => `root-${Math.random().toString(36).slice(2, 10)}`;
 
 export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: string; initial: SmartLinkFormValues; limits: Limits; domains?: { id: string; hostname: string }[] }) {
   const router = useRouter();
@@ -45,6 +49,7 @@ export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: stri
   const [device, setDevice] = useState<"phone" | "desktop">("phone");
   const [slugCheck, setSlugCheck] = useState<{ value: string; available: boolean; message?: string } | null>(null);
   const set = (patch: Partial<SmartLinkFormValues>) => setV((s) => ({ ...s, ...patch }));
+  const domain = domains.find((d) => d.id === v.domainId);
 
   useEffect(() => {
     if (!v.slug) return;
@@ -106,44 +111,94 @@ export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: stri
             <CardDescription>Where your short link lives and where it sends people.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="slug">Link name</Label>
-              <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
-                {domains.length ? (
+            <div className="space-y-2">
+              <Label htmlFor="domain">Domain &amp; Path</Label>
+              <div className="flex flex-wrap gap-2">
+                <div className="relative min-w-56 flex-1">
+                  <Globe className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                   <select
+                    id="domain"
                     aria-label="Domain"
                     value={v.domainId ?? ""}
-                    onChange={(e) => set({ domainId: e.target.value || null })}
-                    className="h-9 max-w-56 shrink-0 cursor-pointer border-r bg-muted px-2 text-sm text-muted-foreground outline-none"
+                    onChange={(e) => {
+                      const domainId = e.target.value || null;
+                      set({ domainId, atRoot: domainId ? v.atRoot : false });
+                    }}
+                    className="h-10 w-full cursor-pointer appearance-none rounded-lg border bg-background pr-9 pl-9 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
-                    <option value="">{appHost}/l/</option>
+                    <option value="">{appHost}</option>
                     {domains.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.hostname}/
+                        {d.hostname}
                       </option>
                     ))}
                   </select>
-                ) : (
-                  <span className="select-none border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{appHost}/l/</span>
-                )}
-                <Input
-                  id="slug"
-                  value={v.slug}
-                  maxLength={50}
-                  autoComplete="off"
-                  onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
-                  className="border-0 shadow-none focus-visible:ring-0"
-                  aria-invalid={slugState === "bad" || !!errors.slug}
-                />
-                <span className="px-3" aria-live="polite">
-                  {slugState === "checking" ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Checking" /> : null}
-                  {slugState === "ok" ? <Check className="size-4 text-[var(--sage-text)]" aria-label="Available" /> : null}
-                  {slugState === "bad" ? <X className="size-4 text-destructive" aria-label="Not available" /> : null}
-                </span>
+                  <ChevronsUpDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                </div>
+                <div className="flex rounded-lg border bg-muted p-0.5" role="radiogroup" aria-label="Link type">
+                  {(["root", "path"] as const).map((mode) => {
+                    const selected = mode === "root" ? v.atRoot : !v.atRoot;
+                    const locked = mode === "root" && !v.domainId;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={locked}
+                        title={locked ? "Root needs a custom domain" : undefined}
+                        onClick={() => set(mode === "root" ? { atRoot: true, slug: v.slug || rootSlug() } : { atRoot: false })}
+                        className={cn(
+                          "rounded-md px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                          selected ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {mode === "root" ? "Root" : "Path"}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <p className={cn("text-sm", slugState === "bad" || errors.slug ? "text-destructive" : "text-muted-foreground")}>
-                {errors.slug ?? (slugState === "bad" ? slugCheck?.message : slugState === "ok" ? "Available" : "Letters, numbers and dashes.")}
+              {v.atRoot && domain ? (
+                <div className="flex h-10 items-center gap-2 rounded-lg border bg-muted/60 px-3 text-sm">
+                  <span className="font-medium">https://{domain.hostname}/</span>
+                  <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">The whole domain opens this link</span>
+                </div>
+              ) : (
+                <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
+                  <span className="select-none border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{domain ? `${domain.hostname}/` : `${appHost}/l/`}</span>
+                  <Input
+                    id="slug"
+                    aria-label="Link name"
+                    placeholder="your-path"
+                    value={v.slug}
+                    maxLength={50}
+                    autoComplete="off"
+                    onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
+                    className="border-0 shadow-none focus-visible:ring-0"
+                    aria-invalid={slugState === "bad" || !!errors.slug}
+                  />
+                  <span className="px-3" aria-live="polite">
+                    {slugState === "checking" ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Checking" /> : null}
+                    {slugState === "ok" ? <Check className="size-4 text-[var(--sage-text)]" aria-label="Available" /> : null}
+                    {slugState === "bad" ? <X className="size-4 text-destructive" aria-label="Not available" /> : null}
+                  </span>
+                </div>
+              )}
+              <p className={cn("text-sm", (!v.atRoot && slugState === "bad") || errors.slug || errors.domainId ? "text-destructive" : "text-muted-foreground")}>
+                {errors.domainId ??
+                  (v.atRoot
+                    ? "Root: anyone visiting this domain is sent through this link. It replaces your bio page on this domain."
+                    : (errors.slug ?? (slugState === "bad" ? slugCheck?.message : slugState === "ok" ? "Available" : "Path: letters, numbers and dashes.")))}
               </p>
+              {!domains.length ? (
+                <p className="text-xs text-muted-foreground">
+                  Want links on your own domain, with Root links?{" "}
+                  <Link href="/dashboard/domains" className="text-primary underline-offset-4 hover:underline">
+                    Connect a custom domain
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="destinationUrl">Destination URL</Label>
@@ -258,7 +313,7 @@ export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: stri
         </Card>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button size="lg" onClick={save} disabled={saving || slugState === "bad" || !v.slug || !v.destinationUrl}>
+          <Button size="lg" onClick={save} disabled={saving || (!v.atRoot && slugState === "bad") || !v.slug || !v.destinationUrl}>
             {saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save link" : "Create link"}
           </Button>
           <Link href="/dashboard/links" className="text-sm text-muted-foreground hover:text-foreground">

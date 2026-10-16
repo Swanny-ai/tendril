@@ -11,7 +11,7 @@ import { isWarningTemplateKey } from "@/warning-templates/templates";
 
 export type LinkActionResult = { ok: true; id?: string } | { ok: false; error: string; field?: string };
 
-async function validate(userId: string, input: SmartLinkInput) {
+async function validate(userId: string, input: SmartLinkInput, linkId?: string) {
   const parsed = smartLinkSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -30,6 +30,13 @@ async function validate(userId: string, input: SmartLinkInput) {
     const domain = await db.domain.findFirst({ where: { id: data.domainId, userId, verifiedAt: { not: null } }, select: { id: true } });
     if (!domain) return { error: { ok: false as const, error: "That domain isn't connected yet.", field: "domainId" } };
   }
+  // Root: the link is the domain itself, so it needs a custom domain and only one link can have it.
+  const atRoot = Boolean(data.atRoot && data.domainId);
+  if (data.atRoot && !data.domainId) return { error: { ok: false as const, error: "Root links need a custom domain.", field: "domainId" } };
+  if (atRoot) {
+    const taken = await db.smartLink.findFirst({ where: { domainId: data.domainId!, atRoot: true, ...(linkId ? { NOT: { id: linkId } } : {}) }, select: { slug: true } });
+    if (taken) return { error: { ok: false as const, error: `Another link (${taken.slug}) already uses this domain's root. Use a path, or change that link first.`, field: "domainId" } };
+  }
 
   return {
     data: {
@@ -44,6 +51,7 @@ async function validate(userId: string, input: SmartLinkInput) {
       showBadge: data.showBadge,
       openInBrowser: data.openInBrowser,
       domainId: data.domainId || null,
+      atRoot,
       enabled: data.enabled,
     },
     limits,
@@ -74,7 +82,7 @@ export async function updateSmartLinkAction(id: string, input: SmartLinkInput): 
   const userId = await requireUserId();
   const existing = await db.smartLink.findFirst({ where: { id, userId }, select: { slug: true } });
   if (!existing) return { ok: false, error: "That link no longer exists." };
-  const v = await validate(userId, input);
+  const v = await validate(userId, input, id);
   if ("error" in v) return v.error!;
   if (v.data.slug !== existing.slug && (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } }))) {
     return { ok: false, error: "That link name is taken.", field: "slug" };

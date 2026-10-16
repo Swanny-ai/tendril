@@ -42,6 +42,7 @@ export default async function NewSmartLinkPage() {
             adultWarning: true,
             openInBrowser: true,
             domainId: null,
+            atRoot: false,
             warningTemplate: DEFAULT_WARNING_TEMPLATE,
             warningTitle: "",
             warningMessage: "",

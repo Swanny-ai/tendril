@@ -35,7 +35,7 @@ export default async function EditSmartLinkPage(
           <h1 className="mt-1 text-2xl font-semibold">Edit /l/{link.slug}</h1>
         </div>
         <QrCodeButton
-          url={smartLinkUrl(link.slug, link.domain, appUrl)}
+          url={smartLinkUrl(link.slug, link.domain, appUrl, link.atRoot)}
           filename={`qr-${link.slug}`}
           label="QR code"
         />
@@ -51,6 +51,7 @@ export default async function EditSmartLinkPage(
           adultWarning: link.adultWarning,
           openInBrowser: link.openInBrowser,
           domainId: link.domainId,
+          atRoot: link.atRoot,
           warningTemplate: link.warningTemplate,
           warningTitle: link.warningTitle ?? "",
           warningMessage: link.warningMessage ?? "",
