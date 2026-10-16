@@ -14,7 +14,7 @@ const onNetlify = () => Boolean(process.env.NETLIFY_BLOBS_CONTEXT || process.env
 
 async function store() {
   const { getStore } = await import("@netlify/blobs");
-  return getStore({ name: "media", consistency: "strong" });
+  return getStore("media");
 }
 
 export type ImageCheck = { ok: true; ext: string } | { ok: false; error: string };
@@ -45,9 +45,14 @@ export async function saveImage(prefix: string, file: File, ext: string): Promis
 export async function readImage(key: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
   if (!/^[a-z0-9]+-[a-f0-9]{16}\.(jpg|png|webp|gif)$/i.test(key)) return null;
   if (onNetlify()) {
-    const res = await (await store()).getWithMetadata(key, { type: "arrayBuffer" });
-    if (!res) return null;
-    return { body: res.data, contentType: String(res.metadata?.contentType ?? "application/octet-stream") };
+    try {
+      const res = await (await store()).getWithMetadata(key, { type: "arrayBuffer" });
+      if (!res) return null;
+      return { body: res.data, contentType: String(res.metadata?.contentType ?? "application/octet-stream") };
+    } catch (e) {
+      console.error("media read failed", key, e);
+      return null;
+    }
   }
   try {
     const buf = await fs.readFile(path.join(process.cwd(), "public", "uploads", key));
