@@ -29,11 +29,13 @@ export default async function EditorPage() {
           displayName: page.displayName,
           bio: page.bio,
           avatarUrl: page.avatarUrl,
+          heroUrl: page.heroUrl,
+          tagline: page.tagline,
           seoTitle: page.seoTitle ?? "",
           seoDescription: page.seoDescription ?? "",
           published: page.published,
         },
-        theme: { themeKey: page.themeKey, overrides: sanitizeOverrides(page.themeOverrides), showBadge: page.showBadge, warningTemplate: page.warningTemplate, openInBrowser: page.openInBrowser },
+        theme: { themeKey: page.themeKey, overrides: sanitizeOverrides(page.themeOverrides), showBadge: page.showBadge, warningTemplate: page.warningTemplate, openInBrowser: page.openInBrowser, layout: page.layout },
         blocks: blocks.map(
           (b): EditorBlock => ({
             id: b.id,

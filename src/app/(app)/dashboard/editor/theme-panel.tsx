@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { PAGE_TEMPLATES } from "@/templates/link-in-bio";
 import type { PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
 import { contrastRatio, resolveTheme, THEME_PRESETS, type FontKey, type ThemeOverrides } from "@/themes/presets";
-import { setThemeAction, setOpenInBrowserAction, setWarningTemplateAction } from "./actions";
+import { setThemeAction, setLayoutAction, setOpenInBrowserAction, setWarningTemplateAction } from "./actions";
 import { WARNING_TEMPLATES } from "@/warning-templates/templates";
 import type { Limits } from "./editor";
 import { queueSave, runSave, useEditor, type EditorTheme } from "./store";
@@ -53,6 +54,40 @@ export function ThemePanel({ plan, limits }: { plan: PlanName; limits: Limits })
 
   return (
     <div className="space-y-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>Template</CardTitle>
+          <CardDescription>
+            The overall layout of your page. Photo templates use your cover photo; the classic layout uses the theme colours below.{" "}
+            <Link href="/dashboard/templates" className="text-primary underline-offset-4 hover:underline">
+              Browse templates
+            </Link>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select
+            value={theme.layout}
+            onValueChange={(value) => {
+              const layout = String(value);
+              useEditor.getState().setTheme({ layout });
+              void runSave(() => setLayoutAction(layout), (m) => toast.error(m));
+            }}
+          >
+            <SelectTrigger className="w-64" aria-label="Page template">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="classic">Classic (theme colours)</SelectItem>
+              {PAGE_TEMPLATES.map((p) => (
+                <SelectItem key={p.key} value={p.key}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Theme</CardTitle>

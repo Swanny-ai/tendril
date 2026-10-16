@@ -1,16 +1,16 @@
 "use server";
 
-import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { appHost } from "@/config/brand";
+import { embedSource, type BlockData, type BlockKind } from "@/lib/blocks";
 import { db } from "@/lib/db";
+import { checkImage, saveImage } from "@/lib/media";
 import { blockTag, invalidatePageFromAction } from "@/lib/pages";
 import { updateTag } from "next/cache";
 import { assertBlockCapacity, assertCan, getPlan, PlanError } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { blockTypeSchema, blockUpdateSchema, normalizeDestinationUrl, profileSchema } from "@/lib/validation";
 import { sanitizeOverrides, THEME_PRESETS } from "@/themes/presets";
+import { isLayoutKey } from "@/templates/link-in-bio";
 import { isWarningTemplateKey } from "@/warning-templates/templates";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -38,6 +38,7 @@ export async function updateProfileAction(input: unknown): Promise<ActionResult>
       data: {
         displayName: data.displayName,
         bio: data.bio,
+        ...(data.tagline === undefined ? {} : { tagline: data.tagline }),
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
         ...(data.published === undefined ? {} : { published: data.published }),
@@ -52,12 +53,12 @@ export async function updateProfileAction(input: unknown): Promise<ActionResult>
 
 export type EditorBlock = {
   id: string;
-  type: "LINK" | "HEADER" | "TEXT" | "SOCIAL_ROW";
+  type: BlockKind;
   position: number;
   enabled: boolean;
   title: string;
   url: string | null;
-  data: { text?: string; socials?: { network: string; handle: string }[] };
+  data: BlockData;
   contentWarning: boolean;
   contentWarningText: string | null;
 };
@@ -67,6 +68,8 @@ const DEFAULTS: Record<EditorBlock["type"], Partial<EditorBlock>> = {
   HEADER: { title: "New section" },
   TEXT: { data: { text: "Write something here." } },
   SOCIAL_ROW: { data: { socials: [] } },
+  EMBED: { title: "", url: null },
+  COUNTDOWN: { title: "Offer ends in", data: { until: new Date(Date.now() + 3 * 86_400_000).toISOString() } },
 };
 
 export async function createBlockAction(type: unknown): Promise<ActionResult<EditorBlock>> {
@@ -111,8 +114,13 @@ export async function updateBlockAction(id: string, patch: unknown): Promise<Act
       data.contentWarningText = p.contentWarningText || null;
     }
     if (p.url !== undefined) {
-      if (block.type !== "LINK") return { ok: false, error: "Only links have a URL." };
+      if (block.type !== "LINK" && block.type !== "EMBED") return { ok: false, error: "Only links and embeds have a URL." };
       if (!p.url) {
+        data.url = null;
+      } else if (block.type === "EMBED") {
+        if (!embedSource(p.url)) return { ok: false, error: "Paste a YouTube or Spotify link." };
+        data.url = p.url.trim();
+      } else if (!p.url) {
         data.url = null;
       } else {
         const n = normalizeDestinationUrl(p.url, appHost);
@@ -199,6 +207,18 @@ export async function setWarningTemplateAction(key: string | null): Promise<Acti
   }
 }
 
+export async function setLayoutAction(layout: string): Promise<ActionResult> {
+  try {
+    const { page } = await ownPage();
+    if (!isLayoutKey(layout)) return { ok: false, error: "Unknown template." };
+    await db.page.update({ where: { id: page.id }, data: { layout } });
+    await invalidatePageFromAction(page.id);
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 export async function setOpenInBrowserAction(enabled: boolean): Promise<ActionResult> {
   try {
     const { page } = await ownPage();
@@ -210,32 +230,55 @@ export async function setOpenInBrowserAction(enabled: boolean): Promise<ActionRe
   }
 }
 
-const AVATAR_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-
 export async function uploadAvatarAction(form: FormData): Promise<ActionResult<{ url: string | null }>> {
   try {
     const { page } = await ownPage();
-    const file = form.get("file");
     if (form.get("remove") === "1") {
       await db.page.update({ where: { id: page.id }, data: { avatarUrl: null } });
       await invalidatePageFromAction(page.id);
       return { ok: true, data: { url: null } };
     }
-    if (!(file instanceof File)) return { ok: false, error: "Choose an image." };
-    const ext = AVATAR_TYPES[file.type];
-    if (!ext) return { ok: false, error: "Use a JPG, PNG, WebP or GIF image." };
-    if (file.size > MAX_AVATAR_BYTES) return { ok: false, error: "Images must be 2 MB or smaller." };
-
-    // Dev storage: public/uploads. Production should swap this for object storage (see README).
-    const dir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(dir, { recursive: true });
-    const name = `${page.id}-${crypto.randomBytes(6).toString("hex")}.${ext}`;
-    await fs.writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-    const url = `/uploads/${name}`;
+    const file = form.get("file");
+    const check = checkImage(file);
+    if (!check.ok) return { ok: false, error: check.error };
+    const url = await saveImage(page.id, file as File, check.ext);
     await db.page.update({ where: { id: page.id }, data: { avatarUrl: url } });
     await invalidatePageFromAction(page.id);
     return { ok: true, data: { url } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Cover/background photo for the photo templates. */
+export async function uploadHeroAction(form: FormData): Promise<ActionResult<{ url: string | null }>> {
+  try {
+    const { page } = await ownPage();
+    if (form.get("remove") === "1") {
+      await db.page.update({ where: { id: page.id }, data: { heroUrl: null } });
+      await invalidatePageFromAction(page.id);
+      return { ok: true, data: { url: null } };
+    }
+    const file = form.get("file");
+    const check = checkImage(file);
+    if (!check.ok) return { ok: false, error: check.error };
+    const url = await saveImage(page.id, file as File, check.ext);
+    await db.page.update({ where: { id: page.id }, data: { heroUrl: url } });
+    await invalidatePageFromAction(page.id);
+    return { ok: true, data: { url } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Image for a link shown as an image card. Returns the URL; the block is saved separately. */
+export async function uploadBlockImageAction(form: FormData): Promise<ActionResult<{ url: string }>> {
+  try {
+    const { page } = await ownPage();
+    const file = form.get("file");
+    const check = checkImage(file);
+    if (!check.ok) return { ok: false, error: check.error };
+    return { ok: true, data: { url: await saveImage(page.id, file as File, check.ext) } };
   } catch (e) {
     return fail(e);
   }

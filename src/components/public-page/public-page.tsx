@@ -2,15 +2,23 @@
 // Pure presentational component: no hooks, safe in Server and Client Components.
 import type { CSSProperties } from "react";
 import { brand } from "@/config/brand";
+import type { BlockData, BlockKind } from "@/lib/blocks";
 import type { ThemeTokens } from "@/themes/presets";
+import { Countdown } from "./layouts/countdown";
+import { ModernCard } from "./layouts/modern-card";
+import { PersonalCard } from "./layouts/personal-card";
+import { ProCard } from "./layouts/pro-card";
+import { Embed } from "./layouts/shared";
+import { SimpleStack } from "./layouts/simple-stack";
+import { Spotlight } from "./layouts/spotlight";
 import { socialMeta } from "./social";
 
 export type RenderBlock = {
   id: string;
-  type: "LINK" | "HEADER" | "TEXT" | "SOCIAL_ROW";
+  type: BlockKind;
   title: string;
   url: string | null;
-  data: { text?: string; socials?: { network: string; handle: string }[] };
+  data: BlockData;
   contentWarning: boolean;
 };
 
@@ -22,6 +30,10 @@ export type RenderPage = {
   showBadge: boolean;
   theme: ThemeTokens;
   blocks: RenderBlock[];
+  /** Template layout (see components/public-page/layouts). Defaults to "classic". */
+  layout?: string;
+  heroUrl?: string | null;
+  tagline?: string;
 };
 
 const FONT_STACK: Record<ThemeTokens["font"], string> = {
@@ -49,7 +61,22 @@ function initials(name: string) {
   );
 }
 
+const LAYOUT_COMPONENTS = {
+  "simple-stack": SimpleStack,
+  "modern-card": ModernCard,
+  spotlight: Spotlight,
+  "pro-card": ProCard,
+  "personal-card": PersonalCard,
+} as const;
+
 export function PublicPage({ page, preview = false }: { page: RenderPage; preview?: boolean }) {
+  const Layout = page.layout ? LAYOUT_COMPONENTS[page.layout as keyof typeof LAYOUT_COMPONENTS] : undefined;
+  if (Layout) return <Layout page={page} preview={preview} />;
+  return <ClassicPage page={page} preview={preview} />;
+}
+
+/** The original layout, styled by the page theme. */
+function ClassicPage({ page, preview }: { page: RenderPage; preview: boolean }) {
   const t = page.theme;
   const btn = buttonStyle(t);
   const name = page.displayName || `@${page.username}`;
@@ -138,9 +165,26 @@ export function PublicPage({ page, preview = false }: { page: RenderPage; previe
                 </ul>
               );
             }
+            if (b.type === "EMBED") {
+              return <Embed key={b.id} block={b} preview={preview} className="overflow-hidden" captionClass="" />;
+            }
+            if (b.type === "COUNTDOWN") {
+              return (
+                <Countdown
+                  key={b.id}
+                  until={b.data.until}
+                  title={b.title}
+                  look={{ box: { ...btn, borderRadius: Math.min(t.radius, 12) }, label: { color: t.muted }, title: { color: t.text } }}
+                />
+              );
+            }
             // LINK
             const content = (
               <>
+                {b.data.style === "card" && b.data.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={b.data.imageUrl} alt="" className="size-10 shrink-0 rounded-md object-cover" loading="lazy" />
+                ) : null}
                 <span className="min-w-0 flex-1 truncate text-center">{b.title || b.url}</span>
                 {b.contentWarning ? (
                   <span

@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlignLeft, ChevronDown, GripVertical, Heading, Link2, Plus, ShieldAlert, Trash2, Users, X } from "lucide-react";
+import { AlignLeft, ChevronDown, GripVertical, Heading, ImagePlus, Link2, PlaySquare, Plus, ShieldAlert, Timer, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import { SOCIAL_LABELS } from "@/components/public-page/social";
 import type { PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
 import { SOCIAL_NETWORKS, type SocialNetwork } from "@/lib/validation";
-import { createBlockAction, deleteBlockAction, reorderBlocksAction, updateBlockAction, type EditorBlock } from "./actions";
+import { embedSource } from "@/lib/blocks";
+import { createBlockAction, deleteBlockAction, reorderBlocksAction, updateBlockAction, uploadBlockImageAction, type EditorBlock } from "./actions";
 import type { Limits } from "./editor";
 import { queueSave, runSave, useEditor } from "./store";
 
@@ -35,6 +36,8 @@ const TYPE_META = {
   HEADER: { label: "Section header", icon: Heading, hint: "A label to group links" },
   TEXT: { label: "Text", icon: AlignLeft, hint: "A short paragraph" },
   SOCIAL_ROW: { label: "Social icons", icon: Users, hint: "A row of profile links" },
+  EMBED: { label: "Video or music", icon: PlaySquare, hint: "A YouTube or Spotify player" },
+  COUNTDOWN: { label: "Countdown", icon: Timer, hint: "A timer for a sale or launch" },
 } as const;
 
 const onError = (m: string) => toast.error(m);
@@ -211,7 +214,11 @@ function SortableBlock({
         ? block.data.text ?? ""
         : block.type === "SOCIAL_ROW"
           ? `${block.data.socials?.length ?? 0} profiles`
-          : "";
+          : block.type === "EMBED"
+            ? block.url ?? "No video yet"
+            : block.type === "COUNTDOWN" && block.data.until
+              ? `Ends ${new Date(block.data.until).toLocaleString()}`
+              : "";
 
   return (
     <li
@@ -246,9 +253,9 @@ function SortableBlock({
 
       {open ? (
         <div className="space-y-4 border-t p-4">
-          {block.type === "LINK" || block.type === "HEADER" ? (
+          {block.type === "LINK" || block.type === "HEADER" || block.type === "EMBED" || block.type === "COUNTDOWN" ? (
             <div className="space-y-1.5">
-              <Label htmlFor={`title-${block.id}`}>{block.type === "LINK" ? "Title" : "Heading"}</Label>
+              <Label htmlFor={`title-${block.id}`}>{block.type === "LINK" ? "Title" : block.type === "HEADER" ? "Heading" : block.type === "EMBED" ? "Caption (optional)" : "Label"}</Label>
               <Input id={`title-${block.id}`} value={block.title} maxLength={100} onChange={(e) => save({ title: e.target.value })} />
             </div>
           ) : null}
@@ -256,6 +263,7 @@ function SortableBlock({
           {block.type === "LINK" ? (
             <>
               <UrlField block={block} onSave={(url) => save({ url }, true)} />
+              <ImageCardEditor block={block} onSave={(data) => save({ data: { ...block.data, ...data } }, true)} />
               <div className="space-y-3 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -304,6 +312,10 @@ function SortableBlock({
             </div>
           ) : null}
 
+          {block.type === "EMBED" ? <UrlField block={block} embed onSave={(url) => save({ url }, true)} /> : null}
+
+          {block.type === "COUNTDOWN" ? <CountdownEditor block={block} onSave={(until) => save({ data: { ...block.data, until } }, true)} /> : null}
+
           {block.type === "SOCIAL_ROW" ? <SocialEditor block={block} onSave={(socials) => save({ data: { ...block.data, socials } })} /> : null}
 
           <div className="flex justify-end">
@@ -317,17 +329,17 @@ function SortableBlock({
   );
 }
 
-function UrlField({ block, onSave }: { block: EditorBlock; onSave: (url: string) => void }) {
+function UrlField({ block, onSave, embed = false }: { block: EditorBlock; onSave: (url: string) => void; embed?: boolean }) {
   const [value, setValue] = useState(block.url ?? "");
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={`url-${block.id}`}>URL</Label>
+      <Label htmlFor={`url-${block.id}`}>{embed ? "YouTube or Spotify link" : "URL"}</Label>
       <Input
         id={`url-${block.id}`}
         value={value}
         inputMode="url"
-        aria-label="Destination URL"
-        placeholder="https://"
+        aria-label={embed ? "Video or music link" : "Destination URL"}
+        placeholder={embed ? "https://www.youtube.com/watch?v=..." : "https://"}
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => {
           if (value.trim() !== (block.url ?? "")) onSave(value.trim());
@@ -336,7 +348,13 @@ function UrlField({ block, onSave }: { block: EditorBlock; onSave: (url: string)
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
       />
-      {!block.url ? <p className="text-xs text-muted-foreground">Links without a URL stay hidden on your page.</p> : null}
+      {embed ? (
+        <p className="text-xs text-muted-foreground">
+          {value && !embedSource(value) ? "That isn’t a YouTube or Spotify link yet." : "Paste a YouTube video or Short, or a Spotify track, album or playlist."}
+        </p>
+      ) : !block.url ? (
+        <p className="text-xs text-muted-foreground">Links without a URL stay hidden on your page.</p>
+      ) : null}
     </div>
   );
 }
@@ -385,6 +403,91 @@ function SocialEditor({ block, onSave }: { block: EditorBlock; onSave: (s: { net
           Add
         </Button>
       </form>
+    </div>
+  );
+}
+
+function ImageCardEditor({ block, onSave }: { block: EditorBlock; onSave: (data: { imageUrl?: string; style?: "button" | "card" }) => void }) {
+  const [busy, setBusy] = useState(false);
+  const card = block.data.style === "card";
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Label htmlFor={`card-${block.id}`}>Show as image card</Label>
+          <p className="text-sm text-muted-foreground">A picture with the title, used by the photo templates.</p>
+        </div>
+        <Switch id={`card-${block.id}`} aria-label="Show as image card" checked={card} onCheckedChange={(v) => onSave({ style: v ? "card" : "button" })} />
+      </div>
+      {card ? (
+        <div className="flex items-center gap-3">
+          {block.data.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={block.data.imageUrl} alt="" className="size-16 rounded-lg border object-cover" />
+          ) : (
+            <div className="grid size-16 place-items-center rounded-lg border border-dashed text-muted-foreground">
+              <ImagePlus className="size-5" />
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <label className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-3 text-sm font-medium hover:bg-muted", busy && "pointer-events-none opacity-60")}>
+              <ImagePlus className="size-4" /> {block.data.imageUrl ? "Replace image" : "Upload image"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                aria-label="Link image"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  setBusy(true);
+                  const form = new FormData();
+                  form.append("file", file);
+                  const res = await uploadBlockImageAction(form);
+                  setBusy(false);
+                  if (!res.ok || !res.data) {
+                    toast.error(res.ok ? "Upload failed" : res.error);
+                    return;
+                  }
+                  onSave({ imageUrl: res.data.url });
+                }}
+              />
+            </label>
+            {block.data.imageUrl ? (
+              <Button variant="ghost" size="sm" onClick={() => onSave({ imageUrl: "" })}>
+                Remove
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function toLocalInput(iso: string | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function CountdownEditor({ block, onSave }: { block: EditorBlock; onSave: (until: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={`until-${block.id}`}>Ends at</Label>
+      <Input
+        id={`until-${block.id}`}
+        type="datetime-local"
+        defaultValue={toLocalInput(block.data.until)}
+        onChange={(e) => {
+          const d = new Date(e.target.value);
+          if (!Number.isNaN(d.getTime())) onSave(d.toISOString());
+        }}
+      />
+      <p className="text-xs text-muted-foreground">In your local time. Visitors see the time left, then “Ended”.</p>
     </div>
   );
 }

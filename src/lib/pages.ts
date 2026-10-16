@@ -1,4 +1,5 @@
 import "server-only";
+import type { BlockData, BlockKind } from "@/lib/blocks";
 import { cacheLife, cacheTag, updateTag, revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { planFromSubscription, visibleBlockIds, PLAN_LIMITS } from "@/lib/plan-rules";
@@ -9,10 +10,10 @@ export const blockTag = (blockId: string) => `block:${blockId}`;
 
 export type PublicBlock = {
   id: string;
-  type: "LINK" | "HEADER" | "TEXT" | "SOCIAL_ROW";
+  type: BlockKind;
   title: string;
   url: string | null;
-  data: { text?: string; socials?: { network: string; handle: string }[] };
+  data: BlockData;
   contentWarning: boolean;
 };
 
@@ -26,6 +27,9 @@ export type PublicPageData = {
   seoDescription: string | null;
   showBadge: boolean;
   openInBrowser: boolean;
+  layout: string;
+  heroUrl: string | null;
+  tagline: string;
   theme: ThemeTokens;
   blocks: PublicBlock[];
 };
@@ -51,6 +55,9 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     seoDescription: page.seoDescription,
     showBadge: PLAN_LIMITS[plan].removeBadge ? page.showBadge : true,
     openInBrowser: page.openInBrowser,
+    layout: page.layout,
+    heroUrl: page.heroUrl,
+    tagline: page.tagline,
     theme: resolveTheme(page.themeKey, page.themeOverrides, PLAN_LIMITS[plan].customTheme),
     blocks: page.blocks
       .filter((b) => visible.has(b.id))

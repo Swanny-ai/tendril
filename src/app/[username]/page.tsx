@@ -55,7 +55,7 @@ export default async function PublicProfilePage(props: PageProps<"/[username]">)
   };
 
   return (
-    <main className="flex min-h-svh flex-1 flex-col" style={{ background: page.theme.background }}>
+    <main className="flex min-h-svh flex-1 flex-col" style={page.layout === "classic" ? { background: page.theme.background } : undefined}>
       <InAppHint />
       <PublicPage page={page} />
       <ViewBeacon pageId={page.id} />

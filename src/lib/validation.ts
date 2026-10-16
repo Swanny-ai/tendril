@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RESERVED_USERNAMES } from "@/config/reserved";
+import { BLOCK_KINDS } from "@/lib/blocks";
 
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
 
@@ -60,12 +61,19 @@ export const socialEntrySchema = z.object({
 export const profileSchema = z.object({
   displayName: z.string().trim().max(60),
   bio: z.string().trim().max(160),
+  tagline: z.string().trim().max(60).optional(),
   seoTitle: z.string().trim().max(70).optional().nullable(),
   seoDescription: z.string().trim().max(160).optional().nullable(),
   published: z.boolean().optional(),
 });
 
-export const blockTypeSchema = z.enum(["LINK", "HEADER", "TEXT", "SOCIAL_ROW"]);
+export const blockTypeSchema = z.enum(BLOCK_KINDS);
+
+// Images we serve ourselves (uploads, template art) or any https image.
+const imageUrlSchema = z
+  .string()
+  .max(2048)
+  .refine((u) => /^\/(media|uploads|templates)\/[\w./-]+$/.test(u) || /^https:\/\/[^\s"'<>]+$/.test(u), "Use an uploaded image or an https:// image link");
 
 export const blockUpdateSchema = z.object({
   title: z.string().trim().max(100).optional(),
@@ -77,6 +85,9 @@ export const blockUpdateSchema = z.object({
     .object({
       text: z.string().max(500).optional(),
       socials: z.array(socialEntrySchema).max(12).optional(),
+      imageUrl: z.union([imageUrlSchema, z.literal("")]).optional(),
+      style: z.enum(["button", "card"]).optional(),
+      until: z.string().datetime({ offset: true }).optional(),
     })
     .optional(),
 });

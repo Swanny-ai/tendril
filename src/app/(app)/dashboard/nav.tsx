@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, LayoutDashboard, Link2, PencilRuler, Settings } from "lucide-react";
+import { BarChart3, CreditCard, LayoutDashboard, LayoutTemplate, Link2, PencilRuler, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/editor", label: "Editor", icon: PencilRuler },
+  { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate },
   { href: "/dashboard/links", label: "Smart links", icon: Link2 },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },

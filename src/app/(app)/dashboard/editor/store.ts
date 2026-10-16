@@ -8,12 +8,14 @@ export type EditorProfile = {
   displayName: string;
   bio: string;
   avatarUrl: string | null;
+  heroUrl: string | null;
+  tagline: string;
   seoTitle: string;
   seoDescription: string;
   published: boolean;
 };
 
-export type EditorTheme = { themeKey: string; overrides: ThemeOverrides; showBadge: boolean; warningTemplate: string | null; openInBrowser: boolean };
+export type EditorTheme = { themeKey: string; overrides: ThemeOverrides; showBadge: boolean; warningTemplate: string | null; openInBrowser: boolean; layout: string };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -34,8 +36,8 @@ type EditorState = {
 
 export const useEditor = create<EditorState>((set) => ({
   username: "",
-  profile: { displayName: "", bio: "", avatarUrl: null, seoTitle: "", seoDescription: "", published: true },
-  theme: { themeKey: "paper", overrides: {}, showBadge: true, warningTemplate: null, openInBrowser: true },
+  profile: { displayName: "", bio: "", avatarUrl: null, heroUrl: null, tagline: "", seoTitle: "", seoDescription: "", published: true },
+  theme: { themeKey: "paper", overrides: {}, showBadge: true, warningTemplate: null, openInBrowser: true, layout: "classic" },
   blocks: [],
   pending: 0,
   saveState: "idle",

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { STARTER_BLOCKS } from "@/lib/starter-blocks";
 import { db } from "@/lib/db";
 import { requireUserId } from "@/lib/session";
 import { usernameSchema } from "@/lib/validation";
@@ -29,10 +30,7 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
         displayName,
         bio: "",
         blocks: {
-          create: [
-            { type: "HEADER", position: 0, title: "Welcome to my page" },
-            { type: "LINK", position: 1, title: "My first link", url: "https://example.com" },
-          ],
+          create: STARTER_BLOCKS.map((b, position) => ({ type: b.type, position, title: b.title, url: b.url })),
         },
       },
     });

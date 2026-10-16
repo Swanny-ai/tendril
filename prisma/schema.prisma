@@ -104,6 +104,12 @@ model Page {
   warningTemplate String?
   // Inside Instagram/TikTok/etc., link taps open in the phone's default browser (deep link)
   openInBrowser   Boolean  @default(true)
+  // Page template: classic | simple-stack | modern-card | spotlight | pro-card | personal-card
+  layout          String   @default("classic")
+  // Cover/background photo used by the photo templates
+  heroUrl         String?
+  // Short line under the name, e.g. "Painter" or "20 · Florida"
+  tagline         String   @default("")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   blocks         Block[]
@@ -114,6 +120,10 @@ enum BlockType {
   HEADER
   TEXT
   SOCIAL_ROW
+  // YouTube or Spotify player (url = the video/track page)
+  EMBED
+  // Countdown timer (data.until = ISO date)
+  COUNTDOWN
 }
 
 model Block {

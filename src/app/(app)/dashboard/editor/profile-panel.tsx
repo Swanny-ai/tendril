@@ -9,14 +9,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { updateProfileAction, uploadAvatarAction } from "./actions";
+import { updateProfileAction, uploadAvatarAction, uploadHeroAction } from "./actions";
 import { queueSave, runSave, useEditor, type EditorProfile } from "./store";
 
 export function ProfilePanel() {
   const profile = useEditor((s) => s.profile);
   const setProfile = useEditor((s) => s.setProfile);
   const fileRef = useRef<HTMLInputElement>(null);
+  const heroRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [heroUploading, setHeroUploading] = useState(false);
+
+  async function uploadHero(form: FormData) {
+    setHeroUploading(true);
+    await runSave(async () => {
+      const res = await uploadHeroAction(form);
+      if (res.ok) setProfile({ heroUrl: res.data?.url ?? null });
+      return res;
+    }, (m) => toast.error(m));
+    setHeroUploading(false);
+    if (heroRef.current) heroRef.current.value = "";
+  }
 
   function change(patch: Partial<EditorProfile>) {
     setProfile(patch);
@@ -27,6 +40,7 @@ export function ProfilePanel() {
         return updateProfileAction({
           displayName: p.displayName,
           bio: p.bio,
+          tagline: p.tagline,
           seoTitle: p.seoTitle,
           seoDescription: p.seoDescription,
           published: p.published,
@@ -93,7 +107,7 @@ export function ProfilePanel() {
                   <Trash2 /> Remove
                 </Button>
               ) : null}
-              <p className="w-full text-xs text-muted-foreground">JPG, PNG, WebP or GIF, up to 2 MB.</p>
+              <p className="w-full text-xs text-muted-foreground">JPG, PNG, WebP or GIF, up to 4 MB.</p>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -106,6 +120,60 @@ export function ProfilePanel() {
               <span className="text-xs text-muted-foreground">{profile.bio.length}/160</span>
             </div>
             <Textarea id="bio" rows={3} value={profile.bio} maxLength={160} onChange={(e) => change({ bio: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tagline">Tagline</Label>
+            <Input id="tagline" placeholder="e.g. Photographer · Paris" value={profile.tagline} maxLength={60} onChange={(e) => change({ tagline: e.target.value })} />
+            <p className="text-xs text-muted-foreground">A short line under your name, shown by the photo templates.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cover photo</CardTitle>
+          <CardDescription>The big photo used by the Modern, Spotlight, Pro and Personal templates. Until you add one, they show sample art.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
+            {profile.heroUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.heroUrl} alt="Your cover photo" className="size-full object-cover" />
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={heroRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="sr-only"
+              id="hero-file"
+              aria-label="Cover photo file"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const fd = new FormData();
+                fd.set("file", f);
+                void uploadHero(fd);
+              }}
+            />
+            <Button variant="outline" disabled={heroUploading} onClick={() => heroRef.current?.click()}>
+              <ImageUp /> {heroUploading ? "Uploading…" : profile.heroUrl ? "Change cover" : "Upload cover photo"}
+            </Button>
+            {profile.heroUrl ? (
+              <Button
+                variant="ghost"
+                disabled={heroUploading}
+                onClick={() => {
+                  const fd = new FormData();
+                  fd.set("remove", "1");
+                  void uploadHero(fd);
+                }}
+              >
+                <Trash2 /> Remove
+              </Button>
+            ) : null}
+            <p className="w-full text-xs text-muted-foreground">A tall (portrait) photo works best. Up to 4 MB.</p>
           </div>
         </CardContent>
       </Card>
