@@ -96,6 +96,9 @@ need your own domain:
 3. **SMTP & API → API Keys → Generate a new API key**. Copy it.
 4. In Netlify, add `BREVO_API_KEY` (the key, marked secret) and set `MAIL_FROM` to
    `Tendril <the-address-you-verified@gmail.com>`, then trigger a deploy.
+5. **Security → Authorised IPs**: deactivate IP blocking. Netlify sends from a different IP
+   address on almost every request, so with blocking on, Brevo rejects every email with
+   `401 unrecognised IP address` (visible in the Netlify function log, not in Brevo's logs).
 
 Emails sent "from" a Gmail address through Brevo can land in spam at first; owning a domain
 and verifying it in Brevo fixes that later.
