@@ -166,7 +166,7 @@ export function SmartLinkForm({ id, initial, limits, domains = [] }: { id?: stri
                 </div>
               ) : (
                 <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
-                  <span className="select-none border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{domain ? `${domain.hostname}/` : `${appHost}/l/`}</span>
+                  <span className="shrink-0 select-none whitespace-nowrap border-r bg-muted px-3 py-2 text-sm text-muted-foreground">{domain ? `${domain.hostname}/` : `${appHost}/l/`}</span>
                   <Input
                     id="slug"
                     aria-label="Link name"
