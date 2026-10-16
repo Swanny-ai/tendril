@@ -112,18 +112,28 @@ export async function vercelMisconfigured(name: string): Promise<boolean | null>
  */
 export async function ownershipRecords(hostname: string): Promise<DnsRecord[]> {
   if (host !== "vercel") return [];
-  const d = await vercelGet(hostname);
-  if (!d || d.verified) return [];
-  const api = vercelApi(`/v9/projects/{project}/domains/${encodeURIComponent(hostname)}/verify`);
-  if (api) {
-    try {
-      const res = await fetch(api.url, { method: "POST", headers: api.headers });
-      if (res.ok && ((await res.json()) as VercelDomain).verified) return [];
-    } catch {
-      /* show the records below */
+  const records: DnsRecord[] = [];
+  // An apex domain's www form is its own Vercel domain and can need its own record.
+  for (const name of servedHosts(hostname)) {
+    const d = await vercelGet(name);
+    if (!d || d.verified) continue;
+    const api = vercelApi(`/v9/projects/{project}/domains/${encodeURIComponent(name)}/verify`);
+    if (api) {
+      try {
+        const res = await fetch(api.url, { method: "POST", headers: api.headers });
+        if (res.ok && ((await res.json()) as VercelDomain).verified) continue;
+      } catch {
+        /* show the records below */
+      }
+    }
+    // Vercel names the record with the full domain (_vercel.example.com); registrars want the host part.
+    const suffix = `.${hostname.startsWith("www.") ? hostname.slice(4) : hostname}`;
+    for (const v of d.verification ?? []) {
+      const short = v.domain.endsWith(suffix) ? v.domain.slice(0, -suffix.length) : v.domain;
+      records.push({ type: v.type, name: short, value: v.value });
     }
   }
-  return (d.verification ?? []).map((v) => ({ type: v.type, name: v.domain, value: v.value }));
+  return records;
 }
 
 // ---------- Netlify ----------

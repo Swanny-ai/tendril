@@ -151,8 +151,12 @@ export default async function DomainsPage() {
 
                       {ownership?.length ? (
                         <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">
-                          <p className="text-sm font-medium">One more record: this domain was used on another account before.</p>
-                          <p className="text-xs">Add this TXT record to prove it&apos;s yours. You can remove it once the domain is connected.</p>
+                          <p className="text-sm font-medium">Also add {ownership.length > 1 ? "these TXT records" : "this TXT record"}: this domain was used on another account before.</p>
+                          <p className="text-xs">
+                            {ownership.length > 1 ? "They prove" : "It proves"} the domain is yours. Add {ownership.length > 1 ? "them" : "it"} next to the
+                            records above (several TXT records can share the same name). You can remove {ownership.length > 1 ? "them" : "it"} once the
+                            domain is connected.
+                          </p>
                           <DnsRecords hostname={d.hostname} options={[{ key: "a", label: "TXT", records: ownership }]} />
                         </div>
                       ) : null}

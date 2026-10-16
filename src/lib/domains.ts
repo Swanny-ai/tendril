@@ -114,7 +114,11 @@ export type DomainStatus = {
 export async function refreshDomain(domain: { id: string; hostname: string; verifiedAt: Date | null }): Promise<DomainStatus> {
   if (domain.verifiedAt) return { stage: "connected", found: [] };
   const dnsCheck = await checkDns(domain.hostname);
-  if (!dnsCheck.ok) return { stage: domainStage({ dns: false, http: false, https: false }), found: dnsCheck.found };
+  if (!dnsCheck.ok) {
+    // Show any ownership TXT record together with the other DNS records, so creators add them all at once.
+    const txt = await ownershipRecords(domain.hostname);
+    return { stage: domainStage({ dns: false, http: false, https: false }), found: dnsCheck.found, ownership: txt.length ? txt : undefined };
+  }
 
   let http = await servesHttp(domain.hostname);
   let problem: DomainStatus["problem"];
