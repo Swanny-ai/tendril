@@ -1,6 +1,6 @@
 import "server-only";
 import { appHost } from "@/config/brand";
-import { NETLIFY_APEX_IP, wwwOf } from "@/lib/domain-names";
+import { apexOf, NETLIFY_APEX_IP, wwwOf } from "@/lib/domain-names";
 
 // Where the app is hosted decides how creators' custom domains are added, which DNS records
 // they use, and who issues HTTPS. Vercel sets VERCEL=1 on its builds and functions.
@@ -130,7 +130,8 @@ export async function ownershipRecords(hostname: string): Promise<DnsRecord[]> {
       }
     }
     // Vercel names the record with the full domain (_vercel.example.com); registrars want the host part.
-    const suffix = `.${hostname.startsWith("www.") ? hostname.slice(4) : hostname}`;
+    // Host relative to the DNS zone (the registrable domain), as registrars ask for it.
+    const suffix = `.${apexOf(hostname)}`;
     for (const v of d.verification ?? []) {
       const short = v.domain.endsWith(suffix) ? v.domain.slice(0, -suffix.length) : v.domain;
       records.push({ type: v.type, name: short, value: v.value });

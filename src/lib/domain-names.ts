@@ -61,3 +61,13 @@ export function apexOfWww(host: string): string | null {
   const rest = host.slice(4);
   return isApex(rest) ? rest : null;
 }
+
+/** The registrable domain a hostname belongs to: "links.shop.co.uk" → "shop.co.uk". */
+export function apexOf(hostname: string): string {
+  const parts = hostname.split(".");
+  for (let n = Math.min(3, parts.length); n >= 2; n--) {
+    const candidate = parts.slice(-n).join(".");
+    if (isApex(candidate)) return candidate;
+  }
+  return hostname;
+}
