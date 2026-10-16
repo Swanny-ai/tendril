@@ -178,7 +178,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
                   </CardAction>
                 ) : null}
               </CardHeader>
-              <CardContent>{stats.countries ? <WorldMap data={countries} /> : <ProLock what="Country maps" />}</CardContent>
+              <CardContent className="flex flex-1 flex-col justify-center">{stats.countries ? <WorldMap data={countries} /> : <ProLock what="Country maps" />}</CardContent>
             </Card>
         }
         countries={
