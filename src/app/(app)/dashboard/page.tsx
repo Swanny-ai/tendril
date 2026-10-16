@@ -138,7 +138,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate font-medium">{s.label}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{s.path}</span>
+                            <span className="block truncate text-xs text-muted-foreground">{s.url}</span>
                           </span>
                         </span>
                         <span className="shrink-0 text-right tabular-nums">
