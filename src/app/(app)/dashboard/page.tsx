@@ -76,7 +76,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
         <div>
           <h1 className="text-2xl font-semibold">Global dashboard</h1>
           <p className="text-muted-foreground">
-            Every view across your bio page and smart links · {range.label}
+            Every view across your bio page and deep links · {range.label}
             {range.clamped ? ` (limited to the last ${limits.analyticsDays} days on the Free plan)` : ""}
           </p>
         </div>
@@ -157,65 +157,69 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe2 className="size-4" /> Geographic distribution
-            </CardTitle>
-            <CardDescription>Hover a country to see its views for this range</CardDescription>
-            {stats.countries ? (
-              <CardAction className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground" data-testid="geo-totals">
-                <span>
-                  Countries: <LiveNumber value={countries.length} text={fmt.format(countries.length)} className="font-semibold text-foreground" />
-                </span>
-                <span>
-                  Total views: <LiveNumber value={countryTotal} text={fmt.format(countryTotal)} className="font-semibold text-foreground" />
-                </span>
-              </CardAction>
-            ) : null}
-          </CardHeader>
-          <CardContent>{stats.countries ? <WorldMap data={countries} /> : <ProLock what="Country maps" />}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Top countries</CardTitle>
-            <CardDescription>Share of views in this range</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!stats.countries ? (
-              <ProLock what="Country breakdowns" />
-            ) : stats.countries.length ? (
-              <ul className="space-y-2" data-testid="top-countries">
-                {stats.countries.slice(0, 10).map((c) => {
-                  const share = countryTotal ? c.views / countryTotal : 0;
-                  return (
-                    <li key={c.code} className="text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <CountryFlag code={c.code} />
-                          <span className="truncate">{c.code === "??" ? "Unknown" : countryName(c.code)}</span>
-                          {c.code === "??" ? null : <span className="rounded bg-muted px-1.5 py-px text-[11px] font-medium text-muted-foreground">{c.code}</span>}
-                        </span>
-                        <span className="shrink-0 tabular-nums">
-                          <LiveNumber value={c.views} text={fmt.format(c.views)} /> <span className="text-xs text-muted-foreground">{(share * 100).toFixed(1)}%</span>
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-[var(--chart-1)]" style={{ width: `${share * 100}%` }} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No views in this range yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <LivePanels initial={live} geo={limits.breakdowns} />
+      <LivePanels
+        initial={live}
+        geo={limits.breakdowns}
+        map={
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe2 className="size-4" /> Geographic distribution
+                </CardTitle>
+                <CardDescription>Hover a country to see its views for this range</CardDescription>
+                {stats.countries ? (
+                  <CardAction className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground" data-testid="geo-totals">
+                    <span>
+                      Countries: <LiveNumber value={countries.length} text={fmt.format(countries.length)} className="font-semibold text-foreground" />
+                    </span>
+                    <span>
+                      Total views: <LiveNumber value={countryTotal} text={fmt.format(countryTotal)} className="font-semibold text-foreground" />
+                    </span>
+                  </CardAction>
+                ) : null}
+              </CardHeader>
+              <CardContent>{stats.countries ? <WorldMap data={countries} /> : <ProLock what="Country maps" />}</CardContent>
+            </Card>
+        }
+        countries={
+            <Card>
+              <CardHeader>
+                <CardTitle>Top countries</CardTitle>
+                <CardDescription>Share of views in this range</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!stats.countries ? (
+                  <ProLock what="Country breakdowns" />
+                ) : stats.countries.length ? (
+                  <ul className="space-y-2" data-testid="top-countries">
+                    {stats.countries.slice(0, 10).map((c) => {
+                      const share = countryTotal ? c.views / countryTotal : 0;
+                      return (
+                        <li key={c.code} className="text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <CountryFlag code={c.code} />
+                              <span className="truncate">{c.code === "??" ? "Unknown" : countryName(c.code)}</span>
+                              {c.code === "??" ? null : <span className="rounded bg-muted px-1.5 py-px text-[11px] font-medium text-muted-foreground">{c.code}</span>}
+                            </span>
+                            <span className="shrink-0 tabular-nums">
+                              <LiveNumber value={c.views} text={fmt.format(c.views)} /> <span className="text-xs text-muted-foreground">{(share * 100).toFixed(1)}%</span>
+                            </span>
+                          </div>
+                          <div className="mt-1 h-1.5 rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-[var(--chart-1)]" style={{ width: `${share * 100}%` }} />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No views in this range yet.</p>
+                )}
+              </CardContent>
+            </Card>
+        }
+      />
       {/* Ranges that end now keep updating in the background; past ranges can't change. */}
       <AutoRefresh enabled={range.to.getTime() > now.getTime() - 120_000} />
     </div>

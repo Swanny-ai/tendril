@@ -8,6 +8,7 @@ import { addHostedDomain, refreshDomain, removeHostedDomain } from "@/lib/domain
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
+import { invalidatePageFromAction } from "@/lib/pages";
 import { invalidateSmartLinkFromAction } from "@/lib/smart-links";
 
 export type DomainResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -68,8 +69,11 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
 
   // 2. Remove it from Tendril. Its links fall back to the Tendril domain; a Root link becomes a normal link.
   await db.smartLink.updateMany({ where: { domainId: id }, data: { atRoot: false } });
+  const pages = await db.page.findMany({ where: { domainId: id }, select: { id: true } });
+  await db.page.updateMany({ where: { domainId: id }, data: { atRoot: false } });
   await db.domain.delete({ where: { id } });
   for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
+  for (const p of pages) await invalidatePageFromAction(p.id);
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/links");
   return hosted === "manual"

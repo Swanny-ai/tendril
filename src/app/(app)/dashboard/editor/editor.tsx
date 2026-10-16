@@ -44,7 +44,7 @@ export function Editor({ initial, plan, limits, publicUrl }: { initial: Initial;
     <div className="mx-auto max-w-6xl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Editor</h1>
+          <h1 className="text-2xl font-semibold">Edit page</h1>
           <p className="text-sm text-muted-foreground">Changes save automatically and go live right away.</p>
         </div>
         <div className="flex items-center gap-2">

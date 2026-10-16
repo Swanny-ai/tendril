@@ -5,7 +5,8 @@ import { detectInAppBrowser } from "@/lib/in-app";
 import { LINK_BASE_HEADER, LINK_ENTRY_HEADER } from "@/lib/link-paths";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
-//    domain's home page shows their "Root" smart link if they set one, else their bio page.
+//    domain's home page shows whatever they set as its Root (a deep link or a bio page), and
+//    bio pages assigned to the domain live at /<username>. Nothing assigned = nothing shown.
 //    Links keep a clean address there: the 18+ page shows at example.com/ or example.com/vip,
 //    not at /l/vip/warning.
 // 2. Warning pages render per request and stream, so a missing link would otherwise be sent
@@ -39,10 +40,11 @@ async function exists(request: NextRequest, kind: "smart" | "block", id: string,
 // Paths that are app plumbing and work the same on every host.
 const PASSTHROUGH = new Set(["_next", "api", "media", "flags", "videos", "templates", "favicon.ico", "robots.txt", "go"]);
 
-type DomainInfo = { rootSlug?: string | null; username?: string | null; redirectTo?: string };
+type DomainInfo = { rootSlug?: string | null; username?: string | null; pageUsername?: string | null; redirectTo?: string };
 
-async function domainInfo(request: NextRequest, host: string): Promise<DomainInfo | null> {
-  const res = await fetch(new URL(`/api/domain-status?host=${encodeURIComponent(host)}`, apiBase(request)));
+async function domainInfo(request: NextRequest, host: string, path?: string): Promise<DomainInfo | null> {
+  const q = new URLSearchParams({ host, ...(path ? { path } : {}) });
+  const res = await fetch(new URL(`/api/domain-status?${q}`, apiBase(request)));
   return res.ok ? ((await res.json()) as DomainInfo) : null;
 }
 
@@ -103,18 +105,26 @@ async function customDomain(request: NextRequest, host: string) {
     try {
       const data = info !== undefined ? info : await domainInfo(request, host);
       if (data?.rootSlug) return linkEntry(request, data.rootSlug, "/"); // the domain itself is a smart link ("Root")
-      if (!data?.username) return notFound("This domain isn't connected to a page yet.");
+      if (!data?.username) return notFound("Nothing is published on this domain yet.");
       url.pathname = `/${data.username}`;
       return NextResponse.rewrite(url);
     } catch {
-      return notFound("This domain isn't connected to a page yet.");
+      return notFound("Nothing is published on this domain yet.");
     }
   }
   if (PASSTHROUGH.has(parts[0])) return NextResponse.next({ request: { headers: cleanHeaders(request) } });
   if (parts[0] === "l") return smartLinkPages(request, parts, cleanHeaders(request)) ?? NextResponse.next({ request: { headers: cleanHeaders(request) } });
 
   // /<slug> is the creator's smart link; /<slug>/(warning|open|left) its steps.
-  if (parts.length === 1) return linkEntry(request, parts[0], `/${parts[0]}`);
+  // /<path>: a bio page assigned to this domain, else a deep link.
+  if (parts.length === 1) {
+    const page = await domainInfo(request, host, parts[0]).catch(() => null);
+    if (page?.pageUsername) {
+      url.pathname = `/${page.pageUsername}`;
+      return NextResponse.rewrite(url, { request: { headers: cleanHeaders(request) } });
+    }
+    return linkEntry(request, parts[0], `/${parts[0]}`);
+  }
   if (parts.length === 2 && ["warning", "open", "left"].includes(parts[1])) {
     if (!(await exists(request, "smart", parts[0], parts[1]))) return notFound();
     const headers = cleanHeaders(request);

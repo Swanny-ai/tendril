@@ -8,7 +8,7 @@ import { DEFAULT_WARNING_TEMPLATE } from "@/warning-templates/templates";
 import { SmartLinkForm } from "../smart-link-form";
 
 export const instant = false;
-export const metadata: Metadata = { title: "New smart link" };
+export const metadata: Metadata = { title: "New deep link" };
 
 export default async function NewSmartLinkPage() {
   const { userId } = await requirePage();
@@ -19,13 +19,13 @@ export default async function NewSmartLinkPage() {
     <div className="mx-auto max-w-6xl space-y-5">
       <div>
         <Link href="/dashboard/links" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Smart links
+          ← Deep links
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold">New smart link</h1>
+        <h1 className="mt-1 text-2xl font-semibold">New deep link</h1>
       </div>
       {count >= limits.maxSmartLinks ? (
         <p className="rounded-lg border px-4 py-3 text-sm">
-          You&apos;ve used all {limits.maxSmartLinks} smart links on your plan.{" "}
+          You&apos;ve used all {limits.maxSmartLinks} deep links on your plan.{" "}
           <Link href="/dashboard/billing" className="font-medium text-primary underline-offset-4 hover:underline">
             Upgrade to Pro
           </Link>{" "}

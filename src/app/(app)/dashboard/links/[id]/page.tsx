@@ -11,7 +11,7 @@ import { requirePage } from "@/lib/session";
 import { SmartLinkForm } from "../smart-link-form";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Edit smart link" };
+export const metadata: Metadata = { title: "Edit deep link" };
 
 export default async function EditSmartLinkPage(
   props: PageProps<"/dashboard/links/[id]">,
@@ -30,7 +30,7 @@ export default async function EditSmartLinkPage(
             href="/dashboard/links"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Smart links
+            ← Deep links
           </Link>
           <h1 className="mt-1 text-2xl font-semibold">Edit /l/{link.slug}</h1>
         </div>

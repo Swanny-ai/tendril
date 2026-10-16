@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Monitor, Radio, Smartphone, Tablet, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link2, Monitor, Radio, Smartphone, Tablet, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountryFlag } from "@/components/country-flag";
@@ -21,8 +21,10 @@ function ago(ts: string, now: string) {
 
 function DeviceIcon({ device }: { device: string }) {
   const Icon = device === "mobile" ? Smartphone : device === "tablet" ? Tablet : Monitor;
-  return <Icon className="size-3.5" aria-label={device} />;
+  return <Icon className="size-3.5 shrink-0" aria-hidden />;
 }
+
+const deviceName = (device: string) => (device === "mobile" ? "Mobile" : device === "tablet" ? "Tablet" : "Desktop");
 
 function useLive(initial: LiveStats) {
   const [data, setData] = useState(initial);
@@ -54,13 +56,19 @@ function useLive(initial: LiveStats) {
   return { data, online };
 }
 
-export function LivePanels({ initial, geo }: { initial: LiveStats; geo: boolean }) {
+/**
+ * The overview's lower rows, sharing one live stream: the map (passed in) with Live activity
+ * beside it, then Top countries (passed in) with the real-time overview.
+ */
+export function LivePanels({ initial, geo, map, countries }: { initial: LiveStats; geo: boolean; map: ReactNode; countries: ReactNode }) {
   const { data, online } = useLive(initial);
   const max = Math.max(1, ...data.perMinute.map((m) => m.views));
   const change = data.previousUsers ? (data.users - data.previousUsers) / data.previousUsers : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <>
+    <div className="grid gap-4 lg:grid-cols-3">
+      {map}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -83,9 +91,15 @@ export function LivePanels({ initial, geo }: { initial: LiveStats; geo: boolean 
                       <CountryFlag code={v.country} size="lg" />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{v.countryName ? `Visitor from ${v.countryName}` : "New visitor"}</span>
-                        <span className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                          <DeviceIcon device={v.device} /> {v.label}
-                          {v.path ? <span className="truncate">· {v.path}</span> : null}
+                        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={v.label}>
+                          <DeviceIcon device={v.device} />
+                          <span className="shrink-0">{deviceName(v.device)}</span>
+                          {v.url ? (
+                            <>
+                              <Link2 className="ml-1 size-3.5 shrink-0" aria-hidden />
+                              <span className="truncate">{v.url}</span>
+                            </>
+                          ) : null}
                         </span>
                       </span>
                     </span>
@@ -105,7 +119,10 @@ export function LivePanels({ initial, geo }: { initial: LiveStats; geo: boolean 
           </p>
         </CardContent>
       </Card>
+    </div>
 
+    <div className="grid gap-4 lg:grid-cols-2">
+      {countries}
       <Card>
         <CardHeader>
           <CardTitle>Real-time overview</CardTitle>
@@ -192,5 +209,6 @@ export function LivePanels({ initial, geo }: { initial: LiveStats; geo: boolean 
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

@@ -21,7 +21,7 @@ async function newCreator(page: Page) {
 
 test("each template creates its own page with its own link", async ({ page }) => {
   const name = await newCreator(page);
-  await page.getByRole("link", { name: "Templates" }).click();
+  await page.getByRole("navigation", { name: "Dashboard" }).first().getByRole("link", { name: "Templates" }).click();
   await expect(page.getByRole("heading", { name: "Templates" })).toBeVisible();
   for (const t of ["Pro Card", "Personal Card", "Spotlight Card", "Modern Card", "Simple Stack"]) {
     await expect(page.getByRole("heading", { name: t })).toBeVisible();
@@ -34,7 +34,7 @@ test("each template creates its own page with its own link", async ({ page }) =>
   await expect(dialog.getByText("Available")).toBeVisible();
   await dialog.getByRole("button", { name: "Create page" }).click();
   await expect(page).toHaveURL(/\/dashboard\/editor/);
-  await expect(page.getByRole("button", { name: `Editing page /${spot}. Switch page` })).toBeVisible();
+  await expect(page.getByText(new RegExp(`/${spot}$`)).first()).toBeVisible();
 
   // The new page has its own link; the first page is untouched.
   const first = await page.request.get(`/${name}`);
@@ -54,11 +54,14 @@ test("each template creates its own page with its own link", async ({ page }) =>
   await page.goto(`/${spot}`);
   await expect(page.locator('img[src="/templates/pro-card.jpg"]')).toHaveCount(1);
 
-  // Switch back to the first page from the header.
-  await page.goto("/dashboard/editor");
-  await page.getByRole("button", { name: `Editing page /${spot}. Switch page` }).click();
-  await page.getByRole("menuitem", { name: new RegExp(`^/${name}(?!_)`) }).click();
-  await expect(page.getByRole("button", { name: `Editing page /${name}. Switch page` })).toBeVisible();
+  // Templates lists every page with its own link; Edit opens that page in the editor.
+  await page.goto("/dashboard/templates");
+  const yours = page.getByRole("list", { name: "Your pages" });
+  await expect(yours.getByText(new RegExp(`/${spot}$`))).toBeVisible();
+  await expect(yours.getByText(new RegExp(`/${name}$`))).toBeVisible();
+  await yours.getByRole("button", { name: `Edit /${name}`, exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page.getByText(new RegExp(`/${name}$`)).first()).toBeVisible();
 
 });
 
@@ -84,10 +87,10 @@ test("cover photo, video embed and countdown blocks", async ({ page }) => {
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 
   // Use a photo template so the cover shows.
-  await page.goto("/dashboard/templates");
-  await page.getByRole("button", { name: "Use the Modern Card template" }).click();
-  await page.getByRole("button", { name: "Apply to the page I'm editing instead" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await page.getByRole("tab", { name: "Theme" }).click();
+  await page.getByRole("combobox", { name: "Page template" }).click();
+  await page.getByRole("option", { name: "Modern Card" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 
   await page.goto(`/${name}`);
   const cover = page.locator('img[src^="/media/"]').first();
@@ -162,10 +165,22 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   expect(www.headers()["location"]).toBe(`https://${host}/${slug}?ref=1`);
   // Someone else's link doesn't resolve on this domain.
   expect((await page.request.get("/demo-shop", { maxRedirects: 0, headers: { host } })).status()).toBe(404);
-  // The domain's home page shows the creator's bio page.
+  // A connected domain shows only what's assigned to it: never the bio page by default.
   const home = await page.request.get("/", { headers: { host } });
-  expect(home.status()).toBe(200);
-  expect(await home.text()).toContain(name);
+  expect(home.status()).toBe(404);
+  expect((await page.request.get(`/${name}`, { maxRedirects: 0, headers: { host } })).status()).toBe(404);
+
+  // Put the bio page on the domain at a path: it opens there.
+  await page.goto("/dashboard/templates");
+  await page.getByRole("button", { name: `Change the link of /${name}` }).click();
+  const linkDialog = page.getByRole("dialog", { name: `Link for /${name}` });
+  await linkDialog.getByLabel("Domain").selectOption({ label: host });
+  await linkDialog.getByRole("button", { name: "Save link" }).click();
+  await expect(page.getByRole("list", { name: "Your pages" }).getByText(`${host}/${name}`)).toBeVisible();
+  const onPath = await page.request.get(`/${name}`, { headers: { host } });
+  expect(onPath.status()).toBe(200);
+  expect(await onPath.text()).toContain("My first link");
+  expect((await page.request.get("/", { headers: { host } })).status()).toBe(404);
 
   // Root needs a custom domain; with one, the domain itself opens the link instead of the bio page.
   await page.goto("/dashboard/links/new");
@@ -199,6 +214,15 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   const confirmed = await page.request.get(`/${warned}?ok=1`, { maxRedirects: 0, headers: { host } });
   expect(confirmed.status()).toBe(302);
   expect(confirmed.headers()["location"]).toBe("https://example.com/warned");
+
+  // A page can't take a root a deep link already uses.
+  await page.goto("/dashboard/templates");
+  await page.getByRole("button", { name: `Change the link of /${name}` }).click();
+  const rootDialog = page.getByRole("dialog", { name: `Link for /${name}` });
+  await rootDialog.getByRole("radio", { name: "Root" }).click();
+  await rootDialog.getByRole("button", { name: "Save link" }).click();
+  await expect(rootDialog.getByText(/already uses this domain's root/)).toBeVisible();
+  await page.keyboard.press("Escape");
 
   // Only one link can be a domain's root.
   await page.goto("/dashboard/links/new");

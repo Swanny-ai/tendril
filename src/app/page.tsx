@@ -26,7 +26,7 @@ const SHOWCASE = [
     eyebrow: "Global dashboard",
     path: "/dashboard",
     title: "Watch your audience arrive",
-    body: "Every view across your bio page and smart links in one place: totals, growth, your best links, a world map, and visitors showing up live.",
+    body: "Every view across your bio page and deep links in one place: totals, growth, your best links, a world map, and visitors showing up live.",
     points: ["Live activity, refreshed every 5 seconds", "Any date range, in your own time zone", "One-click CSV export"],
     video: { src: "/videos/analytics.mp4", poster: "/videos/analytics-poster.jpg", label: "The Tendril global dashboard filling in with views, top links, a world map and live visitors" },
   },

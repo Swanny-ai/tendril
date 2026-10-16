@@ -22,6 +22,3 @@ export async function rememberCurrentPage(pageId: string) {
   (await cookies()).set(CURRENT_PAGE_COOKIE, pageId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365, secure: process.env.NODE_ENV === "production" });
 }
 
-export function listPages(userId: string) {
-  return db.page.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, username: true, displayName: true, layout: true } });
-}

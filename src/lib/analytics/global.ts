@@ -1,13 +1,17 @@
 import "server-only";
 import countries from "i18n-iso-countries";
 import { Prisma } from "@/generated/prisma/client";
+import { appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
+import { smartLinkUrl } from "@/lib/domains";
+import { pageUrl } from "@/lib/link-targets";
 import { bucketKeys, previousPeriod, type ResolvedRange } from "./ranges";
 
 // The global dashboard counts a "view" as either a bio-page view or a smart-link
 // visit (SmartLinkEvent kind "hit"). Bots are excluded everywhere.
 
-export type Source = { id: string; kind: "page" | "link"; label: string; path: string };
+/** url: the public address without https://, e.g. "mariarosie.com" or "tendril.app/maria". */
+export type Source = { id: string; kind: "page" | "link"; label: string; path: string; url: string };
 
 export type GlobalStats = {
   totals: { views: number; visitors: number; activeSources: number; totalSources: number; avgPerSource: number; previousViews: number; growth: number | null };
@@ -19,7 +23,7 @@ export type GlobalStats = {
 
 export type LiveStats = {
   now: string;
-  recent: { id: string; ts: string; country: string | null; countryName: string | null; device: string; label: string; path: string }[];
+  recent: { id: string; ts: string; country: string | null; countryName: string | null; device: string; label: string; path: string; url: string }[];
   perMinute: { minute: string; views: number }[];
   views: number;
   users: number;
@@ -41,12 +45,13 @@ export function countryName(code: string | null): string {
 /** Everything that can get views: each of the account's bio pages and its smart links. */
 export async function getSources(userId: string): Promise<Source[]> {
   const [pages, links] = await Promise.all([
-    db.page.findMany({ where: { userId }, select: { id: true, username: true, displayName: true }, orderBy: { createdAt: "asc" } }),
-    db.smartLink.findMany({ where: { userId }, select: { id: true, slug: true, label: true }, orderBy: { createdAt: "asc" } }),
+    db.page.findMany({ where: { userId }, select: { id: true, username: true, displayName: true, atRoot: true, domain: { select: { hostname: true } } }, orderBy: { createdAt: "asc" } }),
+    db.smartLink.findMany({ where: { userId }, select: { id: true, slug: true, label: true, atRoot: true, domain: { select: { hostname: true } } }, orderBy: { createdAt: "asc" } }),
   ]);
+  const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return [
-    ...pages.map((p) => ({ id: p.id, kind: "page" as const, label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}` })),
-    ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/l/${l.slug}` })),
+    ...pages.map((p) => ({ id: p.id, kind: "page" as const, label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}`, url: bare(pageUrl(p, p.domain, appUrl)) })),
+    ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/l/${l.slug}`, url: bare(smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)) })),
   ];
 }
 
@@ -164,6 +169,7 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
         device: r.device,
         label: s?.label ?? "Deleted link",
         path: s?.path ?? "",
+        url: s?.url ?? "",
       };
     }),
     perMinute: minutes.map((t) => ({ minute: new Date(t).toISOString(), views: minuteMap.get(t) ?? 0 })),

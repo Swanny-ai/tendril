@@ -241,7 +241,7 @@ export function ThemePanel({ plan, limits }: { plan: PlanName; limits: Limits })
               ))}
             </SelectContent>
           </Select>
-          <p className="mt-2 text-xs text-muted-foreground">More designs and a live preview are on the Smart links page.</p>
+          <p className="mt-2 text-xs text-muted-foreground">More designs and a live preview are on the Deep links page.</p>
         </CardContent>
       </Card>
     </div>

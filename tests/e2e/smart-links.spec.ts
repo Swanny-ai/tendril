@@ -125,7 +125,7 @@ test("free plan allows 3 smart links; names are validated", async ({ page }) => 
   await expect(page.getByText("3 / 3 used")).toBeVisible();
   await expect(page.getByRole("link", { name: "Upgrade for more links" })).toBeVisible();
   await page.goto("/dashboard/links/new");
-  await expect(page.getByText(/used all 3 smart links/)).toBeVisible();
+  await expect(page.getByText(/used all 3 deep links/)).toBeVisible();
 });
 
 test("bio-page content warnings can use a warning template", async ({ page }) => {

@@ -115,11 +115,16 @@ model Page {
   // grant it to any page (verifiedAt), which keeps it whatever the plan.
   verifiedAt      DateTime?
   showVerified    Boolean  @default(false)
+  // The page's link: a connected custom domain (null = the Tendril domain), at its root or at /<username>
+  domainId        String?
+  domain          Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  atRoot          Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   blocks         Block[]
 
   @@index([userId, createdAt])
+  @@index([domainId])
 }
 
 enum BlockType {
@@ -312,6 +317,7 @@ model Domain {
   verifiedAt DateTime?
   createdAt  DateTime    @default(now())
   smartLinks SmartLink[]
+  pages      Page[]
 
   @@index([userId])
 }

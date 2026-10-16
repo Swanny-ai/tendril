@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { appUrl } from "@/config/brand";
+import { pageUrl } from "@/lib/link-targets";
+import { PageLinkBar } from "../page-link-bar";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -10,10 +13,12 @@ import { DeletePage } from "./delete-page";
 import { Editor } from "./editor";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Editor" };
+export const metadata: Metadata = { title: "Edit page" };
 
 export default async function EditorPage() {
   const { userId, page } = await requirePage();
+  const domain = page.domainId ? await db.domain.findUnique({ where: { id: page.domainId }, select: { hostname: true } }) : null;
+  const url = pageUrl(page, domain, appUrl);
   const [plan, blocks, pageCount] = await Promise.all([
     getPlan(userId),
     db.block.findMany({
@@ -25,11 +30,19 @@ export default async function EditorPage() {
 
   return (
     <>
+      <div className="mx-auto mb-5 flex max-w-6xl flex-wrap items-center gap-3">
+        <Link href="/dashboard/templates" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Templates
+        </Link>
+        <div className="min-w-0">
+          <PageLinkBar url={url} />
+        </div>
+      </div>
       <Editor
         key={
           page.id /* remount when switching pages so the editor loads that page */
         }
-        publicUrl={`${appUrl}/${page.username}`}
+        publicUrl={url}
         plan={plan}
         limits={PLAN_LIMITS[plan]}
         initial={{

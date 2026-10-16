@@ -2,6 +2,7 @@
 
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
+import { checkLinkTarget } from "@/lib/link-targets";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -26,17 +27,10 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
-  if (data.domainId) {
-    const domain = await db.domain.findFirst({ where: { id: data.domainId, userId, verifiedAt: { not: null } }, select: { id: true } });
-    if (!domain) return { error: { ok: false as const, error: "That domain isn't connected yet.", field: "domainId" } };
-  }
-  // Root: the link is the domain itself, so it needs a custom domain and only one link can have it.
-  const atRoot = Boolean(data.atRoot && data.domainId);
-  if (data.atRoot && !data.domainId) return { error: { ok: false as const, error: "Root links need a custom domain.", field: "domainId" } };
-  if (atRoot) {
-    const taken = await db.smartLink.findFirst({ where: { domainId: data.domainId!, atRoot: true, ...(linkId ? { NOT: { id: linkId } } : {}) }, select: { slug: true } });
-    if (taken) return { error: { ok: false as const, error: `Another link (${taken.slug}) already uses this domain's root. Use a path, or change that link first.`, field: "domainId" } };
-  }
+  // Domain + Root/Path: same rules as bio pages (one root per domain, no shared paths).
+  const target = await checkLinkTarget(userId, { domainId: data.domainId, atRoot: data.atRoot }, data.slug, { linkId });
+  if (!target.ok) return { error: { ok: false as const, error: target.error, field: "domainId" } };
+  const { atRoot } = target.target;
 
   return {
     data: {

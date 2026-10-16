@@ -14,7 +14,7 @@ import { getWarningTemplate } from "@/warning-templates/templates";
 import { LinkRowActions } from "./row-actions";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Smart links" };
+export const metadata: Metadata = { title: "Deep links" };
 
 const fmt = new Intl.NumberFormat("en-US");
 
@@ -31,7 +31,7 @@ export default async function SmartLinksPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Smart links</h1>
+          <h1 className="text-2xl font-semibold">Deep links</h1>
           <p className="text-sm text-muted-foreground">
             Short links with an optional 18+ warning page. {links.length} / {limits.maxSmartLinks} used.
           </p>
@@ -42,7 +42,7 @@ export default async function SmartLinksPage() {
           </Link>
         ) : (
           <Link href="/dashboard/links/new" className={buttonVariants()}>
-            <Plus /> New smart link
+            <Plus /> New deep link
           </Link>
         )}
       </div>
@@ -51,12 +51,12 @@ export default async function SmartLinksPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <ShieldAlert className="size-8 text-[var(--persimmon-text)]" aria-hidden />
-            <p className="font-semibold">Create your first smart link</p>
+            <p className="font-semibold">Create your first deep link</p>
             <p className="max-w-md text-sm text-muted-foreground">
               Share one short link anywhere. Visitors see an 18+ warning page in the design you pick, then continue to your destination.
             </p>
             <Link href="/dashboard/links/new" className={buttonVariants()}>
-              <Plus /> New smart link
+              <Plus /> New deep link
             </Link>
           </CardContent>
         </Card>
