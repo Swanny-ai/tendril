@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
-import { dnsRecordFor } from "@/lib/domains";
+import { checkServing, dnsRecordFor } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -22,6 +22,8 @@ export default async function DomainsPage() {
     db.domain.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { _count: { select: { smartLinks: true } } } }),
   ]);
   const max = PLAN_LIMITS[plan].customDomains;
+  // Whether each DNS-verified domain really loads Tendril right now (Netlify may not serve it yet).
+  const serving = await Promise.all(domains.map((d) => (d.verifiedAt ? checkServing(d.hostname) : Promise.resolve(false))));
   const autoNetlify = Boolean(process.env.NETLIFY_API_TOKEN);
 
   return (
@@ -54,9 +56,10 @@ export default async function DomainsPage() {
 
       {domains.length ? (
         <ul className="space-y-4" aria-label="Your domains">
-          {domains.map((d) => {
+          {domains.map((d, i) => {
             const record = dnsRecordFor(d.hostname);
             const verified = !!d.verifiedAt;
+            const live = verified && serving[i];
             return (
               <li key={d.id}>
                 <Card>
@@ -67,9 +70,13 @@ export default async function DomainsPage() {
                           <Globe className="size-4" /> {d.hostname}
                         </CardTitle>
                         <CardDescription className="mt-1 flex items-center gap-2">
-                          {verified ? (
+                          {live ? (
                             <Badge className="bg-[var(--sage-text)] text-white">
                               <CheckCircle2 /> Connected
+                            </Badge>
+                          ) : verified ? (
+                            <Badge variant="secondary">
+                              <Clock /> Waiting for Netlify
                             </Badge>
                           ) : (
                             <Badge variant="secondary">
@@ -79,11 +86,12 @@ export default async function DomainsPage() {
                           {d._count.smartLinks} {d._count.smartLinks === 1 ? "link" : "links"}
                         </CardDescription>
                       </div>
-                      <DomainActions id={d.id} hostname={d.hostname} verified={verified} />
+                      <DomainActions id={d.id} hostname={d.hostname} verified={live} />
                     </div>
                   </CardHeader>
-                  {!verified ? (
+                  {!live ? (
                     <CardContent className="space-y-3 text-sm">
+                      {verified ? <p className="font-medium">DNS is set up correctly. One step left:</p> : null}
                       <p>At your domain provider (GoDaddy, Namecheap, Cloudflare…), add this DNS record, then press Verify:</p>
                       <div className="overflow-x-auto rounded-lg border">
                         <table className="w-full text-left">
@@ -108,10 +116,11 @@ export default async function DomainsPage() {
                         {autoNetlify ? " HTTPS is set up automatically once it's connected." : ""}
                       </p>
                       {!autoNetlify ? (
-                        <p className="rounded-lg bg-muted px-3 py-2 text-xs">
-                          One-time step: in Netlify, open your site → <strong>Domain management</strong> → <strong>Add a domain alias</strong> and enter{" "}
-                          <span className="font-mono">{d.hostname}</span>. (Add a <span className="font-mono">NETLIFY_API_TOKEN</span> to the site&apos;s
-                          environment and Tendril will do this for you.)
+                        <p className={verified ? "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950" : "rounded-lg bg-muted px-3 py-2 text-xs"}>
+                          {verified ? "Required: " : "One-time step: "}in Netlify, open your site → <strong>Domain management</strong> →{" "}
+                          <strong>Add a domain alias</strong> and enter <span className="font-mono">{d.hostname}</span>, then press Verify. Until then
+                          visitors see Netlify&apos;s &ldquo;Not found&rdquo; page. (Add a <span className="font-mono">NETLIFY_API_TOKEN</span> to the
+                          site&apos;s environment and Tendril will do this for you.)
                         </p>
                       ) : null}
                     </CardContent>

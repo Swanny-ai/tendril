@@ -32,6 +32,20 @@ export async function checkDns(hostname: string): Promise<{ ok: boolean; found: 
 }
 
 /**
+ * True when the domain really loads this app. DNS can be right while the host (Netlify) still
+ * doesn't know the domain, which shows visitors a "Not found" page.
+ */
+export async function checkServing(hostname: string): Promise<boolean> {
+  try {
+    const res = await fetch(`http://${hostname}/api/ping`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return false;
+    return ((await res.json()) as { app?: string }).app === "tendril";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Adds the domain to the Netlify site so Netlify serves it (and issues HTTPS).
  * Needs NETLIFY_API_TOKEN (a personal access token) in the site's environment; without it
  * the creator gets instructions to add the domain in Netlify themselves.

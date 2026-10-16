@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { isClaimable, normalizeHostname } from "@/lib/domain-names";
-import { addNetlifyDomainAlias, checkDns } from "@/lib/domains";
+import { addNetlifyDomainAlias, checkDns, checkServing } from "@/lib/domains";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -46,7 +46,16 @@ export async function verifyDomainAction(id: string): Promise<DomainResult> {
   await db.domain.update({ where: { id }, data: { verifiedAt: domain.verifiedAt ?? new Date() } });
   const netlify = await addNetlifyDomainAlias(domain.hostname);
   revalidatePath("/dashboard/domains");
-  return { ok: true, message: "Connected. Your links can now use this domain.", netlify };
+  if (!(await checkServing(domain.hostname))) {
+    return {
+      ok: false,
+      error:
+        netlify === "manual"
+          ? "DNS is set up, but Netlify doesn't serve this domain yet. Add it in Netlify (see the steps below), then check again."
+          : "DNS is set up. Netlify is still adding the domain; check again in a minute.",
+    };
+  }
+  return { ok: true, message: "Connected. Your links can now use this domain." };
 }
 
 export async function removeDomainAction(id: string): Promise<DomainResult> {
