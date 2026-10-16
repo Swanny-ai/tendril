@@ -47,6 +47,21 @@ export async function answers(scheme: "http" | "https", hostname: string): Promi
   }
 }
 
+/**
+ * True when the host already serves the domain over plain HTTP. Once the site has HTTPS, Netlify
+ * answers http:// with a redirect to https://, which counts too (the certificate may not be ready).
+ */
+async function servesHttp(hostname: string): Promise<boolean> {
+  try {
+    const res = await fetch(`http://${hostname}/api/ping`, { cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(4000) });
+    if (res.status >= 300 && res.status < 400) return (res.headers.get("location") ?? "").startsWith(`https://${hostname}/`);
+    if (!res.ok) return false;
+    return ((await res.json()) as { app?: string }).app === "tendril";
+  } catch {
+    return false;
+  }
+}
+
 // ---------- Netlify ----------
 // With NETLIFY_API_TOKEN set, Tendril adds and removes creators' domains on the Netlify site
 // itself, and Netlify issues their HTTPS certificates. Nobody has to open the Netlify dashboard.
@@ -102,6 +117,27 @@ export function addNetlifyDomainAlias(hostname: string) {
   });
 }
 
+// Let's Encrypt limits failed attempts, so ask at most every 15 minutes per server instance.
+const certRequests = new Map<string, number>();
+
+/**
+ * Asks Netlify to (re)issue the site's Let's Encrypt certificate so it covers newly added domains.
+ * Netlify does this on its own eventually; asking makes a new domain secure within minutes.
+ */
+async function requestNetlifyCertificate(hostname: string) {
+  const last = certRequests.get(hostname) ?? 0;
+  if (Date.now() - last < 15 * 60_000) return;
+  certRequests.set(hostname, Date.now());
+  const site = await netlifySite();
+  if (!site) return;
+  try {
+    const res = await fetch(`${site.api}/ssl`, { method: "POST", headers: site.headers });
+    if (!res.ok) console.error(`[domains] Netlify certificate request failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  } catch (e) {
+    console.error("[domains] Netlify certificate request failed", e);
+  }
+}
+
 /** Removes the domain (and its www form, unless kept) from the Netlify site. */
 export function removeNetlifyDomainAlias(hostname: string, keep: string[] = []) {
   return updateNetlifyAliases((aliases) => {
@@ -124,16 +160,18 @@ export async function refreshDomain(domain: { id: string; hostname: string; veri
   const dnsCheck = await checkDns(domain.hostname);
   if (!dnsCheck.ok) return { stage: domainStage({ dns: false, http: false, https: false }), found: dnsCheck.found };
 
-  let http = await answers("http", domain.hostname);
+  let http = await servesHttp(domain.hostname);
   let problem: DomainStatus["problem"];
   if (!http) {
     // DNS is right but the host doesn't serve the domain yet: (re)add it on Netlify.
     const added = await addNetlifyDomainAlias(domain.hostname);
     if (added === "taken") problem = "taken";
     else if (added !== "ok") problem = "setup";
-    http = await answers("http", domain.hostname);
+    http = await servesHttp(domain.hostname);
   }
   const https = http && (await answers("https", domain.hostname));
+  // Served but no valid certificate yet: have Netlify issue one that includes this domain.
+  if (http && !https) await requestNetlifyCertificate(domain.hostname);
   if (https) await db.domain.update({ where: { id: domain.id }, data: { verifiedAt: new Date() } });
   return { stage: domainStage({ dns: true, http, https }), found: dnsCheck.found, problem: https ? undefined : problem };
 }
