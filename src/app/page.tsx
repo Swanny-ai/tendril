@@ -165,7 +165,7 @@ export default function LandingPage() {
                 price={`$${PRICES_USD.monthly}`}
                 note={`per month, or $${PRICES_USD.yearly}/year`}
                 cta="Go Pro"
-                features={["Unlimited blocks", "All themes plus custom colors and fonts", "Remove the badge", "Custom warning text", "Referrers, countries, devices", "A year of analytics"]}
+                features={["Verified blue badge", "Unlimited blocks", "All themes plus custom colors and fonts", "Remove the \"Made with\" badge", "Custom warning text", "Custom domains", "Referrers, countries, devices", "A year of analytics"]}
               />
             </div>
           </div>

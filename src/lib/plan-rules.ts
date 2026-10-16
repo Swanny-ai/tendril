@@ -12,6 +12,7 @@ export const PLAN_LIMITS = {
     analyticsDays: 30,
     breakdowns: false,
     customTheme: false,
+    verifiedBadge: false,
     removeBadge: false,
     customWarningText: false,
   },
@@ -23,12 +24,13 @@ export const PLAN_LIMITS = {
     analyticsDays: 365,
     breakdowns: true,
     customTheme: true,
+    verifiedBadge: true,
     removeBadge: true,
     customWarningText: true,
   },
 } as const satisfies Record<PlanName, Record<string, number | boolean>>;
 
-export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "breakdowns";
+export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "breakdowns" | "verifiedBadge";
 
 export const PRICES_USD = { monthly: 6, yearly: 60 } as const;
 

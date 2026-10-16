@@ -59,7 +59,8 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     layout: page.layout,
     heroUrl: page.heroUrl,
     tagline: page.tagline,
-    verified: !!page.verifiedAt && page.showVerified,
+    // Pro creators switch it on themselves; pages the site owner verified keep it on any plan.
+    verified: page.showVerified && (!!page.verifiedAt || PLAN_LIMITS[plan].verifiedBadge),
     theme: resolveTheme(page.themeKey, page.themeOverrides, PLAN_LIMITS[plan].customTheme),
     blocks: page.blocks
       .filter((b) => visible.has(b.id))

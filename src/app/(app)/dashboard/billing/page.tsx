@@ -13,10 +13,12 @@ export const instant = false;
 export const metadata: Metadata = { title: "Billing" };
 
 const PRO_FEATURES = [
+  "Verified blue badge",
   "Unlimited blocks",
   "All themes, custom colors and fonts",
   "Remove the “Made with” badge",
   "Custom content-warning text",
+  "Custom domains and up to 25 pages",
   "Referrers, countries and devices",
   "Up to a year of analytics history",
 ];

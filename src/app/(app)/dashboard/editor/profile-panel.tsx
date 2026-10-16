@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImageUp, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ImageUp, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +14,11 @@ import { VerifiedBadge } from "@/components/public-page/verified-badge";
 import { setShowVerifiedAction, updateProfileAction, uploadAvatarAction, uploadHeroAction } from "./actions";
 import { queueSave, runSave, useEditor, type EditorProfile } from "./store";
 
-export function ProfilePanel() {
+export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: boolean }) {
   const profile = useEditor((s) => s.profile);
   const setProfile = useEditor((s) => s.setProfile);
+  // Pro plan, or a page the site owner verified.
+  const canVerify = canVerifiedBadge || profile.verified;
   const fileRef = useRef<HTMLInputElement>(null);
   const heroRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -138,21 +141,29 @@ export function ProfilePanel() {
                 <VerifiedBadge size={18} /> Verified badge
               </CardTitle>
               <CardDescription className="mt-1">
-                {profile.verified
-                  ? "This page is verified. The blue check shows next to your name."
-                  : "Not verified yet. The blue check tells visitors a page is genuinely yours, so it's granted by Tendril after we confirm your identity, not switched on by yourself."}
+                {canVerify ? (
+                  "Show a blue check next to your name."
+                ) : (
+                  <>
+                    <Lock className="mr-1 inline size-3.5" aria-label="Pro" />
+                    The blue check is part of Pro.{" "}
+                    <Link href="/dashboard/billing" className="text-primary underline-offset-4 hover:underline">
+                      Upgrade
+                    </Link>{" "}
+                    to show it on your page.
+                  </>
+                )}
               </CardDescription>
             </div>
-            {profile.verified ? (
-              <Switch
-                aria-label="Show verified badge"
-                checked={profile.showVerified}
-                onCheckedChange={(v) => {
-                  setProfile({ showVerified: v });
-                  void runSave(() => setShowVerifiedAction(v), (m) => toast.error(m));
-                }}
-              />
-            ) : null}
+            <Switch
+              aria-label="Show verified badge"
+              disabled={!canVerify}
+              checked={canVerify && profile.showVerified}
+              onCheckedChange={(v) => {
+                setProfile({ showVerified: v });
+                void runSave(() => setShowVerifiedAction(v), (m) => toast.error(m));
+              }}
+            />
           </div>
         </CardHeader>
       </Card>

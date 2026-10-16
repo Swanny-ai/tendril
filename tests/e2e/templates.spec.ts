@@ -151,29 +151,39 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   expect(await home.text()).toContain(name);
 });
 
-test("verified badge: granted by the site owner, then shown or hidden by the creator", async ({ page }) => {
+test("verified badge: Pro creators switch it on, Free sees it locked", async ({ page }) => {
   const name = await newCreator(page);
   await page.getByRole("tab", { name: "Profile" }).click();
-  await expect(page.getByText(/Not verified yet/)).toBeVisible();
-  await expect(page.getByRole("switch", { name: "Show verified badge" })).toHaveCount(0); // can't self-verify
-  expect(await (await page.request.get(`/${name}`)).text()).not.toContain('aria-label="Verified"');
+  await expect(page.getByText("The blue check is part of Pro.")).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Show verified badge" })).toBeDisabled();
 
-  // The site owner verifies the page.
-  execFileSync(process.execPath, ["scripts/verify-page.mjs", name], { env: { ...process.env, APP_URL: "", CRON_SECRET: "" } });
+  await setPlanByUsername(name, "PRO");
   await page.reload();
   await page.getByRole("tab", { name: "Profile" }).click();
   const toggle = page.getByRole("switch", { name: "Show verified badge" });
-  await expect(toggle).toBeChecked();
-  await page.getByLabel("Tagline").fill("Verified creator"); // a save refreshes the public page
+  await expect(toggle).toBeEnabled();
+  await toggle.click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/${name}`);
   await expect(page.getByRole("heading", { level: 1 }).getByRole("img", { name: "Verified" })).toBeVisible();
 
-  // The creator can hide it.
   await page.goto("/dashboard/editor");
   await page.getByRole("tab", { name: "Profile" }).click();
   await page.getByRole("switch", { name: "Show verified badge" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/${name}`);
   await expect(page.getByRole("img", { name: "Verified" })).toHaveCount(0);
+});
+
+test("verified badge: pages the site owner verifies keep it on the Free plan", async ({ page }) => {
+  const name = await newCreator(page);
+  execFileSync(process.execPath, ["scripts/verify-page.mjs", name], { env: { ...process.env, APP_URL: "", CRON_SECRET: "" } });
+  await page.reload();
+  await page.getByRole("tab", { name: "Profile" }).click();
+  const toggle = page.getByRole("switch", { name: "Show verified badge" });
+  await expect(toggle).toBeEnabled();
+  await toggle.click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await page.goto(`/${name}`);
+  await expect(page.getByRole("img", { name: "Verified" })).toBeVisible();
 });

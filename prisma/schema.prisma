@@ -111,10 +111,10 @@ model Page {
   heroUrl         String?
   // Short line under the name, e.g. "Painter" or "20 · Florida"
   tagline         String   @default("")
-  // Verified badge: granted by the site owner after checking the page is genuine (never self-serve)
+  // Verified badge: Pro creators switch it on themselves (showVerified); the site owner can also
+  // grant it to any page (verifiedAt), which keeps it whatever the plan.
   verifiedAt      DateTime?
-  // The creator can hide a badge they were granted
-  showVerified    Boolean  @default(true)
+  showVerified    Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   blocks         Block[]

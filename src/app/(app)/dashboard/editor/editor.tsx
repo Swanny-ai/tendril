@@ -81,7 +81,7 @@ export function Editor({ initial, plan, limits, publicUrl }: { initial: Initial;
               <BlocksPanel limits={limits} plan={plan} />
             </TabsContent>
             <TabsContent value="profile">
-              <ProfilePanel />
+              <ProfilePanel canVerifiedBadge={limits.verifiedBadge} />
             </TabsContent>
             <TabsContent value="theme">
               <ThemePanel plan={plan} limits={limits} />
@@ -135,7 +135,7 @@ function PhonePreview({ limits, publicUrl }: { plan: PlanName; limits: Limits; p
       avatarUrl: profile.avatarUrl,
       heroUrl: profile.heroUrl,
       tagline: profile.tagline,
-      verified: profile.verified && profile.showVerified,
+      verified: profile.showVerified && (profile.verified || limits.verifiedBadge),
       layout: theme.layout,
       showBadge: limits.removeBadge ? theme.showBadge : true,
       theme: resolveTheme(theme.themeKey, theme.overrides, limits.customTheme),
