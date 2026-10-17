@@ -6,6 +6,9 @@ import { getPublicPage } from "@/lib/pages";
 import { BioLinkEscape } from "./bio-link-escape";
 import { InAppHint } from "./in-app-hint";
 import { ViewBeacon } from "./view-beacon";
+import { WarningPopup, type PopupCopy, type PopupStyle } from "./warning-popup";
+import { templateCopy } from "@/warning-templates/copy";
+import { getWarningTemplate } from "@/warning-templates/templates";
 
 // Await params outside Suspense on purpose: the first visit to a username waits for
 // the full page (blocking ISR), so unknown names get a real 404 and crawlers get
@@ -54,12 +57,29 @@ export default async function PublicProfilePage(props: PageProps<"/[username]">)
     },
   };
 
+  // 18+ links open a popup over the page: styled like the creator's chosen warning design, or
+  // like the page itself. The page is cached for everyone, so the wording is English.
+  const owner = `A link from ${page.displayName || `@${page.username}`}`;
+  let popupCopy: PopupCopy;
+  let popupStyle: PopupStyle;
+  if (page.warningTemplate) {
+    const t = getWarningTemplate(page.warningTemplate);
+    const c = templateCopy(t, "en");
+    popupCopy = { title: c.title, message: c.message, button: c.button, cancel: "Cancel", owner };
+    popupStyle = { card: t.surface, border: t.cardBorder, text: t.text, muted: t.muted, buttonBg: t.buttonBg, buttonText: t.buttonText, radius: Math.min(t.radius, 24) };
+  } else {
+    const t = page.theme;
+    popupCopy = { title: "Adult content warning", message: "This content is intended for adults only (18+). Do you want to continue?", button: "I'm 18+, continue", cancel: "Cancel", owner };
+    popupStyle = { card: t.background, border: `${t.muted}55`, text: t.text, muted: t.muted, buttonBg: t.buttonBg, buttonText: t.buttonText, radius: 20 };
+  }
+
   return (
     <main className="flex min-h-svh flex-1 flex-col" style={page.layout === "classic" ? { background: page.theme.background } : undefined}>
       <InAppHint />
       <PublicPage page={page} />
       <ViewBeacon pageId={page.id} />
       {page.openInBrowser ? <BioLinkEscape /> : null}
+      <WarningPopup copy={popupCopy} style={popupStyle} openInBrowser={page.openInBrowser} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     </main>
   );

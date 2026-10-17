@@ -15,6 +15,7 @@ export type PublicBlock = {
   url: string | null;
   data: BlockData;
   contentWarning: boolean;
+  contentWarningText: string | null;
 };
 
 export type PublicPageData = {
@@ -27,6 +28,8 @@ export type PublicPageData = {
   seoDescription: string | null;
   showBadge: boolean;
   openInBrowser: boolean;
+  /** 18+ popup style for the page's warning links (null = match the page theme) */
+  warningTemplate: string | null;
   layout: string;
   heroUrl: string | null;
   tagline: string;
@@ -58,6 +61,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     seoDescription: page.seoDescription,
     showBadge: PLAN_LIMITS[plan].removeBadge ? page.showBadge : true,
     openInBrowser: page.openInBrowser,
+    warningTemplate: page.warningTemplate,
     layout: page.layout,
     heroUrl: page.heroUrl,
     tagline: page.tagline,
@@ -75,6 +79,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
         url: b.url,
         data: (b.data ?? {}) as PublicBlock["data"],
         contentWarning: b.contentWarning,
+        contentWarningText: b.contentWarningText,
       })),
   };
 }

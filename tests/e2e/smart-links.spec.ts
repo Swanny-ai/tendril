@@ -140,8 +140,9 @@ test("bio-page content warnings can use a warning template", async ({ page }) =>
 
   await page.goto(`/${DEMO.username}`);
   await page.getByRole("link", { name: /After-dark sketchbook/ }).click();
-  await expect(page.getByRole("heading", { name: "Adults only" })).toBeVisible();
-  await expect(page.getByText("A link from Demo Creator")).toBeVisible();
+  const popup = page.getByRole("dialog", { name: /Adults only/ });
+  await expect(popup).toBeVisible();
+  await expect(popup.getByText("A link from Demo Creator")).toBeVisible();
 
   // Restore the default for other tests
   await page.goto("/dashboard/editor");

@@ -35,18 +35,27 @@ test("clicking a link redirects through /go", async ({ page }) => {
   await expect(page).toHaveURL("https://example.com/shop");
 });
 
-test("content-warning links show an interstitial first", async ({ page }) => {
+test("content-warning links open an 18+ popup on the page first", async ({ page }) => {
   await page.goto(`/${DEMO.username}`);
-  await page.getByRole("link", { name: /After-dark sketchbook/ }).click();
-  await expect(page).toHaveURL(/\/go\/.+\/warning$/);
-  await expect(page.getByRole("heading", { name: "Before you continue" })).toBeVisible();
-  await expect(page.getByText("example.com")).toBeVisible();
-
-  await page.getByRole("link", { name: "Go back" }).click();
+  const link = page.getByRole("link", { name: /After-dark sketchbook/ });
+  const href = (await link.getAttribute("href")) ?? "";
+  await link.click();
+  // The popup opens over the page; the address doesn't change.
+  const popup = page.getByRole("dialog", { name: /Adult content warning/ });
+  await expect(popup).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/${DEMO.username}$`));
 
+  await popup.getByRole("button", { name: "Cancel" }).click();
+  await expect(popup).toBeHidden();
+
+  // Opening the link's own address directly still shows the full warning page.
+  await page.goto(href);
+  await expect(page).toHaveURL(/\/go\/.+\/warning$/);
+  await expect(page.getByRole("heading", { name: "Before you continue" })).toBeVisible();
+
+  await page.goto(`/${DEMO.username}`);
   await page.getByRole("link", { name: /After-dark sketchbook/ }).click();
-  await page.getByRole("link", { name: "Continue" }).click();
+  await page.getByRole("dialog").getByRole("link", { name: "I'm 18+, continue" }).click();
   await expect(page).toHaveURL("https://example.com/sketchbook");
 });
 

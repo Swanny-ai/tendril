@@ -110,7 +110,7 @@ export function LinkShell({ block, preview, className, style, children }: { bloc
     );
   }
   return (
-    <a href={`/go/${block.id}`} rel="nofollow" className={className} style={style} data-warning={block.contentWarning ? "" : undefined}>
+    <a href={`/go/${block.id}`} rel="nofollow" className={className} style={style} data-warning={block.contentWarning ? "" : undefined} data-warning-text={block.contentWarning ? (block.contentWarningText ?? undefined) : undefined}>
       {children}
     </a>
   );

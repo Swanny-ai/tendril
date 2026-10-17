@@ -76,7 +76,10 @@ test("android visitors get an intent link to their default browser", async ({ br
   const ctx = await browser.newContext({ userAgent: IG_ANDROID, viewport: { width: 412, height: 900 } });
   const visitor = await ctx.newPage();
   await visitor.goto(`/l/${slug}/open`);
-  const intent = (await visitor.getByRole("link", { name: "Open in browser" }).getAttribute("href")) ?? "";
+  // The button gets its Android intent address once the page has loaded on the phone.
+  const openButton = visitor.getByRole("link", { name: "Open in browser" });
+  await expect(openButton).toHaveAttribute("href", /^intent:\/\//);
+  const intent = (await openButton.getAttribute("href")) ?? "";
   expect(intent.startsWith("intent://")).toBe(true);
   expect(intent).toContain(`/l/${slug}?ib=1#Intent;scheme=http`);
   expect(intent).toContain("S.browser_fallback_url=");
@@ -142,8 +145,8 @@ test("bio page: links with a content warning show it inside Instagram, then open
   const warned = visitor.locator('a[href^="/go/"][data-warning]').first();
   const href = (await warned.getAttribute("href")) ?? "";
   await warned.click();
-  await expect(visitor).toHaveURL(new RegExp(`${href}/warning$`)); // stayed in the app
-  const confirm = visitor.getByRole("main").getByRole("link").first();
+  await expect(visitor).toHaveURL(new RegExp(`/${DEMO.username}$`)); // popup over the page, still in the app
+  const confirm = visitor.getByRole("dialog").getByRole("link", { name: /18\+/ });
   const target = (await confirm.getAttribute("href")) ?? "";
   expect(extTarget(target).endsWith(`${href}?ok=1`)).toBe(true);
   await ctx.close();

@@ -21,6 +21,8 @@ export type RenderBlock = {
   url: string | null;
   data: BlockData;
   contentWarning: boolean;
+  /** The creator's own wording for this link's 18+ popup */
+  contentWarningText?: string | null;
 };
 
 export type RenderPage = {
@@ -209,7 +211,7 @@ function ClassicPage({ page, preview }: { page: RenderPage; preview: boolean }) 
                 {content}
               </span>
             ) : (
-              <a key={b.id} href={`/go/${b.id}`} className={`${cls} hover:-translate-y-0.5`} style={btn} rel="nofollow" data-warning={b.contentWarning ? "" : undefined}>
+              <a key={b.id} href={`/go/${b.id}`} className={`${cls} hover:-translate-y-0.5`} style={btn} rel="nofollow" data-warning={b.contentWarning ? "" : undefined} data-warning-text={b.contentWarning ? (b.contentWarningText ?? undefined) : undefined}>
                 {content}
               </a>
             );
