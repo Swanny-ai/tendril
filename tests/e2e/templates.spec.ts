@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
-import { connectDomain, setPlanByUsername } from "./db";
+import { connectDomain, setPlanByUsername, showcasePage, unshowcasePage } from "./db";
 import { TEST_PASSWORD, uniqueName } from "./helpers";
 
 // 1x1 PNG
@@ -294,4 +294,26 @@ test("verified badge: pages the site owner verifies keep it on the Free plan", a
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/${name}`);
   await expect(page.getByRole("img", { name: "Verified" })).toBeVisible();
+});
+
+test("a showcased page is everyone's preview of its template, username hidden", async ({ page, browser }) => {
+  const owner = await newCreator(page);
+  await page.getByRole("tab", { name: "Theme" }).click();
+  await page.getByRole("combobox", { name: "Page template" }).click();
+  await page.getByRole("option", { name: "Personal Card" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await showcasePage(owner);
+  try {
+    // Someone else, who never used Personal Card, sees the showcased page as its preview.
+    const ctx = await browser.newContext();
+    const other = await ctx.newPage();
+    await newCreator(other);
+    await other.goto("/dashboard/templates");
+    const gallery = other.getByRole("list", { name: "Link-in-bio templates" });
+    await expect(gallery.getByText("Showcase Star")).toHaveCount(1);
+    await expect(gallery.getByText(`@${owner}`)).toHaveCount(0);
+    await ctx.close();
+  } finally {
+    await unshowcasePage(owner);
+  }
 });

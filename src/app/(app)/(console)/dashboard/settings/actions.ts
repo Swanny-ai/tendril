@@ -14,11 +14,11 @@ export async function deleteAccountAction(_prev: SettingsState, form: FormData):
   const userId = await requireUserId();
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { pages: { select: { username: true }, orderBy: { createdAt: "asc" } }, subscription: { select: { stripeSubscriptionId: true, status: true } } },
+    select: { email: true, pages: { select: { username: true } }, subscription: { select: { stripeSubscriptionId: true, status: true } } },
   });
-  const expected = user.pages[0]?.username ?? "delete";
-  if (String(form.get("confirm") ?? "").trim().toLowerCase() !== expected) {
-    return { error: `Type ${expected} to confirm.` };
+  // Deleting needs the account's email typed out, so it can't happen by accident.
+  if (String(form.get("confirm") ?? "").trim().toLowerCase() !== user.email.toLowerCase()) {
+    return { error: "Type your account's email to confirm." };
   }
 
   // Stop billing before deleting data.

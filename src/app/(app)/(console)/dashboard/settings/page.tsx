@@ -8,7 +8,7 @@ export const instant = false;
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
-  const { userId, page } = await requirePage();
+  const { userId } = await requirePage();
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: { email: true, emailVerified: true, passwordHash: true, createdAt: true, accounts: { select: { provider: true } } },
@@ -33,8 +33,6 @@ export default async function SettingsPage() {
               ({user.emailVerified ? "confirmed" : "not confirmed"})
             </span>
           </span>
-          <span className="text-muted-foreground">Page</span>
-          <span className="font-medium">/{page.username}</span>
           <span className="text-muted-foreground">Sign-in methods</span>
           <span className="font-medium">
             {[user.passwordHash ? "Email and password" : null, ...user.accounts.map((a) => (a.provider === "google" ? "Google" : a.provider))].filter(Boolean).join(", ")}
@@ -62,7 +60,7 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DeleteAccountForm username={page.username} />
+          <DeleteAccountForm email={user.email} />
         </CardContent>
       </Card>
     </div>

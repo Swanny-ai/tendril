@@ -45,3 +45,13 @@ export async function connectDomain(username: string, hostname: string): Promise
     [username, hostname],
   );
 }
+
+/** Makes a page its template's public preview, as scripts/showcase-page.mjs does. */
+export async function showcasePage(username: string): Promise<void> {
+  await db().query(`UPDATE "Page" SET showcase = false WHERE layout = (SELECT layout FROM "Page" WHERE username = $1)`, [username]);
+  await db().query(`UPDATE "Page" SET showcase = true, "displayName" = 'Showcase Star' WHERE username = $1`, [username]);
+}
+
+export async function unshowcasePage(username: string): Promise<void> {
+  await db().query(`UPDATE "Page" SET showcase = false WHERE username = $1`, [username]);
+}

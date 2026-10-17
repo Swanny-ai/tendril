@@ -64,23 +64,23 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   );
 }
 
-export function DeleteAccountForm({ username }: { username: string }) {
+export function DeleteAccountForm({ email }: { email: string }) {
   const [state, action, pending] = useActionState<SettingsState, FormData>(deleteAccountAction, undefined);
   const [value, setValue] = useState("");
   return (
     <form action={action} className="max-w-sm space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="confirm">
-          Type <span className="font-mono font-semibold">{username}</span> to confirm
+          Type your email <span className="font-mono font-semibold">{email}</span> to confirm
         </Label>
-        <Input id="confirm" name="confirm" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
+        <Input id="confirm" name="confirm" type="email" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
       </div>
       {state?.error ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       ) : null}
-      <Button type="submit" variant="destructive" disabled={pending || value.trim().toLowerCase() !== username}>
+      <Button type="submit" variant="destructive" disabled={pending || value.trim().toLowerCase() !== email.toLowerCase()}>
         {pending ? "Deleting…" : "Delete my account"}
       </Button>
     </form>

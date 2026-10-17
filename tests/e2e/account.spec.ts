@@ -54,7 +54,9 @@ test("deleting an account removes the public page", async ({ page }) => {
   await page.goto("/dashboard/settings");
   const button = page.getByRole("button", { name: "Delete my account" });
   await expect(button).toBeDisabled();
-  await page.getByLabel(/Type .* to confirm/).fill(name);
+  await page.getByLabel(/Type .* to confirm/).fill("wrong@tendril.test");
+  await expect(button).toBeDisabled();
+  await page.getByLabel(/Type .* to confirm/).fill(`${name}@tendril.test`);
   await button.click();
   await expect(page).toHaveURL(/\/\?deleted=1$/);
 
