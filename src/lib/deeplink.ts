@@ -6,7 +6,10 @@
 // iPhone, Instagram/Threads: Meta's own instagram://extbrowser/?url=... (barcelona:// for
 //   Threads). Instagram asks "open outside Instagram?" and then opens the default browser.
 //   It must come from a tap (a link the visitor presses), not a script on page load.
-// iPhone, other apps (TikTok, X, LinkedIn...): x-safari-https:// opens Safari on iOS 17+.
+// iPhone, Facebook / Messenger / TikTok: these apps ignore all of the above, so there is no
+//   link to tap. Instead the visitor presses and holds a link to the destination: iOS's own
+//   long-press menu has "Open in browser" (see pressAndHoldOnly and components/browser-escape).
+// iPhone, other apps (X, LinkedIn, Snapchat...): x-safari-https:// opens Safari on iOS 17+.
 // None of these are documented promises, so callers always offer a manual fallback.
 
 import { detectInAppBrowser } from "./in-app";
@@ -24,6 +27,11 @@ function metaScheme(ua: string): "instagram" | "barcelona" | null {
   if (/Barcelona/i.test(ua)) return "barcelona";
   if (/Instagram/i.test(ua)) return "instagram";
   return null;
+}
+
+/** iPhone apps with no way to open the browser from a link: use press-and-hold instead. */
+export function pressAndHoldOnly(ua: string): boolean {
+  return platformFromUserAgent(ua) === "ios" && /FBAN|FBAV|FB_IAB|FBIOS|MessengerForiOS|musical_ly|Bytedance|TikTok/i.test(ua) && !/Instagram|Barcelona/i.test(ua);
 }
 
 /**
@@ -47,6 +55,7 @@ export function openInBrowserUrl(target: string, platform: MobilePlatform, userA
   if (platform === "ios") {
     const meta = metaScheme(userAgent);
     if (meta) return `${meta}://extbrowser/?url=${encodeURIComponent(url.toString())}`;
+    if (pressAndHoldOnly(userAgent)) return null;
     return `x-safari-${url.toString()}`;
   }
   return null;

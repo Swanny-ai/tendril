@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useBrowserEscape } from "@/components/browser-escape";
 import { openInBrowserUrl, platformFromUserAgent } from "@/lib/deeplink";
 import { detectInAppBrowser } from "@/lib/in-app";
 
@@ -15,8 +16,8 @@ export type PopupCopy = { title: string; message: string; button: string; cancel
  */
 export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; style: PopupStyle; openInBrowser: boolean }) {
   const [open, setOpen] = useState<{ href: string; message: string; continueHref: string } | null>(null);
-  const [help, setHelp] = useState(false);
   const confirmRef = useRef<HTMLAnchorElement>(null);
+  const escape = useBrowserEscape();
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -30,7 +31,6 @@ export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; 
       const ua = navigator.userAgent;
       const platform = platformFromUserAgent(ua);
       const deepLink = openInBrowser && detectInAppBrowser(ua) && platform !== "other" ? openInBrowserUrl(new URL(confirmed, location.origin).toString(), platform, ua) : null;
-      setHelp(false);
       setOpen({ href, message: a.dataset.warningText || copy.message, continueHref: deepLink ?? confirmed });
       // Count the warning view, like the warning page does.
       navigator.sendBeacon?.(`${href}/seen`);
@@ -47,9 +47,10 @@ export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; 
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!open) return null;
+  if (!open) return escape.sheet;
   const opensApp = !open.continueHref.startsWith("/");
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-5 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setOpen(null)}>
       <div
         role="dialog"
@@ -70,15 +71,6 @@ export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; 
         <p className="mt-2 text-sm leading-relaxed" style={{ color: style.muted }}>
           {open.message}
         </p>
-        {help ? (
-          <p className="mt-3 text-xs" style={{ color: style.muted }}>
-            Didn&apos;t open in your browser? Use the menu in the top corner and choose &ldquo;Open in browser&rdquo;, or{" "}
-            <a href={`${open.href}?ok=1`} className="underline">
-              continue here
-            </a>
-            .
-          </p>
-        ) : null}
         <div className="mt-5 grid grid-cols-[auto_1fr] gap-2.5">
           <button
             type="button"
@@ -92,8 +84,17 @@ export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; 
             ref={confirmRef}
             href={open.continueHref}
             rel="nofollow"
-            onClick={() => {
-              if (opensApp) window.setTimeout(() => document.visibilityState === "visible" && setHelp(true), 2500);
+            onClick={(e) => {
+              const stay = `${open.href}?ok=1`;
+              const target = new URL(stay, location.origin).toString();
+              if (opensApp) {
+                escape.watch(target, stay);
+              } else if (openInBrowser && escape.holdOnly()) {
+                // Facebook / Messenger / TikTok on iPhone: press and hold instead.
+                e.preventDefault();
+                setOpen(null);
+                escape.hold(target, stay);
+              }
             }}
             className="rounded-xl px-4 py-2.5 text-sm font-semibold"
             style={{ background: style.buttonBg, color: style.buttonText }}
@@ -103,5 +104,7 @@ export function WarningPopup({ copy, style, openInBrowser }: { copy: PopupCopy; 
         </div>
       </div>
     </div>
+    {escape.sheet}
+    </>
   );
 }

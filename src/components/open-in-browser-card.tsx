@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ExternalLink, MoreHorizontal, MoreVertical } from "lucide-react";
-import { openInBrowserUrl, platformFromUserAgent, type MobilePlatform } from "@/lib/deeplink";
+import { PressAndHoldLink } from "@/components/browser-escape";
+import { openInBrowserUrl, platformFromUserAgent, pressAndHoldOnly, type MobilePlatform } from "@/lib/deeplink";
+import { watchHandoff } from "@/lib/handoff-watch";
 import { detectInAppBrowser, type InAppBrowser } from "@/lib/in-app";
 
 const APP_NAMES: Record<Exclude<InAppBrowser, null>, string> = {
@@ -36,12 +38,11 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
   const deepLink = openInBrowserUrl(target, platform, ua);
   const browser = platform === "ios" ? "Safari" : "your browser";
 
+  // Facebook, Messenger and TikTok on iPhone can't be opened from a link: press and hold instead.
+  const holdOnly = pressAndHoldOnly(ua);
   // If the app ignores the request (older iOS, some app versions), show the manual steps.
   const watchForFailure = () => {
-    if (!deepLink) return;
-    window.setTimeout(() => {
-      if (document.visibilityState === "visible") setShowHelp(true);
-    }, 2500);
+    if (deepLink) watchHandoff(() => setShowHelp(true));
   };
 
   // Android usually allows opening the browser straight away; try once on arrival.
@@ -49,6 +50,7 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
     if (tried.current || platform !== "android" || !deepLink) return;
     tried.current = true;
     window.location.href = deepLink;
+    watchHandoff(() => setShowHelp(true));
   }, [platform, deepLink]);
 
   return (
@@ -70,13 +72,22 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
         {username ? <p className="text-sm text-[#5c5866]">@{username}</p> : null}
         {label ? <p className="mx-auto mt-3 w-fit rounded-full bg-[#ece8fb] px-3 py-1 text-xs font-medium text-[#4a33b0]">{label}</p> : null}
 
-        <a
-          href={deepLink ?? target}
-          onClick={watchForFailure}
-          className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3fd1] text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(91,63,209,.7)] transition hover:bg-[#4a33b0] focus-visible:ring-4 focus-visible:ring-[#5b3fd1]/40 focus-visible:outline-none active:scale-[.98]"
-        >
-          <ExternalLink className="size-5" /> Open in {platform === "ios" ? "Safari" : "browser"}
-        </a>
+        {holdOnly ? (
+          <>
+            <PressAndHoldLink href={target} className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3fd1] text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(91,63,209,.7)] transition hover:bg-[#4a33b0] focus-visible:ring-4 focus-visible:ring-[#5b3fd1]/40 focus-visible:outline-none active:scale-[.98]">
+              <ExternalLink className="size-5" /> Press and hold to open
+            </PressAndHoldLink>
+            <p className="mt-2 text-xs text-[#5c5866]">Keep your finger on the button, then choose &ldquo;Open in browser&rdquo;.</p>
+          </>
+        ) : (
+          <a
+            href={deepLink ?? target}
+            onClick={watchForFailure}
+            className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3fd1] text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(91,63,209,.7)] transition hover:bg-[#4a33b0] focus-visible:ring-4 focus-visible:ring-[#5b3fd1]/40 focus-visible:outline-none active:scale-[.98]"
+          >
+            <ExternalLink className="size-5" /> Open in {platform === "ios" ? "Safari" : "browser"}
+          </a>
+        )}
 
         <p className="mt-4 text-sm leading-relaxed text-[#5c5866]">
           {app ? `You're in ${APP_NAMES[app]}'s built-in browser.` : "This link works best in your browser."} Opening in {browser} keeps you signed in and makes

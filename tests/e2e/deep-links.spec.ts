@@ -8,6 +8,8 @@ const IG_ANDROID =
 /** Where an instagram://extbrowser/?url=... link sends the visitor. */
 const extTarget = (href: string) => (href.startsWith("instagram://extbrowser/?url=") ? decodeURIComponent(href.slice("instagram://extbrowser/?url=".length)) : "");
 
+const TIKTOK_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_35.0 BytedanceWebview";
+const FB_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/480.0]";
 const PHONE_SAFARI = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 
 async function newCreatorWithLink(page: Page, warning = false) {
@@ -149,5 +151,40 @@ test("bio page: links with a content warning show it inside Instagram, then open
   const confirm = visitor.getByRole("dialog").getByRole("link", { name: /18\+/ });
   const target = (await confirm.getAttribute("href")) ?? "";
   expect(extTarget(target).endsWith(`${href}?ok=1`)).toBe(true);
+  await ctx.close();
+});
+
+test("TikTok on iPhone: bio page links offer press-and-hold to open the browser", async ({ browser }) => {
+  const ctx = await browser.newContext({ userAgent: TIKTOK_IOS, viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/${DEMO.username}`);
+  const link = visitor.locator('a[href^="/go/"]:not([data-warning])').first();
+  const href = (await link.getAttribute("href")) ?? "";
+  await expect(async () => {
+    await link.click();
+    await expect(visitor.getByRole("dialog", { name: "Open in your browser" })).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await expect(visitor).toHaveURL(new RegExp(`/${DEMO.username}$`)); // stayed on the page
+  const holdLink = visitor.getByRole("link", { name: "Press and hold here" });
+  expect(await holdLink.getAttribute("href")).toMatch(new RegExp(`^https?://[^/]+${href}$`));
+  await holdLink.click(); // a tap does nothing: it must be pressed and held
+  await expect(visitor).toHaveURL(new RegExp(`/${DEMO.username}$`));
+  await expect(visitor.getByRole("link", { name: "Continue here instead" })).toHaveAttribute("href", href);
+  await ctx.close();
+});
+
+test("Facebook on iPhone: an 18+ deep link's confirm button becomes press-and-hold", async ({ page, browser }) => {
+  const { slug } = await newCreatorWithLink(page, true);
+  const ctx = await browser.newContext({ userAgent: FB_IOS, viewport: { width: 390, height: 844 } });
+  const visitor = await ctx.newPage();
+  await visitor.goto(`/l/${slug}/warning`);
+  const confirm = visitor.getByRole("link", { name: /18 or older|I'm 18\+/i });
+  await expect(confirm).toHaveAttribute("href", `/l/${slug}?ok=1`);
+  await expect(async () => {
+    await confirm.click();
+    await expect(visitor.getByRole("dialog", { name: "Open in your browser" })).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await expect(visitor).toHaveURL(new RegExp(`/l/${slug}/warning$`));
+  expect(await visitor.getByRole("link", { name: "Press and hold here" }).getAttribute("href")).toMatch(new RegExp(`/l/${slug}\\?ok=1&ib=1$`));
   await ctx.close();
 });

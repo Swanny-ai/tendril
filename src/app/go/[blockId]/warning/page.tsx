@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { ShieldAlert } from "lucide-react";
-import { DeepLinkFallback } from "@/components/deep-link-fallback";
+import { BrowserEscape } from "@/components/browser-escape";
 import { appUrl } from "@/config/brand";
 import { recordWarningView } from "@/lib/analytics/record";
 import { inAppDeepLink } from "@/lib/deeplink";
@@ -29,7 +29,9 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
   // Inside Instagram/TikTok/...: confirming opens the destination in the default browser.
   const deepLink = target.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/go/${target.blockId}?ok=1`) : null;
   const continueHref = deepLink ?? `/go/${target.blockId}?ok=1`;
-  const fallback = deepLink ? <DeepLinkFallback stayHref={`/go/${target.blockId}?ok=1`} /> : null;
+  const fallback = target.openInBrowser ? (
+    <BrowserEscape target={`${appUrl}/go/${target.blockId}?ok=1`} stayHref={`/go/${target.blockId}?ok=1`} continueHref={continueHref} />
+  ) : null;
 
   const t = target.theme;
   const name = target.displayName || `@${target.username}`;

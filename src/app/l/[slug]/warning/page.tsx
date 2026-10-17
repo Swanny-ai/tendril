@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
-import { DeepLinkFallback } from "@/components/deep-link-fallback";
+import { BrowserEscape } from "@/components/browser-escape";
 import { appHost, appUrl } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 import { isLinkEntry, publicLinkBase } from "@/lib/link-paths";
@@ -66,7 +66,7 @@ export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/w
         leaveHref={leave}
         showBadge={link.showBadge}
       />
-      {deepLink ? <DeepLinkFallback stayHref={`${base}?ok=1&ib=1`} /> : null}
+      {link.openInBrowser ? <BrowserEscape target={`${origin}${base}?ok=1&ib=1`} stayHref={`${base}?ok=1&ib=1`} continueHref={deepLink ?? `${base}?ok=1`} /> : null}
     </main>
   );
 }
