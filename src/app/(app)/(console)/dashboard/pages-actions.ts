@@ -67,7 +67,14 @@ export async function createPageAction(input: { username: string; template?: str
 
   const template = input.template && isLayoutKey(input.template) && input.template !== "classic" ? getPageTemplate(input.template) : null;
   const current = await getCurrentPage(userId);
-  const blocks = template
+  // A template the site owner showcases starts from that page's look (layout, theme, colours) but
+  // clean: no blocks, photos or cards, so the creator fills it with their own content.
+  const showcase = template
+    ? await db.page.findFirst({ where: { layout: template.key, showcase: true }, select: { themeKey: true, themeOverrides: true, warningTemplate: true } })
+    : null;
+  const blocks = showcase
+    ? []
+    : template
     ? template.sample.blocks.slice(0, PLAN_LIMITS[plan].maxBlocks).map((b, position) => ({
         type: b.type,
         position,
@@ -85,8 +92,11 @@ export async function createPageAction(input: { username: string; template?: str
         username,
         // Start from the creator's existing identity so the new page already looks like them.
         displayName: current?.displayName ?? "",
-        avatarUrl: current?.avatarUrl ?? null,
+        avatarUrl: showcase ? null : (current?.avatarUrl ?? null),
         layout: template?.key ?? "classic",
+        ...(showcase
+          ? { themeKey: showcase.themeKey, themeOverrides: showcase.themeOverrides ?? Prisma.DbNull, warningTemplate: showcase.warningTemplate }
+          : {}),
         tagline: "",
         ...target.target,
         blocks: { create: blocks },

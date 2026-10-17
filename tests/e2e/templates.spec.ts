@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
-import { connectDomain, setPlanByUsername, showcasePage, unshowcasePage } from "./db";
+import { connectDomain, pageSummary, setPlanByUsername, showcasePage, unshowcasePage } from "./db";
 import { TEST_PASSWORD, uniqueName } from "./helpers";
 
 // 1x1 PNG
@@ -312,6 +312,16 @@ test("a showcased page is everyone's preview of its template, username hidden", 
     const gallery = other.getByRole("list", { name: "Link-in-bio templates" });
     await expect(gallery.getByText("Showcase Star")).toHaveCount(1);
     await expect(gallery.getByText(`@${owner}`)).toHaveCount(0);
+
+    // Using it gives a clean page with the showcase's look: its theme, no blocks or photos.
+    await other.getByRole("button", { name: "Use the Personal Card template" }).click();
+    const dialog = other.getByRole("dialog", { name: "New page with Personal Card" });
+    const fresh = `${owner.slice(0, 18)}_fresh`;
+    await dialog.getByLabel("Page link").fill(fresh);
+    await expect(dialog.getByText("Available")).toBeVisible();
+    await dialog.getByRole("button", { name: "Create page" }).click();
+    await expect(other).toHaveURL(/\/edit\/template\//);
+    expect(await pageSummary(fresh)).toEqual({ themeKey: "midnight", avatarUrl: null, blocks: 0 });
     await ctx.close();
   } finally {
     await unshowcasePage(owner);
