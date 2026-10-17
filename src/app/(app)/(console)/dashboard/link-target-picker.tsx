@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export type DomainOption = { id: string; hostname: string };
 
 /**
- * Domain + Root/Path choice for a bio page or deep link: the Tendril domain or a connected
+ * Domain + Root/Path choice for a bio page or deep link: the ViewLink domain or a connected
  * custom domain, at a path or (custom domains only) at the domain's root.
  */
 export function LinkTargetPicker({

@@ -50,7 +50,7 @@ export async function verifyDomainAction(id: string): Promise<DomainResult> {
   if (status.stage === "connected") return { ok: true, message: STAGE_MESSAGE.connected };
   if (status.problem === "taken") return { ok: false, error: "That domain is already used by another website. Remove it there first." };
   if (status.stage === "dns" && status.found.length) {
-    return { ok: false, error: `Not pointing at Tendril yet. Found: ${status.found.join(", ")}. ${STAGE_MESSAGE.dns}` };
+    return { ok: false, error: `Not pointing at ViewLink yet. Found: ${status.found.join(", ")}. ${STAGE_MESSAGE.dns}` };
   }
   return { ok: false, error: STAGE_MESSAGE[status.stage] };
 }
@@ -67,7 +67,7 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   const hosted = await removeHostedDomain(domain.hostname, keep);
   if (hosted === "error") return { ok: false, error: "Couldn't remove the domain from the hosting right now. Please try again." };
 
-  // 2. Remove it from Tendril. Its links fall back to the Tendril domain; a Root link becomes a normal link.
+  // 2. Remove it from ViewLink. Its links fall back to the ViewLink domain; a Root link becomes a normal link.
   await db.smartLink.updateMany({ where: { domainId: id }, data: { atRoot: false } });
   const pages = await db.page.findMany({ where: { domainId: id }, select: { id: true } });
   await db.page.updateMany({ where: { domainId: id }, data: { atRoot: false } });
@@ -77,6 +77,6 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/links");
   return hosted === "manual"
-    ? { ok: true, message: `${domain.hostname} was removed from Tendril. The hosting API token isn't set, so remove it from the hosting dashboard too.` }
+    ? { ok: true, message: `${domain.hostname} was removed from ViewLink. The hosting API token isn't set, so remove it from the hosting dashboard too.` }
     : { ok: true, message: `${domain.hostname} was removed everywhere.` };
 }

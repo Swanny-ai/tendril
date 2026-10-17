@@ -20,7 +20,7 @@ test("shows key numbers, chart, top performers and live panels", async ({ page }
   await expect(page.getByText("Real-time overview")).toBeVisible();
   await expect(page.getByTestId("live-feed").locator("li").first()).toBeVisible();
   // The demo account is on Free, so geography stays a Pro feature.
-  await expect(page.getByText("Country maps are part of Tendril Pro.")).toBeVisible();
+  await expect(page.getByText("Country maps are part of ViewLink Pro.")).toBeVisible();
 });
 
 test("legend toggle hides and shows the chart legend", async ({ page }) => {
@@ -53,7 +53,7 @@ test("export downloads a CSV of the current view", async ({ page }) => {
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export" }).click();
   const file = await download;
-  expect(file.suggestedFilename()).toMatch(/^tendril-dashboard-24h-\d{4}-\d{2}-\d{2}\.csv$/);
+  expect(file.suggestedFilename()).toMatch(/^viewlink-dashboard-24h-\d{4}-\d{2}-\d{2}\.csv$/);
   const csv = await readFile(await file.path(), "utf8");
   expect(csv).toContain('"Total views"');
   expect(csv).toContain('"/l/demo-vip"');

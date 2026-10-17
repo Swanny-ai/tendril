@@ -145,7 +145,7 @@ export function DomainActions({ id, hostname, verified }: { id: string; hostname
         disabled={pending}
         aria-label={`Remove ${hostname}`}
         onClick={() =>
-          toast(`Remove ${hostname}? Links using it switch back to the Tendril domain.`, {
+          toast(`Remove ${hostname}? Links using it switch back to the ViewLink domain.`, {
             action: {
               label: "Remove",
               onClick: () =>

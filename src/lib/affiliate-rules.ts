@@ -1,6 +1,6 @@
-// "Grow with Tendril": pure affiliate rules (no DB), shared by the server and the dashboard.
+// "Grow with ViewLink": pure affiliate rules (no DB), shared by the server and the dashboard.
 //
-// Creators share tendril.app/join/<code>. People who sign up through it are their referrals;
+// Creators share viewlink.me/join/<code>. People who sign up through it are their referrals;
 // every payment a referral makes earns the creator a commission. The rate grows with the
 // number of paying customers they've brought (levels below). Each commission is held for
 // 30 days (refund window) before it can be paid out, and payouts start at $25.

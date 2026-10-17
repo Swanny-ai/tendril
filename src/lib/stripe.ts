@@ -13,7 +13,7 @@ export function getStripe(): Stripe {
   if (key.startsWith("sk_live_") && process.env.ALLOW_LIVE_STRIPE !== "true") {
     throw new Error("Refusing to use a live Stripe key. Set ALLOW_LIVE_STRIPE=true when you go live.");
   }
-  client ??= new Stripe(key, { appInfo: { name: "Tendril" } });
+  client ??= new Stripe(key, { appInfo: { name: "ViewLink" } });
   return client;
 }
 

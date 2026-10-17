@@ -144,7 +144,7 @@ export default async function DomainsPage() {
                           </p>
                         </>
                       ) : stage === "connecting" ? (
-                        <p>Your DNS record is set up. We&apos;re connecting the domain to Tendril.</p>
+                        <p>Your DNS record is set up. We&apos;re connecting the domain to ViewLink.</p>
                       ) : (
                         <p>Your domain works. We&apos;re issuing its HTTPS certificate, which usually takes a few minutes.</p>
                       )}

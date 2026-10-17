@@ -29,7 +29,7 @@ export default async function AffiliatePage() {
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <p className="flex items-center gap-2 text-sm font-medium text-white/80">
-              <Sprout className="size-4" /> Grow with Tendril
+              <Sprout className="size-4" /> Grow with ViewLink
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Earn {o.level.rate}% of every payment from creators you invite</h1>
             <p className="mt-2 text-white/80">

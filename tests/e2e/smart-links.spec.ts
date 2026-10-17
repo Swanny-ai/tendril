@@ -66,7 +66,7 @@ test("visitors see the warning, can continue or leave, and stats count it", asyn
   await expect(v).toHaveURL(new RegExp(`/l/${slug}/warning$`));
   await expect(v.getByRole("heading", { name: "Adults only" })).toBeVisible();
   await expect(v.getByText("example.com")).toBeVisible();
-  await expect(v.getByText("Made with Tendril")).toBeVisible();
+  await expect(v.getByText("Made with ViewLink")).toBeVisible();
 
   const cont = await v.getByTestId("warning-continue").getAttribute("href");
   const go = await v.request.get(cont!, { maxRedirects: 0 });

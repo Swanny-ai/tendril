@@ -19,6 +19,9 @@ describe("hosts", () => {
     expect(isAppHost("localhost:3000", app)).toBe(true);
     expect(isAppHost("deploy-preview-3--tendril-swanny.netlify.app", app)).toBe(true);
     expect(isAppHost("links.example.com", app)).toBe(false);
+    expect(isAppHost("viewlink.me", "viewlink.me")).toBe(true);
+    expect(isAppHost("www.viewlink.me", "viewlink.me")).toBe(true);
+    expect(isClaimable("www.viewlink.me", "viewlink.me")).toBe(false);
   });
   it("won't let anyone claim the app's or Netlify's domains", () => {
     expect(isClaimable("links.example.com", app)).toBe(true);

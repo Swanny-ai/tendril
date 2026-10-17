@@ -27,7 +27,7 @@ export async function editPageAction(pageId: string) {
   redirect(editPagePath(page, page.domain));
 }
 
-/** Change where a page lives: the Tendril domain or a custom domain, at a path or the root. */
+/** Change where a page lives: the ViewLink domain or a custom domain, at a path or the root. */
 export async function updatePageLinkAction(pageId: string, input: { domainId: string | null; atRoot: boolean }): Promise<PageActionResult> {
   const userId = await requireUserId();
   const page = await db.page.findFirst({ where: { id: pageId, userId }, select: { id: true, username: true } });
@@ -49,7 +49,7 @@ export async function switchPageAction(pageId: string): Promise<PageActionResult
 }
 
 /**
- * Create another bio page with its own link (tendril.link/<username>), optionally from a
+ * Create another bio page with its own link (viewlink.me/<username>), optionally from a
  * template: the page gets the template's layout and sample content to edit.
  */
 export async function createPageAction(input: { username: string; template?: string; domainId?: string | null; atRoot?: boolean }): Promise<PageActionResult> {

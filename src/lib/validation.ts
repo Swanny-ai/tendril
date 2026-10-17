@@ -40,7 +40,7 @@ export function normalizeDestinationUrl(raw: string, ownHost?: string): { ok: tr
     return { ok: false, error: "That doesn't look like a valid URL" };
   }
   if (ownHost && parsed.host === ownHost && parsed.pathname.startsWith("/go/")) {
-    return { ok: false, error: "That link points back to a Tendril redirect" };
+    return { ok: false, error: "That link points back to a ViewLink redirect" };
   }
   if (parsed.username || parsed.password) {
     return { ok: false, error: "Links can't contain usernames or passwords" };

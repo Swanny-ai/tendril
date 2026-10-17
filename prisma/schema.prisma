@@ -27,7 +27,7 @@ model User {
   authTokens       AuthToken[]
   smartLinks       SmartLink[]
   domains          Domain[]
-  // Affiliate program ("Grow with Tendril"): this user's code and payout email, and who referred them
+  // Affiliate program ("Grow with ViewLink"): this user's code and payout email, and who referred them
   affiliateCode    String?       @unique
   payoutEmail      String?
   referredById     String?
@@ -132,7 +132,7 @@ model Page {
   showHandle      Boolean  @default(true)
   // Set by the site owner (scripts/showcase-page.mjs): the public preview of its template in the gallery
   showcase        Boolean  @default(false)
-  // The page's link: a connected custom domain (null = the Tendril domain), at its root or at /<username>
+  // The page's link: a connected custom domain (null = the ViewLink domain), at its root or at /<username>
   domainId        String?
   domain          Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
   atRoot          Boolean  @default(false)
@@ -284,7 +284,7 @@ model SmartLink {
   showBadge       Boolean        @default(true)
   // Inside Instagram/TikTok/etc., show a page that opens the link in the default browser
   openInBrowser   Boolean        @default(true)
-  // Custom domain the link is shared on (null = the Tendril domain)
+  // Custom domain the link is shared on (null = the ViewLink domain)
   domainId        String?
   domain          Domain?        @relation(fields: [domainId], references: [id], onDelete: SetNull)
   // Root: the link is the whole custom domain (example.com/) instead of example.com/<slug>
@@ -325,7 +325,7 @@ model Media {
   @@index([pageId])
 }
 
-// A creator's own domain (e.g. links.example.com), pointed at Tendril with a DNS record.
+// A creator's own domain (e.g. links.example.com), pointed at ViewLink with a DNS record.
 model Domain {
   id         String      @id @default(cuid())
   userId     String

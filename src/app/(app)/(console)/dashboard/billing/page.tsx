@@ -59,7 +59,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
             {plan === "PRO" && sub?.currentPeriodEnd
               ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${sub.currentPeriodEnd.toLocaleDateString("en-US", { dateStyle: "long" })}`
               : plan === "PRO"
-                ? "Thanks for supporting Tendril."
+                ? "Thanks for supporting ViewLink."
                 : "You're on the free plan."}
             {sub?.status === "past_due" ? " Your last payment failed. Update your card to keep Pro." : ""}
           </CardDescription>

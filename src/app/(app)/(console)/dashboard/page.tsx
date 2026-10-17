@@ -45,7 +45,7 @@ function ProLock({ what }: { what: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
       <Lock className="size-5 text-muted-foreground" />
-      <p className="max-w-xs text-sm text-muted-foreground">{what} are part of Tendril Pro.</p>
+      <p className="max-w-xs text-sm text-muted-foreground">{what} are part of ViewLink Pro.</p>
       <Link href="/dashboard/billing" className={buttonVariants({ size: "sm" })}>
         Upgrade to Pro
       </Link>

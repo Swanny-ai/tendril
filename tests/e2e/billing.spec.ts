@@ -73,7 +73,7 @@ test("upgrade via webhook unlocks Pro, downgrade restores Free limits", async ({
   await page.getByRole("switch", { name: "Show Made with badge" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/${name}`);
-  await expect(page.getByText("Made with Tendril")).toHaveCount(0);
+  await expect(page.getByText("Made with ViewLink")).toHaveCount(0);
 
   // Analytics breakdowns unlocked
   await page.goto("/dashboard/analytics");
@@ -84,7 +84,7 @@ test("upgrade via webhook unlocks Pro, downgrade restores Free limits", async ({
   const down = await sendWebhook(request, subscriptionEvent("customer.subscription.deleted", userId, "canceled"));
   expect(down.status()).toBe(200);
   await page.goto(`/${name}`);
-  await expect(page.getByText("Made with Tendril")).toBeVisible();
+  await expect(page.getByText("Made with ViewLink")).toBeVisible();
   await page.goto("/dashboard/billing");
   await expect(page.getByText("You're on the free plan.")).toBeVisible();
 });

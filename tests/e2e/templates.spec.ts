@@ -144,7 +144,7 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await expect(page.getByRole("list", { name: /Setup progress for/ })).toBeVisible();
   await expect(page.getByRole("cell", { name: "CNAME" })).toBeVisible();
   await page.getByRole("button", { name: "Check now" }).click();
-  await expect(page.getByText(/No matching DNS record yet|Not pointing at Tendril yet/)).toBeVisible();
+  await expect(page.getByText(/No matching DNS record yet|Not pointing at ViewLink yet/)).toBeVisible();
 
   // A root domain offers an A record or a CNAME on the root, both with a www record.
   const apex = `${name.replace(/_/g, "-")}-site.test`;
@@ -248,7 +248,7 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await expect(page.getByText(/already uses this domain's root/).first()).toBeVisible();
 
   // Removing the domain removes it everywhere: it stops serving, and its links (the Root one
-  // included) fall back to the Tendril address.
+  // included) fall back to the ViewLink address.
   await page.goto("/dashboard/domains");
   await page.getByRole("button", { name: `Remove ${host}` }).click();
   await page.getByRole("button", { name: "Remove", exact: true }).click();

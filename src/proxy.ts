@@ -145,6 +145,10 @@ function smartLinkPages(request: NextRequest, parts: string[], headers?: Headers
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host");
   if (!isAppHost(host, appHost)) return customDomain(request, host!.toLowerCase().replace(/:\d+$/, ""));
+  // www.<app domain> is the same site: send it to the main address.
+  if (host?.toLowerCase() === `www.${appHost}`) {
+    return NextResponse.redirect(new URL(request.nextUrl.pathname + request.nextUrl.search, appUrl), 308);
+  }
 
   const parts = request.nextUrl.pathname.split("/").filter(Boolean);
   if (parts[0] === "l" && parts.length === 3 && ["warning", "left", "open"].includes(parts[2])) {

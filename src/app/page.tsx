@@ -20,7 +20,7 @@ const SHOWCASE = [
     title: "Build it in minutes, see it as you go",
     body: "Add a link and type its title, drag it into place, try a theme. The phone preview follows every change, and your page is live as soon as it saves.",
     points: ["Drag-and-drop ordering", "Themes that restyle the whole page", "Autosave with a live preview"],
-    video: { src: "/videos/editor.mp4", poster: "/videos/editor-poster.jpg", label: "Adding a link, reordering links and switching themes in the Tendril editor" },
+    video: { src: "/videos/editor.mp4", poster: "/videos/editor-poster.jpg", label: "Adding a link, reordering links and switching themes in the ViewLink editor" },
   },
   {
     eyebrow: "Global dashboard",
@@ -28,7 +28,7 @@ const SHOWCASE = [
     title: "Watch your audience arrive",
     body: "Every view across your bio page and deep links in one place: totals, growth, your best links, a world map, and visitors showing up live.",
     points: ["Live activity, refreshed every 5 seconds", "Any date range, in your own time zone", "One-click CSV export"],
-    video: { src: "/videos/analytics.mp4", poster: "/videos/analytics-poster.jpg", label: "The Tendril global dashboard filling in with views, top links, a world map and live visitors" },
+    video: { src: "/videos/analytics.mp4", poster: "/videos/analytics-poster.jpg", label: "The ViewLink global dashboard filling in with views, top links, a world map and live visitors" },
   },
 ];
 
@@ -94,7 +94,7 @@ export default function LandingPage() {
                     poster="/videos/hero-poster.jpg"
                     width={390}
                     height={844}
-                    label="A Tendril page building itself, a visitor tapping a link, confirming an 18+ warning and reaching the destination"
+                    label="A ViewLink page building itself, a visitor tapping a link, confirming an 18+ warning and reaching the destination"
                     className="h-full overflow-hidden rounded-[35px]"
                   />
                 </div>

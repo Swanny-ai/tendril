@@ -1,4 +1,4 @@
-// Default warning-page wording (Tendril's own copy), chosen from the visitor's language.
+// Default warning-page wording (ViewLink's own copy), chosen from the visitor's language.
 
 export type WarningCopy = { title: string; message: string; button: string; leave: string; destination: string; leftTitle: string; leftMessage: string };
 

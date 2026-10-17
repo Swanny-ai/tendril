@@ -44,7 +44,7 @@ async function appHostIps(): Promise<string[]> {
   return appIps.ips;
 }
 
-/** Checks whether the domain already points at Tendril. */
+/** Checks whether the domain already points at ViewLink. */
 export async function checkDns(hostname: string): Promise<{ ok: boolean; found: string[] }> {
   const found: string[] = [];
   let ok = false;
@@ -146,7 +146,7 @@ export function getVerifiedDomain(hostname: string) {
   return db.domain.findFirst({ where: { hostname: hostname.toLowerCase(), verifiedAt: { not: null } }, select: { id: true, userId: true, hostname: true } });
 }
 
-/** Public URL of a smart link: on its custom domain (at its root or a path), else the Tendril domain. */
+/** Public URL of a smart link: on its custom domain (at its root or a path), else the ViewLink domain. */
 export function smartLinkUrl(slug: string, domain: { hostname: string } | null | undefined, appUrl: string, atRoot = false) {
   if (!domain) return `${appUrl}/l/${slug}`;
   return atRoot ? `https://${domain.hostname}/` : `https://${domain.hostname}/${slug}`;

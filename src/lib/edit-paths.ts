@@ -7,7 +7,7 @@ import { pageUrl } from "@/lib/link-targets";
 // Editing addresses follow the public link, so they read like what they edit:
 //   bio page  https://sarahjames.me/maria  →  /edit/template/sarahjames.me/maria
 //   deep link https://sarahjames.me/        →  /edit/sarahjames.me
-//   deep link https://tendril.app/l/vip     →  /edit/tendril.app/l/vip
+//   deep link https://viewlink.me/l/vip     →  /edit/viewlink.me/l/vip
 
 const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
@@ -27,7 +27,7 @@ function split(segments: string[]) {
 /** The creator's bio page an /edit/template/... address points at, or null. */
 export async function pageFromEditPath(userId: string, segments: string[]) {
   const { host, rest } = split(segments);
-  // On the Tendril domain every page also lives at /<username>, whatever its own domain.
+  // On the ViewLink domain every page also lives at /<username>, whatever its own domain.
   if (host === appHost.toLowerCase()) {
     return rest.length === 1 ? db.page.findFirst({ where: { userId, username: rest[0] } }) : null;
   }

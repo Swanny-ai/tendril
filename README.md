@@ -1,10 +1,10 @@
-# Tendril
+# ViewLink
 
 A link-in-bio platform for creators. One page with all your links, a visual editor
 with a live phone preview, per-link content warnings, privacy-respecting analytics,
 and a Free/Pro plan with Stripe billing.
 
-> "Tendril" is a working name. Change it in [`src/config/brand.ts`](src/config/brand.ts).
+> "ViewLink" is a working name. Change it in [`src/config/brand.ts`](src/config/brand.ts).
 > Product decisions are in [`../docs/spec.md`](../docs/spec.md).
 
 ## Features

@@ -31,7 +31,7 @@ export function canSendEmail() {
 async function sendWithBrevo(email: Email): Promise<boolean> {
   const sender = parseMailFrom(process.env.MAIL_FROM, brand.name);
   if (!sender) {
-    console.error("[mail] MAIL_FROM must be an address you verified in Brevo, e.g. Tendril <you@gmail.com>");
+    console.error("[mail] MAIL_FROM must be an address you verified in Brevo, e.g. ViewLink <you@gmail.com>");
     return false;
   }
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {

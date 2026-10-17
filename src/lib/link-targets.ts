@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 
-// Where a bio page or deep link lives: the Tendril domain (always at a path) or one of the
+// Where a bio page or deep link lives: the ViewLink domain (always at a path) or one of the
 // creator's connected custom domains, either at a path or at the domain's root. A custom domain
 // shows nothing until something is assigned to it, and each domain has at most one root.
 

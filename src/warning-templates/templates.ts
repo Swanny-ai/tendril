@@ -1,4 +1,4 @@
-// Original 18+ warning-page templates (names, palettes and layouts are Tendril's own).
+// Original 18+ warning-page templates (names, palettes and layouts are ViewLink's own).
 // Pure data: shared by the public warning pages, the editor preview and unit tests.
 
 export type WarningLayout = "card" | "split" | "fullbleed" | "bigtype";

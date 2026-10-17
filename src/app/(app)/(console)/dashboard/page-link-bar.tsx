@@ -24,7 +24,7 @@ export function PageLinkBar({ url }: { url: string }) {
       >
         <Copy />
       </Button>
-      <QrCodeButton url={url} filename="tendril-page-qr" />
+      <QrCodeButton url={url} filename="viewlink-page-qr" />
       <Button
         variant="ghost"
         size="icon-sm"

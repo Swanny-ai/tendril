@@ -11,13 +11,14 @@ export function normalizeHostname(input: string): string | null {
   return h;
 }
 
-/** Hosts that serve the Tendril app itself (never treated as a creator's custom domain). */
+/** Hosts that serve the ViewLink app itself (never treated as a creator's custom domain). */
 export function isAppHost(host: string | null | undefined, appHost: string): boolean {
   if (!host) return true;
   const h = host.toLowerCase().replace(/:\d+$/, "");
   const app = appHost.toLowerCase().replace(/:\d+$/, "");
   return (
     h === app ||
+    h === `www.${app}` ||
     h === "localhost" ||
     h === "127.0.0.1" ||
     h === "[::1]" ||

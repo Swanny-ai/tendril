@@ -14,7 +14,7 @@ import { createPageAction } from "../pages-actions";
 type Check = { state: "idle" | "checking" | "ok" | "bad"; message?: string };
 
 /**
- * "Use template": creates a new bio page from the template, with its own link: the Tendril
+ * "Use template": creates a new bio page from the template, with its own link: the ViewLink
  * domain or a connected custom domain, at a path or at the domain's root.
  */
 export function UseTemplateButton({

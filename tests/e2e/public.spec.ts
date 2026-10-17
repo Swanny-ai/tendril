@@ -8,7 +8,7 @@ test("public page renders with SEO metadata", async ({ page }) => {
   const res = await page.goto(`/${DEMO.username}`);
   expect(res?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "Demo Creator" })).toBeVisible();
-  await expect(page).toHaveTitle("Tendril");
+  await expect(page).toHaveTitle("ViewLink");
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Demo Creator");
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/demo$/);
   expect(await page.locator('script[type="application/ld+json"]').textContent()).toContain("\"@type\":\"ProfilePage\"");

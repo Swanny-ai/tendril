@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const stats = await getGlobalStats(owner, sources, range, tz, owner.withGeo);
 
   const lines = [
-    row("Tendril global dashboard export"),
+    row("ViewLink global dashboard export"),
     row("Range", range.label, "From", range.from.toISOString(), "To", range.to.toISOString(), "Time zone", tz),
     "",
     row("Summary"),
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   return new Response(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="tendril-dashboard-${range.key}-${day}.csv"`,
+      "Content-Disposition": `attachment; filename="viewlink-dashboard-${range.key}-${day}.csv"`,
       "Cache-Control": "private, no-store",
     },
   });

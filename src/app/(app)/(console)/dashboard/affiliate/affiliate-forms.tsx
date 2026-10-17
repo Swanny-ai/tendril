@@ -44,7 +44,7 @@ export function ShareLink({ link, code }: { link: string; code: string }) {
         >
           {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy link"}
         </Button>
-        <QrCodeButton url={link} filename={`tendril-invite-${code}`} />
+        <QrCodeButton url={link} filename={`viewlink-invite-${code}`} />
       </div>
       <form
         className="flex flex-wrap items-end gap-2"
