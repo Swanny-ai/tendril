@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import Stripe from "stripe";
+import { recordCommission } from "@/lib/affiliate";
 import { syncSubscription } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
@@ -11,6 +12,7 @@ const HANDLED = new Set([
   "customer.subscription.updated",
   "customer.subscription.deleted",
   "invoice.payment_failed",
+  "invoice.paid",
 ]);
 
 export async function POST(request: NextRequest) {
@@ -50,6 +52,9 @@ export async function POST(request: NextRequest) {
         }
         break;
       }
+      case "invoice.paid":
+        await recordCommission(event.data.object); // affiliate program
+        break;
       case "invoice.payment_failed": {
         const invoice = event.data.object;
         const subId = invoice.parent?.subscription_details?.subscription;

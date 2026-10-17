@@ -27,6 +27,18 @@ model User {
   authTokens       AuthToken[]
   smartLinks       SmartLink[]
   domains          Domain[]
+  // Affiliate program ("Grow with Tendril"): this user's code and payout email, and who referred them
+  affiliateCode    String?       @unique
+  payoutEmail      String?
+  referredById     String?
+  referredBy       User?         @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals        User[]        @relation("Referrals")
+  referredAt       DateTime?
+  affiliateClicks  AffiliateClick[]
+  commissions      AffiliateCommission[]
+  payoutRequests   PayoutRequest[]
+
+  @@index([referredById])
 }
 
 enum AuthTokenType {
@@ -334,4 +346,51 @@ model TemplateShowcase {
   layout    String   @id
   data      Json
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+// ---------- Affiliate program ----------
+
+// A visit to someone's /join/<code> link.
+model AffiliateClick {
+  id          BigInt   @id @default(autoincrement())
+  affiliateId String
+  affiliate   User     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  ts          DateTime @default(now())
+  visitorHash String
+
+  @@index([affiliateId, ts])
+}
+
+// What an affiliate earns from one paid invoice of someone they referred.
+model AffiliateCommission {
+  id             String         @id @default(cuid())
+  affiliateId    String
+  affiliate      User           @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  referredUserId String
+  invoiceId      String         @unique
+  paidCents      Int
+  rate           Int
+  amountCents    Int
+  availableAt    DateTime
+  payoutId       String?
+  payout         PayoutRequest? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+
+  @@index([affiliateId, createdAt])
+  @@index([referredUserId])
+}
+
+// requested -> paid (by the site owner: scripts/mark-payout-paid.mjs)
+model PayoutRequest {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents Int
+  email       String
+  status      String                @default("requested")
+  createdAt   DateTime              @default(now())
+  paidAt      DateTime?
+  commissions AffiliateCommission[]
+
+  @@index([userId, createdAt])
 }

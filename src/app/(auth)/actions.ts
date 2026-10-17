@@ -11,6 +11,7 @@ import { passwordResetEmail, sendEmail, verifyEmail } from "@/lib/mailer";
 import { isRateLimited, rateLimit, recordAttempt } from "@/lib/rate-limit";
 import { requireUserId } from "@/lib/session";
 import { consumeToken, issueToken } from "@/lib/tokens";
+import { attributeReferral } from "@/lib/affiliate";
 import { emailSchema, passwordSchema } from "@/lib/validation";
 
 export type AuthFormState = { error?: string; fieldErrors?: Record<string, string>; email?: string; sent?: boolean } | undefined;
@@ -46,6 +47,7 @@ export async function signupAction(_prev: AuthFormState, form: FormData): Promis
 
   const passwordHash = await bcrypt.hash(password.data, 12);
   const user = await db.user.create({ data: { email: email.data, passwordHash } });
+  await attributeReferral(user.id); // arrived through someone's /join/<code> link
   await sendVerification(user.id, user.email);
 
   const username = String(form.get("username") ?? "");

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { attributeReferral } from "@/lib/affiliate";
 import { rememberCurrentPage } from "@/lib/current-page";
 import { editPagePath } from "@/lib/edit-paths";
 import { STARTER_BLOCKS } from "@/lib/starter-blocks";
@@ -40,6 +41,7 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
   } catch {
     return { error: "That name was just taken. Try another one." };
   }
+  await attributeReferral(userId); // Google sign-ups arrive here first
   // Straight to the new page's editor (it becomes the page the editor saves to).
   await rememberCurrentPage(page.id);
   redirect(`${editPagePath(page, null)}?welcome=1`);

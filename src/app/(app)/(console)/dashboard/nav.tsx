@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Globe, LayoutDashboard, LayoutTemplate, Link2, Settings } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -13,6 +13,7 @@ const items = [
   { href: "/dashboard/links", label: "Deep links", icon: Link2, also: ["/edit/"] },
   { href: "/dashboard/domains", label: "Custom domains", icon: Globe },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
