@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { brand } from "@/config/brand";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
@@ -7,7 +8,8 @@ import { pickLang, WARNING_COPY } from "@/warning-templates/copy";
 import { getWarningTemplate } from "@/warning-templates/templates";
 
 export const instant = false;
-export const metadata: Metadata = { title: "You left", robots: { index: false, follow: false } };
+// The tab shows only the brand (no "Adults only · …" or similar).
+export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
 
 export default async function SmartLinkLeftPage(props: PageProps<"/l/[slug]/left">) {
   await connection();

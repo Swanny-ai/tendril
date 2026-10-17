@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { ShieldAlert } from "lucide-react";
 import { BrowserEscape } from "@/components/browser-escape";
-import { appUrl } from "@/config/brand";
+import { appUrl, brand } from "@/config/brand";
 import { recordWarningView } from "@/lib/analytics/record";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { getRedirectTarget } from "@/lib/pages";
@@ -13,7 +13,8 @@ import { getWarningTemplate } from "@/warning-templates/templates";
 import { WarningScreen } from "@/warning-templates/warning-screen";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Before you continue", robots: { index: false, follow: false } };
+// The tab shows only the brand (no "Adults only · …" or similar).
+export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
 
 const DEFAULT_WARNING = "This link may contain sensitive content. Do you want to continue?";
 

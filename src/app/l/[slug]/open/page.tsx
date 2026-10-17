@@ -3,13 +3,14 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { OpenInBrowserCard } from "@/components/open-in-browser-card";
-import { appHost, appUrl } from "@/config/brand";
+import { appHost, appUrl, brand } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 import { isLinkEntry, publicLinkBase } from "@/lib/link-paths";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Open in your browser", robots: { index: false, follow: false } };
+// The tab shows only the brand (no "Adults only · …" or similar).
+export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
 
 // Step 2 of the deep link flow: visitors inside a social app's browser land here from
 // /l/<slug> and tap through to their phone's default browser.

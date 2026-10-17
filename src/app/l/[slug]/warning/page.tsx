@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { BrowserEscape } from "@/components/browser-escape";
-import { appHost, appUrl } from "@/config/brand";
+import { appHost, appUrl, brand } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 import { isLinkEntry, publicLinkBase } from "@/lib/link-paths";
 import { inAppDeepLink } from "@/lib/deeplink";
@@ -13,7 +13,8 @@ import { getWarningTemplate } from "@/warning-templates/templates";
 import { WarningScreen } from "@/warning-templates/warning-screen";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Adults only", robots: { index: false, follow: false } };
+// The tab shows only the brand (no "Adults only · …" or similar).
+export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
 
 export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/warning">) {
   await connection();

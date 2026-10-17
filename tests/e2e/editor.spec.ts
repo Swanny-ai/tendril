@@ -78,7 +78,7 @@ test("edit links, add blocks, reorder, theme: preview and public page update", a
   await expect(page.getByText("Testing every flow.")).toBeVisible();
   const order = await page.locator("main").getByText(/Commissions open in June\.|My shop|Welcome to my page/).allInnerTexts();
   expect(order.map((t) => t.replace(/\s+/g, " ").trim().split(" ")[0])).toEqual(["Commissions", "WELCOME", "My"]);
-  await expect(page).toHaveTitle("E2E Creator | Tendril");
+  await expect(page).toHaveTitle("Tendril");
 });
 
 test("deleting a block can be undone", async ({ page }) => {

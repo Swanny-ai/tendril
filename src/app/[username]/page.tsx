@@ -31,7 +31,8 @@ export async function generateMetadata(props: PageProps<"/[username]">): Promise
   const description = page.seoDescription || page.bio || `${title} on ${brand.name}`;
   const url = `${appUrl}/${page.username}`;
   return {
-    title: { absolute: `${title} | ${brand.name}` },
+    // The tab shows only the brand; link previews (Open Graph) keep the page's own title.
+    title: { absolute: brand.name },
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url, type: "profile", siteName: brand.name },
