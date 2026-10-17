@@ -19,7 +19,7 @@ async function newCreatorWithLink(page: Page, warning = false) {
   await page.getByLabel("Username").fill(name);
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
 
   const slug = uniqueName("deep").replace(/_/g, "-");
   await page.goto("/dashboard/links/new");

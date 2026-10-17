@@ -12,13 +12,13 @@ async function signUp(page: Page) {
   await page.getByLabel("Username").fill(name);
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   return { name, email };
 }
 
 test("new accounts confirm their email from the emailed link", async ({ page }) => {
   const { email } = await signUp(page);
-  await expect(page.getByText("Please confirm your email")).toBeVisible();
+  await expect(page.getByText("Please confirm your email").first()).toBeVisible();
 
   const link = await latestLink(email, /Confirm your email/);
   await page.goto(link);
@@ -26,7 +26,7 @@ test("new accounts confirm their email from the emailed link", async ({ page }) 
   await expect(page.getByText("Your email is confirmed")).toBeVisible();
 
   await page.goto("/dashboard");
-  await expect(page.getByText("Please confirm your email")).toHaveCount(0);
+  await expect(page.getByText("Please confirm your email").first()).toHaveCount(0);
   await page.goto("/dashboard/settings");
   await expect(page.getByText("(confirmed)")).toBeVisible();
 

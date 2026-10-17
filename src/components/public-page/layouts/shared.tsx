@@ -15,6 +15,11 @@ export function splitBlocks(blocks: RenderBlock[]) {
   return { socials: i >= 0 ? (blocks[i].data.socials ?? []) : [], rest: blocks.filter((_, j) => j !== i) };
 }
 
+/** The @username a template shows, or null when the creator hid it. */
+export function handleOf(page: RenderPage): string | null {
+  return page.handle === undefined ? page.username : page.handle;
+}
+
 export function displayName(page: RenderPage) {
   return page.displayName || `@${page.username}`;
 }

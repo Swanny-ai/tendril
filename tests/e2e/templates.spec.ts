@@ -15,7 +15,7 @@ async function newCreator(page: Page) {
   await page.getByLabel("Username").fill(name);
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   return name;
 }
 
@@ -33,7 +33,7 @@ test("each template creates its own page with its own link", async ({ page }) =>
   await dialog.getByLabel("Page link").fill(spot);
   await expect(dialog.getByText("Available")).toBeVisible();
   await dialog.getByRole("button", { name: "Create page" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   await expect(page.getByText(new RegExp(`/${spot}$`)).first()).toBeVisible();
 
   // The new page has its own link; the first page is untouched.
@@ -54,13 +54,28 @@ test("each template creates its own page with its own link", async ({ page }) =>
   await page.goto(`/${spot}`);
   await expect(page.locator('img[src="/templates/pro-card.jpg"]')).toHaveCount(1);
 
+  // The @username a template shows can be changed or hidden (the page's link stays).
+  await page.goto("/dashboard/editor");
+  await expect(page).toHaveURL(new RegExp(`/edit/template/.+/${spot}$`));
+  await page.getByRole("tab", { name: "Profile" }).click();
+  const handleField = page.getByLabel("Username on page", { exact: true });
+  await expect(handleField).toBeEditable();
+  await handleField.fill("spot.handle");
+  await expect(handleField).toHaveValue("spot.handle");
+  await expect(page.getByRole("status").filter({ hasText: "Saving" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await expect.poll(async () => (await page.request.get(`/${spot}`)).text()).toContain("spot.handle");
+  await page.getByRole("switch", { name: "Show username on page" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await expect.poll(async () => (await page.request.get(`/${spot}`)).text()).not.toContain("spot.handle");
+
   // Templates lists every page with its own link; Edit opens that page in the editor.
   await page.goto("/dashboard/templates");
   const yours = page.getByRole("list", { name: "Your pages" });
   await expect(yours.getByText(new RegExp(`/${spot}$`))).toBeVisible();
   await expect(yours.getByText(new RegExp(`/${name}$`))).toBeVisible();
   await yours.getByRole("button", { name: `Edit /${name}`, exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   await expect(page.getByText(new RegExp(`/${name}$`)).first()).toBeVisible();
 
 });

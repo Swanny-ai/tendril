@@ -2,7 +2,7 @@
 // the card, a glass bar with the handle and a call-to-action, other links below.
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
-import { Badge, displayName, Embed, heroImage, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
+import { Badge, displayName, Embed, heroImage, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps, handleOf } from "./shared";
 import { TiltCard } from "./tilt-card";
 
 export function PersonalCard({ page, preview }: LayoutProps) {
@@ -45,7 +45,7 @@ export function PersonalCard({ page, preview }: LayoutProps) {
             </div>
             <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-black/35 px-3.5 py-2.5 backdrop-blur-md">
               <div className="min-w-0 text-left">
-                <p className="truncate text-sm font-semibold">@{page.username}</p>
+                {handleOf(page) ? <p className="truncate text-sm font-semibold">@{handleOf(page)}</p> : null}
                 <p className="flex items-center gap-1.5 text-[11px] text-white/70">
                   <span className="size-1.5 rounded-full bg-[#4ade80]" aria-hidden /> Available
                 </p>

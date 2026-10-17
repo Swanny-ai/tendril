@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { rememberCurrentPage } from "@/lib/current-page";
+import { editPagePath } from "@/lib/edit-paths";
 import { STARTER_BLOCKS } from "@/lib/starter-blocks";
 import { db } from "@/lib/db";
 import { requireUserId } from "@/lib/session";
@@ -22,8 +24,9 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
   const user = await db.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
   const displayName = user?.name ?? user?.email.split("@")[0] ?? parsed.data;
 
+  let page;
   try {
-    await db.page.create({
+    page = await db.page.create({
       data: {
         userId,
         username: parsed.data,
@@ -37,5 +40,7 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
   } catch {
     return { error: "That name was just taken. Try another one." };
   }
-  redirect("/dashboard/editor?welcome=1");
+  // Straight to the new page's editor (it becomes the page the editor saves to).
+  await rememberCurrentPage(page.id);
+  redirect(`${editPagePath(page, null)}?welcome=1`);
 }

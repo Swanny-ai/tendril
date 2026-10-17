@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { appUrl } from "@/config/brand";
 import { pageUrl } from "@/lib/link-targets";
@@ -6,17 +5,14 @@ import { PageLinkBar } from "../page-link-bar";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import type { Page } from "@/generated/prisma/client";
 import { sanitizeOverrides } from "@/themes/presets";
 import type { EditorBlock } from "./actions";
 import { DeletePage } from "./delete-page";
 import { Editor } from "./editor";
 
-export const instant = false;
-export const metadata: Metadata = { title: "Edit page" };
-
-export default async function EditorPage() {
-  const { userId, page } = await requirePage();
+/** The page editor for one of the creator's pages (opened at /edit/template/<its link>). */
+export async function EditorScreen({ userId, page }: { userId: string; page: Page }) {
   const domain = page.domainId ? await db.domain.findUnique({ where: { id: page.domainId }, select: { hostname: true } }) : null;
   const url = pageUrl(page, domain, appUrl);
   const [plan, blocks, pageCount] = await Promise.all([
@@ -53,6 +49,8 @@ export default async function EditorPage() {
             avatarUrl: page.avatarUrl,
             heroUrl: page.heroUrl,
             tagline: page.tagline,
+            handle: page.handle ?? "",
+            showHandle: page.showHandle,
           verified: !!page.verifiedAt,
           showVerified: page.showVerified,
             seoTitle: page.seoTitle ?? "",

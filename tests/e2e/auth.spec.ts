@@ -15,7 +15,7 @@ test("sign up, claim a username, land in the editor", async ({ page }) => {
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
 
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   await expect(page.getByText("2 / 12 blocks")).toBeVisible();
   // Public page exists right away.
   const res = await page.request.get(`/${name}`);

@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { QrCodeButton } from "@/components/qr-code-button";
 import { deleteSmartLinkAction, toggleSmartLinkAction } from "./actions";
 
-export function LinkRowActions({ id, slug, url, enabled }: { id: string; slug: string; url: string; enabled: boolean }) {
+export function LinkRowActions({ id, slug, url, editHref, enabled }: { id: string; slug: string; url: string; editHref: string; enabled: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -39,7 +39,7 @@ export function LinkRowActions({ id, slug, url, enabled }: { id: string; slug: s
         <Copy />
       </Button>
       <QrCodeButton url={url} filename={`qr-${slug}`} />
-      <Link href={`/dashboard/links/${id}`} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Edit link">
+      <Link href={editHref} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Edit link">
         <Pencil />
       </Link>
       <Button

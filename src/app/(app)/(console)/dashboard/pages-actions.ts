@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getCurrentPage, rememberCurrentPage } from "@/lib/current-page";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { editPagePath } from "@/lib/edit-paths";
 import { checkLinkTarget } from "@/lib/link-targets";
 import { expireUsername, invalidatePageFromAction } from "@/lib/pages";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
@@ -13,14 +14,15 @@ import { STARTER_BLOCKS } from "@/lib/starter-blocks";
 import { usernameSchema } from "@/lib/validation";
 import { getPageTemplate, isLayoutKey } from "@/templates/link-in-bio";
 
-export type PageActionResult = { ok: true; username?: string } | { ok: false; error: string; field?: "username" | "domain" };
+export type PageActionResult = { ok: true; username?: string; editPath?: string } | { ok: false; error: string; field?: "username" | "domain" };
 
 /** Open one of the account's pages in the editor. */
 export async function editPageAction(pageId: string) {
   const userId = await requireUserId();
-  const page = await db.page.findFirst({ where: { id: pageId, userId }, select: { id: true } });
-  if (page) await rememberCurrentPage(page.id);
-  redirect("/dashboard/editor");
+  const page = await db.page.findFirst({ where: { id: pageId, userId }, select: { id: true, username: true, atRoot: true, domain: { select: { hostname: true } } } });
+  if (!page) redirect("/dashboard/templates");
+  await rememberCurrentPage(page.id);
+  redirect(editPagePath(page, page.domain));
 }
 
 /** Change where a page lives: the Tendril domain or a custom domain, at a path or the root. */
@@ -92,7 +94,8 @@ export async function createPageAction(input: { username: string; template?: str
     });
     await rememberCurrentPage(page.id);
     expireUsername(username);
-    return { ok: true, username };
+    const domain = target.target.domainId ? await db.domain.findUnique({ where: { id: target.target.domainId }, select: { hostname: true } }) : null;
+    return { ok: true, username, editPath: editPagePath(page, domain) };
   } catch {
     return { ok: false, field: "username", error: "That link was just taken. Try another one." };
   }

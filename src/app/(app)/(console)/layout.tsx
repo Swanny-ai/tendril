@@ -2,11 +2,13 @@ import { Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
 import { requirePage } from "@/lib/session";
-import { DashboardNav } from "./nav";
-import { UserMenu } from "./user-menu";
-import { VerifyBanner } from "./verify-banner";
+import { DashboardNav } from "./dashboard/nav";
+import { UserMenu } from "./dashboard/user-menu";
+import { VerifyBanner } from "./dashboard/verify-banner";
 import { canSendEmail } from "@/lib/mailer";
 
+// Shared by /dashboard/... and the editing screens at /edit/..., so moving between them keeps
+// one sidebar and header (two copies of this layout would briefly render both).
 export const instant = false;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

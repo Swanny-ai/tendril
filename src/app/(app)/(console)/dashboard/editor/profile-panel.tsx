@@ -16,6 +16,7 @@ import { queueSave, runSave, useEditor, type EditorProfile } from "./store";
 
 export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: boolean }) {
   const profile = useEditor((s) => s.profile);
+  const username = useEditor((s) => s.username);
   const setProfile = useEditor((s) => s.setProfile);
   // Pro plan, or a page the site owner verified.
   const canVerify = canVerifiedBadge || profile.verified;
@@ -45,6 +46,8 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
           displayName: p.displayName,
           bio: p.bio,
           tagline: p.tagline,
+          handle: p.handle,
+          showHandle: p.showHandle,
           seoTitle: p.seoTitle,
           seoDescription: p.seoDescription,
           published: p.published,
@@ -129,6 +132,28 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
             <Label htmlFor="tagline">Tagline</Label>
             <Input id="tagline" placeholder="e.g. Photographer · Paris" value={profile.tagline} maxLength={60} onChange={(e) => change({ tagline: e.target.value })} />
             <p className="text-xs text-muted-foreground">A short line under your name, shown by the photo templates.</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="handle">Username on page</Label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Show
+                <Switch aria-label="Show username on page" checked={profile.showHandle} onCheckedChange={(v) => change({ showHandle: v })} />
+              </label>
+            </div>
+            <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
+              <span className="pl-3 text-sm text-muted-foreground">@</span>
+              <Input
+                id="handle"
+                placeholder={username}
+                value={profile.handle}
+                maxLength={30}
+                disabled={!profile.showHandle}
+                onChange={(e) => change({ handle: e.target.value.replace(/^@/, "").replace(/[^\w.]/g, "") })}
+                className="border-0 pl-0.5 shadow-none focus-visible:ring-0"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Shown as @username by the templates. Changing it doesn&apos;t change your page&apos;s link.</p>
           </div>
         </CardContent>
       </Card>

@@ -40,6 +40,8 @@ export async function updateProfileAction(input: unknown): Promise<ActionResult>
         displayName: data.displayName,
         bio: data.bio,
         ...(data.tagline === undefined ? {} : { tagline: data.tagline }),
+        ...(data.handle === undefined ? {} : { handle: data.handle.replace(/^@/, "") || null }),
+        ...(data.showHandle === undefined ? {} : { showHandle: data.showHandle }),
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
         ...(data.published === undefined ? {} : { published: data.published }),

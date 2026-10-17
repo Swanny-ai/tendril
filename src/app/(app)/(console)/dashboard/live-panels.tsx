@@ -69,7 +69,9 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
     <>
     <div className="grid gap-4 lg:grid-cols-3">
       {map}
-      <Card>
+      {/* On wide screens the feed fits the map's height and scrolls, so the map has no empty space. */}
+      <Card className="lg:relative lg:min-h-80 lg:py-0">
+        <div className="flex flex-col gap-(--card-spacing) lg:absolute lg:inset-0 lg:py-(--card-spacing)">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Live activity
@@ -80,9 +82,9 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
           </CardTitle>
           <CardDescription>Showing the last {data.recent.length || 10} visitors</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex min-h-0 flex-1 flex-col">
           {data.recent.length ? (
-            <ul className="divide-y" aria-live="polite" data-testid="live-feed">
+            <ul className="min-h-0 flex-1 divide-y overflow-y-auto" aria-live="polite" aria-label="Recent visitors" tabIndex={0} data-testid="live-feed">
               {data.recent.map((v) => {
                 const fresh = Date.parse(data.now) - Date.parse(v.ts) < 60_000;
                 return (
@@ -118,6 +120,7 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
             <Radio className="size-3.5" /> {online ? "Live stream active · updates every 5 seconds" : "Reconnecting…"}
           </p>
         </CardContent>
+        </div>
       </Card>
     </div>
 
@@ -195,8 +198,10 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
               {data.activeLinks.length ? (
                 <ul className="space-y-1 text-sm">
                   {data.activeLinks.slice(0, 5).map((l) => (
-                    <li key={l.path || l.label} className="flex justify-between gap-2">
-                      <span className="truncate">{l.label}</span>
+                    <li key={l.url || l.label} className="flex justify-between gap-2">
+                      <span className="truncate" title={l.label}>
+                        {l.url || l.label}
+                      </span>
                       <span className="tabular-nums">{l.views}</span>
                     </li>
                   ))}

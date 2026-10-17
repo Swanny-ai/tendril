@@ -4,7 +4,7 @@ import { cardImage } from "@/lib/blocks";
 import type { ReactNode } from "react";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
-import { Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
+import { Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps, handleOf } from "./shared";
 
 function ImageTile({ b, preview, tall }: { b: RenderBlock; preview: boolean; tall: boolean }) {
   return (
@@ -65,7 +65,7 @@ export function ProCard({ page, preview }: LayoutProps) {
             <NameHeading preview={preview} verified={page.verified} className="text-center text-2xl font-black tracking-[.35em] uppercase drop-shadow-lg">
               {displayName(page)}
             </NameHeading>
-            <p className="mt-1 text-xs text-white/70">@{page.username}</p>
+            {handleOf(page) ? <p className="mt-1 text-xs text-white/70">@{handleOf(page)}</p> : null}
             {page.tagline ? <p className="mt-0.5 text-xs text-white/60">{page.tagline}</p> : null}
           </div>
         </div>

@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOutAction } from "../../(auth)/actions";
+import { signOutAction } from "../../../(auth)/actions";
 
 export function UserMenu({ username }: { username: string }) {
   return (

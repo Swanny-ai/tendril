@@ -3,6 +3,7 @@ import { PublicPage, type RenderPage } from "@/components/public-page/public-pag
 import { appHost, appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
 import { pageUrl } from "@/lib/link-targets";
+import { getPublicPage } from "@/lib/pages";
 import { requirePage } from "@/lib/session";
 import { PageLinkBar } from "../page-link-bar";
 import { PageCardActions } from "./page-card-actions";
@@ -46,6 +47,15 @@ export default async function TemplatesPage() {
     db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } }),
   ]);
   const layoutName = (key: string) => PAGE_TEMPLATES.find((t) => t.key === key)?.name ?? "Classic";
+  // A template you've used is previewed with your own page (most recently edited one), username
+  // hidden; the others show sample content. Only you see your pages here.
+  const used = await db.page.findMany({ where: { userId, published: true }, orderBy: { updatedAt: "desc" }, select: { username: true, layout: true } });
+  const yourPreview = new Map<string, RenderPage>();
+  for (const t of PAGE_TEMPLATES) {
+    const mine = used.find((p) => p.layout === t.key);
+    const data = mine ? await getPublicPage(mine.username) : null;
+    if (data) yourPreview.set(t.key, { ...data, handle: null });
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-10">
@@ -95,11 +105,12 @@ export default async function TemplatesPage() {
                 {t.isNew ? <span className="absolute top-3 right-3 z-10 rounded-full bg-[var(--sage)] px-2.5 py-0.5 text-xs font-bold text-white">NEW</span> : null}
                 {/* Live, scaled-down render of the template with sample content. */}
                 <div aria-hidden className="pointer-events-none h-[640px] w-[340px] origin-top scale-[.5] overflow-hidden rounded-[32px] border-[6px] border-black/80 shadow-2xl" inert>
-                  <PublicPage page={samplePage(t)} preview />
+                  <PublicPage page={yourPreview.get(t.key) ?? samplePage(t)} preview />
                 </div>
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <h3 className="text-lg font-semibold">{t.name}</h3>
+                {yourPreview.has(t.key) ? <p className="text-xs text-muted-foreground">Preview: one of your pages</p> : null}
                 <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">{t.description}</p>
                 <div className="mt-5">
                   <UseTemplateButton

@@ -37,6 +37,8 @@ export type RenderPage = {
   tagline?: string;
   /** Show the blue verified check (page verified by the site owner, badge not hidden). */
   verified?: boolean;
+  /** The @username shown by the templates: undefined = the page's username, null = hidden. */
+  handle?: string | null;
 };
 
 const FONT_STACK: Record<ThemeTokens["font"], string> = {

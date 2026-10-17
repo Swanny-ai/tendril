@@ -34,7 +34,7 @@ async function newCreator(page: Page) {
   await page.getByLabel("Username").fill(name);
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   return { name, userId: await userIdByEmail(`${name}@tendril.test`) };
 }
 

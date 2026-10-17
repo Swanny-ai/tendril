@@ -31,6 +31,8 @@ export type PublicPageData = {
   heroUrl: string | null;
   tagline: string;
   verified: boolean;
+  /** null = hidden */
+  handle: string | null;
   theme: ThemeTokens;
   blocks: PublicBlock[];
 };
@@ -59,6 +61,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     layout: page.layout,
     heroUrl: page.heroUrl,
     tagline: page.tagline,
+    handle: page.showHandle ? page.handle || page.username : null,
     // Pro creators switch it on themselves; pages the site owner verified keep it on any plan.
     verified: page.showVerified && (!!page.verifiedAt || PLAN_LIMITS[plan].verifiedBadge),
     theme: resolveTheme(page.themeKey, page.themeOverrides, PLAN_LIMITS[plan].customTheme),

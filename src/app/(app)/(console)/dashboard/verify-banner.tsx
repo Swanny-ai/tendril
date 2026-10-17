@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { MailWarning, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { resendVerificationAction } from "../../(auth)/actions";
+import { resendVerificationAction } from "../../../(auth)/actions";
 
 export function VerifyBanner({ email }: { email: string }) {
   const [hidden, setHidden] = useState(false);

@@ -69,7 +69,7 @@ export function UseTemplateButton({
       }
       setOpen(false);
       toast.success(`Created your ${name} page. Make it yours in the editor.`);
-      router.push("/dashboard/editor");
+      router.push(res.editPath ?? "/dashboard/editor");
     });
 
   return (

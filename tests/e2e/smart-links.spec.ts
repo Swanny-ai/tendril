@@ -11,7 +11,7 @@ async function newCreator(page: Page) {
   await page.getByLabel("Username").fill(name);
   await expect(page.getByText("Available")).toBeVisible();
   await page.getByRole("button", { name: "Claim and continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/editor/);
+  await expect(page).toHaveURL(/\/edit\/template\//);
   return name;
 }
 
@@ -182,6 +182,6 @@ test("each smart link has a QR code with PNG and SVG downloads", async ({ page }
 
   await page.goto("/dashboard/links");
   await page.getByRole("link", { name: "Edit link" }).first().click();
-  await expect(page.getByRole("heading", { name: /^Edit \/l\// })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Edit .*\/l\// })).toBeVisible();
   await expect(page.getByRole("button", { name: /QR code for .*\/l\/demo-/ }).filter({ hasText: "QR code" })).toBeVisible();
 });

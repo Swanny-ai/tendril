@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { appUrl } from "@/config/brand";
 import { smartLinkUrl } from "@/lib/domains";
+import { editLinkPath } from "@/lib/edit-paths";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -85,7 +86,7 @@ export default async function SmartLinksPage() {
                   return (
                     <tr key={l.id} className="border-b align-top last:border-0">
                       <td className="max-w-[300px] py-3 pr-4">
-                        <Link href={`/dashboard/links/${l.id}`} className="font-medium hover:underline">
+                        <Link href={editLinkPath(l, l.domain)} className="font-medium hover:underline">
                           {l.domain ? (l.atRoot ? `${l.domain.hostname}/` : `${l.domain.hostname}/${l.slug}`) : `/l/${l.slug}`}
                         </Link>
                         <div className="truncate text-xs text-muted-foreground">{l.label || l.destinationUrl}</div>
@@ -105,7 +106,7 @@ export default async function SmartLinksPage() {
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
                       <td className="py-3 text-right">
-                        <LinkRowActions id={l.id} slug={l.slug} url={smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)} enabled={l.enabled} />
+                        <LinkRowActions id={l.id} slug={l.slug} url={smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)} editHref={editLinkPath(l, l.domain)} enabled={l.enabled} />
                       </td>
                     </tr>
                   );

@@ -63,6 +63,13 @@ export const profileSchema = z.object({
   displayName: z.string().trim().max(60),
   bio: z.string().trim().max(160),
   tagline: z.string().trim().max(60).optional(),
+  handle: z
+    .string()
+    .trim()
+    .max(30)
+    .regex(/^[\w.]*$/, "Letters, numbers, dots and underscores only")
+    .optional(),
+  showHandle: z.boolean().optional(),
   seoTitle: z.string().trim().max(70).optional().nullable(),
   seoDescription: z.string().trim().max(160).optional().nullable(),
   published: z.boolean().optional(),

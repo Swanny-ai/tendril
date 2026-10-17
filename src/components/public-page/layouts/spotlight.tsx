@@ -3,7 +3,7 @@
 import { cardImage } from "@/lib/blocks";
 import type { RenderBlock } from "../public-page";
 import { Countdown } from "./countdown";
-import { Avatar, Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps } from "./shared";
+import { Avatar, Badge, displayName, Embed, heroImage, isCard, LinkShell, NameHeading, SensitiveTag, SocialIcons, splitBlocks, type LayoutProps, handleOf } from "./shared";
 
 const ACCENT = "#f472b6";
 
@@ -57,7 +57,7 @@ export function Spotlight({ page, preview }: LayoutProps) {
         <NameHeading preview={preview} verified={page.verified} className="mt-3 text-center text-2xl font-bold drop-shadow-lg">
           {displayName(page)}
         </NameHeading>
-        <p className="text-sm text-white/80">@{page.username}</p>
+        {handleOf(page) ? <p className="text-sm text-white/80">@{handleOf(page)}</p> : null}
         {page.tagline ? <p className="mt-1 text-xs font-medium text-white/75">{page.tagline}</p> : null}
         {page.bio ? <p className="mt-2 max-w-[38ch] text-center text-sm leading-relaxed whitespace-pre-line text-white/85">{page.bio}</p> : null}
         <div className="mt-4">

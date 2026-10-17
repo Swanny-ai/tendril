@@ -29,7 +29,7 @@ export type LiveStats = {
   users: number;
   previousUsers: number;
   topLocations: null | { code: string; name: string; views: number }[];
-  activeLinks: { label: string; path: string; views: number }[];
+  activeLinks: { label: string; path: string; url: string; views: number }[];
 };
 
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
@@ -177,6 +177,6 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
     users: n(users[0]?.n),
     previousUsers: n(prevUsers[0]?.n),
     topLocations: locations ? locations.map((r) => ({ code: r.country ?? "??", name: countryName(r.country), views: n(r.views) })) : null,
-    activeLinks: links.map((r) => ({ label: byId.get(r.src)?.label ?? "Deleted link", path: byId.get(r.src)?.path ?? "", views: n(r.views) })),
+    activeLinks: links.map((r) => ({ label: byId.get(r.src)?.label ?? "Deleted link", path: byId.get(r.src)?.path ?? "", url: byId.get(r.src)?.url ?? "", views: n(r.views) })),
   };
 }
