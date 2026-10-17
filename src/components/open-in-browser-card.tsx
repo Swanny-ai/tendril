@@ -54,13 +54,13 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
   }, [platform, deepLink]);
 
   return (
-    <div className="relative flex min-h-svh flex-1 items-center justify-center overflow-hidden bg-[#fbf8f2] px-5 py-10">
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_45%_at_15%_10%,rgba(91,63,209,.28),transparent),radial-gradient(55%_45%_at_90%_90%,rgba(242,100,61,.25),transparent)]" />
-      <div aria-hidden className="absolute -top-16 -right-10 size-56 rounded-full bg-[#5b3fd1]/15 blur-2xl" />
-      <div aria-hidden className="absolute -bottom-20 -left-10 size-64 rounded-full bg-[#f2643d]/15 blur-2xl" />
+    <div className="relative flex min-h-svh flex-1 items-center justify-center overflow-hidden bg-[#151515] px-5 py-10">
+      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_45%_at_15%_10%,rgba(73,242,100,.22),transparent),radial-gradient(55%_45%_at_90%_90%,rgba(230,255,170,.12),transparent)]" />
+      <div aria-hidden className="absolute -top-16 -right-10 size-56 rounded-full bg-[#49f264]/15 blur-2xl" />
+      <div aria-hidden className="absolute -bottom-20 -left-10 size-64 rounded-full bg-[#e6ffaa]/10 blur-2xl" />
 
-      <main className="relative w-full max-w-sm rounded-[28px] border border-white/70 bg-white/90 p-7 text-center text-[#1c1a24] shadow-[0_24px_60px_-20px_rgba(28,26,36,.35)] backdrop-blur">
-        <div className="mx-auto size-24 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-[#ffd2a8] via-[#f2643d] to-[#5b3fd1] shadow-lg">
+      <main className="relative w-full max-w-sm rounded-[28px] border border-white/10 bg-[#1c1c1c]/90 p-7 text-center text-[#ffffff] shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)] backdrop-blur">
+        <div className="mx-auto size-24 overflow-hidden rounded-full border-4 border-[#1c1c1c] bg-gradient-to-br from-[#e6ffaa] via-[#49f264] to-[#16351c] shadow-lg">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="" className="size-full object-cover" />
@@ -69,35 +69,35 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
           )}
         </div>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">{name}</h1>
-        {username ? <p className="text-sm text-[#5c5866]">@{username}</p> : null}
-        {label ? <p className="mx-auto mt-3 w-fit rounded-full bg-[#ece8fb] px-3 py-1 text-xs font-medium text-[#4a33b0]">{label}</p> : null}
+        {username ? <p className="text-sm text-[#a3a3a3]">@{username}</p> : null}
+        {label ? <p className="mx-auto mt-3 w-fit rounded-full bg-[#151b12] px-3 py-1 text-xs font-medium text-[#6cf583]">{label}</p> : null}
 
         {holdOnly ? (
           <>
-            <PressAndHoldLink href={target} className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3fd1] text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(91,63,209,.7)] transition hover:bg-[#4a33b0] focus-visible:ring-4 focus-visible:ring-[#5b3fd1]/40 focus-visible:outline-none active:scale-[.98]">
+            <PressAndHoldLink href={target} className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#49f264] text-base font-semibold text-[#0a0a0a] shadow-[0_10px_24px_-8px_rgba(73,242,100,.55)] transition hover:bg-[#3fe05a] focus-visible:ring-4 focus-visible:ring-[#49f264]/40 focus-visible:outline-none active:scale-[.98]">
               <ExternalLink className="size-5" /> Press and hold to open
             </PressAndHoldLink>
-            <p className="mt-2 text-xs text-[#5c5866]">Keep your finger on the button, then choose &ldquo;Open in browser&rdquo;.</p>
+            <p className="mt-2 text-xs text-[#a3a3a3]">Keep your finger on the button, then choose &ldquo;Open in browser&rdquo;.</p>
           </>
         ) : (
           <a
             href={deepLink ?? target}
             onClick={watchForFailure}
-            className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3fd1] text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(91,63,209,.7)] transition hover:bg-[#4a33b0] focus-visible:ring-4 focus-visible:ring-[#5b3fd1]/40 focus-visible:outline-none active:scale-[.98]"
+            className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#49f264] text-base font-semibold text-[#0a0a0a] shadow-[0_10px_24px_-8px_rgba(73,242,100,.55)] transition hover:bg-[#3fe05a] focus-visible:ring-4 focus-visible:ring-[#49f264]/40 focus-visible:outline-none active:scale-[.98]"
           >
             <ExternalLink className="size-5" /> Open in {platform === "ios" ? "Safari" : "browser"}
           </a>
         )}
 
-        <p className="mt-4 text-sm leading-relaxed text-[#5c5866]">
+        <p className="mt-4 text-sm leading-relaxed text-[#a3a3a3]">
           {app ? `You're in ${APP_NAMES[app]}'s built-in browser.` : "This link works best in your browser."} Opening in {browser} keeps you signed in and makes
           payments work.
         </p>
 
         {showHelp ? (
-          <div role="status" className="mt-4 rounded-2xl bg-[#f6f2ea] p-4 text-left text-sm">
+          <div role="status" className="mt-4 rounded-2xl bg-[#262626] p-4 text-left text-sm">
             <p className="font-semibold">Didn&apos;t open?</p>
-            <p className="mt-1 flex flex-wrap items-center gap-1 text-[#3b3846]">
+            <p className="mt-1 flex flex-wrap items-center gap-1 text-[#d4d4d4]">
               Tap
               {platform === "android" ? <MoreVertical className="inline size-4" aria-label="the menu button" /> : <MoreHorizontal className="inline size-4" aria-label="the menu button" />}
               in the top corner, then choose <strong>&ldquo;Open in {platform === "ios" ? "external browser" : "Chrome"}&rdquo;</strong>.
@@ -105,7 +105,7 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
           </div>
         ) : null}
 
-        <a href={stayHref} className="mt-5 inline-block text-sm font-medium text-[#5c5866] underline-offset-4 hover:text-[#1c1a24] hover:underline">
+        <a href={stayHref} className="mt-5 inline-block text-sm font-medium text-[#a3a3a3] underline-offset-4 hover:text-[#ffffff] hover:underline">
           Continue here instead
         </a>
       </main>

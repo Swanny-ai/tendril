@@ -9,7 +9,7 @@ const NO_STORE = { "Cache-Control": "no-store", "Referrer-Policy": "strict-origi
 function notFoundResponse() {
   return new Response(
     `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link not available</title>` +
-      `<body style="font-family:system-ui;display:grid;place-items:center;min-height:100vh;margin:0;background:#fbf8f2;color:#1c1a24">` +
+      `<body style="font-family:system-ui;display:grid;place-items:center;min-height:100vh;margin:0;background:#151515;color:#ffffff">` +
       `<div style="text-align:center"><h1>This link isn't available</h1><p>It may have been removed or turned off.</p><p><a href="/">Go home</a></p></div>`,
     { status: 404, headers: { ...NO_STORE, "Content-Type": "text/html; charset=utf-8" } },
   );

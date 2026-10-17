@@ -3,28 +3,35 @@ import { brand } from "@/config/brand";
 import { cn } from "@/lib/utils";
 
 /**
- * Original mark: a gradient tile with a bold "V" made of two rounded strokes that overlap at the
- * point, like two links joining. Every copy draws the same gradient, so a shared id is safe.
+ * The mark: the owner's "VR" monogram (a V flowing into an R with a play button in its bowl),
+ * redrawn as vector strokes in black on the green tile. Every copy draws the same gradient, so a
+ * shared id is safe.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" aria-hidden className={cn("size-7 shrink-0", className)}>
+    <svg viewBox="95 95 1760 1760" aria-hidden className={cn("size-7 shrink-0", className)}>
       <defs>
-        <linearGradient id="vl-tile" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#6d4fe0" />
-          <stop offset="0.55" stopColor="#8b4fd6" />
-          <stop offset="1" stopColor="#f2643d" />
+        <linearGradient id="vl-tile" x1="95" y1="95" x2="1855" y2="1855" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#6cf583" />
+          <stop offset="0.55" stopColor="#49f264" />
+          <stop offset="1" stopColor="#35d651" />
         </linearGradient>
       </defs>
-      <rect width="32" height="32" rx="9.5" fill="url(#vl-tile)" />
-      <rect x="0.5" y="0.5" width="31" height="31" rx="9" fill="none" stroke="#fff" strokeOpacity="0.18" />
-      <path d="M10 9.5 16 22.5" stroke="#fff" strokeWidth="4.6" strokeLinecap="round" />
-      <path d="M22 9.5 16 22.5" stroke="#fff" strokeOpacity="0.62" strokeWidth="4.6" strokeLinecap="round" />
+      <rect x="95" y="95" width="1760" height="1760" rx="380" fill="url(#vl-tile)" />
+      <path
+        d="M343 830 L627 1290 L925 712 C995 610 1095 588 1220 588 L1300 588 C1460 588 1578 720 1578 890 C1578 1075 1420 1160 1190 1205 L1470 1472"
+        fill="none"
+        stroke="#0a0a0a"
+        strokeWidth="156"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M1150 830 L1150 1015 L1318 922 Z" fill="#0a0a0a" stroke="#0a0a0a" strokeWidth="44" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** Mark plus wordmark: "View" in the text color, "Link" in the brand gradient. */
+/** Mark plus wordmark: "View" in the text color, "Link" in brand green. */
 export function Logo({ href = "/", className }: { href?: string; className?: string }) {
   const split = brand.name.match(/^(.*?)(Link)$/);
   return (
@@ -33,7 +40,7 @@ export function Logo({ href = "/", className }: { href?: string; className?: str
       {split ? (
         <span>
           {split[1]}
-          <span className="bg-gradient-to-r from-[#6d4fe0] to-[#f2643d] bg-clip-text text-transparent">{split[2]}</span>
+          <span className="text-[#49f264]">{split[2]}</span>
         </span>
       ) : (
         <span>{brand.name}</span>

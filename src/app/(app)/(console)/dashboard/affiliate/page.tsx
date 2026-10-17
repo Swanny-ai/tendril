@@ -24,12 +24,12 @@ export default async function AffiliatePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Hero: level, rate and the way up */}
-      <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-[#5b3fd1] via-[#6d4fe0] to-[#f2643d] p-6 text-white shadow-sm md:p-8">
-        <div aria-hidden className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-2xl" />
+      <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-[#16351c] via-[#151b12] to-[#151515] p-6 text-white shadow-sm md:p-8">
+        <div aria-hidden className="absolute -top-20 -right-16 size-64 rounded-full bg-[#49f264]/20 blur-3xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <p className="flex items-center gap-2 text-sm font-medium text-white/80">
-              <Sprout className="size-4" /> Grow with ViewLink
+              <Sprout className="size-4 text-[#49f264]" /> Grow with ViewLink
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Earn {o.level.rate}% of every payment from creators you invite</h1>
             <p className="mt-2 text-white/80">
@@ -39,12 +39,12 @@ export default async function AffiliatePage() {
           <div className="w-full max-w-xs rounded-2xl bg-white/15 p-4 backdrop-blur">
             <div className="flex items-center justify-between">
               <span className="text-sm text-white/80">Your level</span>
-              <Badge className="bg-white text-[#4a33b0]" data-testid="affiliate-level">
+              <Badge className="bg-[#49f264] text-[#0a0a0a]" data-testid="affiliate-level">
                 {o.level.name} · {o.level.rate}%
               </Badge>
             </div>
             <div className="mt-3 h-2 rounded-full bg-white/25">
-              <div className="h-full rounded-full bg-white" style={{ width: `${progress * 100}%` }} />
+              <div className="h-full rounded-full bg-[#49f264]" style={{ width: `${progress * 100}%` }} />
             </div>
             <p className="mt-2 text-xs text-white/85">
               {o.next
@@ -55,7 +55,7 @@ export default async function AffiliatePage() {
         </div>
         <ol className="relative mt-6 flex flex-wrap gap-2 text-xs" aria-label="Levels">
           {LEVELS.map((l) => (
-            <li key={l.key} className={cn("rounded-full px-3 py-1", l.key === o.level.key ? "bg-white text-[#4a33b0]" : "bg-white/15 text-white/85")}>
+            <li key={l.key} className={cn("rounded-full px-3 py-1", l.key === o.level.key ? "bg-[#49f264] text-[#0a0a0a]" : "bg-white/10 text-white/85")}>
               {l.name} {l.rate}% · {l.from === 0 ? "from the start" : `${l.from}+ paying`}
             </li>
           ))}

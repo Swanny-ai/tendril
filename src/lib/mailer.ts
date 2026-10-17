@@ -74,13 +74,13 @@ const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<":
 
 function layout(title: string, body: string, cta: { label: string; url: string }, footnote: string) {
   const url = escape(cta.url);
-  return `<!doctype html><html><body style="margin:0;background:#fbf8f2;font-family:Inter,Arial,sans-serif;color:#1c1a24">
+  return `<!doctype html><html><body style="margin:0;background:#f5f5f5;font-family:Inter,Arial,sans-serif;color:#1c1a24">
 <div style="max-width:480px;margin:0 auto;padding:32px 20px">
 <p style="font-weight:700;font-size:18px;margin:0 0 24px">${escape(brand.name)}</p>
-<div style="background:#fff;border:1px solid #e7e2d8;border-radius:14px;padding:28px">
+<div style="background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:28px">
 <h1 style="font-size:20px;margin:0 0 12px">${escape(title)}</h1>
 <p style="font-size:15px;line-height:1.55;margin:0 0 22px">${body}</p>
-<a href="${url}" style="display:inline-block;background:#5b3fd1;color:#fff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:999px">${escape(cta.label)}</a>
+<a href="${url}" style="display:inline-block;background:#49f264;color:#0a0a0a;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:999px">${escape(cta.label)}</a>
 <p style="font-size:13px;color:#5c5866;margin:22px 0 0;word-break:break-all">Or paste this link into your browser:<br>${url}</p>
 </div>
 <p style="font-size:12px;color:#5c5866;margin:18px 4px 0">${escape(footnote)}</p>

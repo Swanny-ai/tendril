@@ -12,9 +12,9 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ use
   const name = page?.displayName || `@${username}`;
   const bio = page?.bio ?? "";
   const solid = (v: string | undefined, fallback: string) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
-  const bg = page ? page.theme.background : "#fbf8f2";
-  const text = solid(page?.theme.text, "#1c1a24");
-  const accent = solid(page?.theme.buttonBg, "#5b3fd1");
+  const bg = page ? page.theme.background : "#151515";
+  const text = solid(page?.theme.text, "#ffffff");
+  const accent = solid(page?.theme.buttonBg, "#49f264");
 
   return new ImageResponse(
     (

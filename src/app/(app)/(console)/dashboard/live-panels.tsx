@@ -106,7 +106,7 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground tabular-nums">
-                      {fresh ? <Badge className="bg-[var(--persimmon-text)] text-white">New</Badge> : null}
+                      {fresh ? <Badge className="bg-[var(--persimmon-text)] text-[#0a0a0a]">New</Badge> : null}
                       {ago(v.ts, data.now)}
                     </span>
                   </li>
