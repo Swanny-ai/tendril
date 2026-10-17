@@ -46,20 +46,35 @@ export async function connectDomain(username: string, hostname: string): Promise
   );
 }
 
-/** Makes a page its template's public preview, as scripts/showcase-page.mjs does. */
-export async function showcasePage(username: string): Promise<void> {
-  await db().query(`UPDATE "Page" SET showcase = false WHERE layout = (SELECT layout FROM "Page" WHERE username = $1)`, [username]);
-  await db().query(`UPDATE "Page" SET showcase = true, "displayName" = 'Showcase Star', "themeKey" = 'midnight' WHERE username = $1`, [username]);
+/** Stores a frozen showcase for a template, as scripts/showcase-page.mjs does. */
+export async function showcaseTemplate(layout: string): Promise<void> {
+  const data = {
+    displayName: "Showcase Star",
+    bio: "Showcase bio",
+    tagline: "Showcase tagline",
+    avatarUrl: null,
+    heroUrl: null,
+    themeKey: "midnight",
+    themeOverrides: null,
+    warningTemplate: null,
+    verified: false,
+    blocks: [{ type: "LINK", title: "Showcase link", url: "https://example.com/showcase", data: {}, contentWarning: false }],
+  };
+  await db().query(
+    `INSERT INTO "TemplateShowcase" (layout, data, "updatedAt") VALUES ($1, $2::jsonb, now())
+     ON CONFLICT (layout) DO UPDATE SET data = EXCLUDED.data, "updatedAt" = now()`,
+    [layout, JSON.stringify(data)],
+  );
 }
 
-export async function unshowcasePage(username: string): Promise<void> {
-  await db().query(`UPDATE "Page" SET showcase = false WHERE username = $1`, [username]);
+export async function removeShowcase(layout: string): Promise<void> {
+  await db().query(`DELETE FROM "TemplateShowcase" WHERE layout = $1`, [layout]);
 }
 
-/** A page's theme, avatar and number of blocks. */
-export async function pageSummary(username: string): Promise<{ themeKey: string; avatarUrl: string | null; blocks: number }> {
+/** A page's name, theme, tagline and number of blocks. */
+export async function pageSummary(username: string): Promise<{ displayName: string; themeKey: string; tagline: string; blocks: number }> {
   const { rows } = await db().query(
-    `SELECT p."themeKey", p."avatarUrl", (SELECT count(*)::int FROM "Block" b WHERE b."pageId" = p.id) AS blocks FROM "Page" p WHERE p.username = $1`,
+    `SELECT p."displayName", p."themeKey", p.tagline, (SELECT count(*)::int FROM "Block" b WHERE b."pageId" = p.id) AS blocks FROM "Page" p WHERE p.username = $1`,
     [username],
   );
   return rows[0];

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { BarChart3, Copy, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -39,6 +39,9 @@ export function LinkRowActions({ id, slug, url, editHref, enabled }: { id: strin
         <Copy />
       </Button>
       <QrCodeButton url={url} filename={`qr-${slug}`} />
+      <Link href={`/dashboard/analytics/link/${id}`} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Link analytics">
+        <BarChart3 />
+      </Link>
       <Link href={editHref} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Edit link">
         <Pencil />
       </Link>

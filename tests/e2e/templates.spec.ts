@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, test, type Page } from "@playwright/test";
-import { connectDomain, pageSummary, setPlanByUsername, showcasePage, unshowcasePage } from "./db";
+import { connectDomain, pageSummary, removeShowcase, setPlanByUsername, showcaseTemplate } from "./db";
 import { TEST_PASSWORD, uniqueName } from "./helpers";
 
 // 1x1 PNG
@@ -296,34 +296,30 @@ test("verified badge: pages the site owner verifies keep it on the Free plan", a
   await expect(page.getByRole("img", { name: "Verified" })).toBeVisible();
 });
 
-test("a showcased page is everyone's preview of its template, username hidden", async ({ page, browser }) => {
-  const owner = await newCreator(page);
-  await page.getByRole("tab", { name: "Theme" }).click();
-  await page.getByRole("combobox", { name: "Page template" }).click();
-  await page.getByRole("option", { name: "Personal Card" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
-  await showcasePage(owner);
+test("a showcase is everyone's preview of its template; using it starts from that content", async ({ page }) => {
+  await showcaseTemplate("personal-card");
   try {
-    // Someone else, who never used Personal Card, sees the showcased page as its preview.
-    const ctx = await browser.newContext();
-    const other = await ctx.newPage();
-    await newCreator(other);
-    await other.goto("/dashboard/templates");
-    const gallery = other.getByRole("list", { name: "Link-in-bio templates" });
+    const owner = await newCreator(page);
+    await page.goto("/dashboard/templates");
+    const gallery = page.getByRole("list", { name: "Link-in-bio templates" });
     await expect(gallery.getByText("Showcase Star")).toHaveCount(1);
-    await expect(gallery.getByText(`@${owner}`)).toHaveCount(0);
 
-    // Using it gives a clean page with the showcase's look: its theme, no blocks or photos.
-    await other.getByRole("button", { name: "Use the Personal Card template" }).click();
-    const dialog = other.getByRole("dialog", { name: "New page with Personal Card" });
+    // Using it copies the showcase's content and look, but keeps the creator's own name.
+    await page.getByRole("button", { name: "Use the Personal Card template" }).click();
+    const dialog = page.getByRole("dialog", { name: "New page with Personal Card" });
     const fresh = `${owner.slice(0, 18)}_fresh`;
     await dialog.getByLabel("Page link").fill(fresh);
     await expect(dialog.getByText("Available")).toBeVisible();
     await dialog.getByRole("button", { name: "Create page" }).click();
-    await expect(other).toHaveURL(/\/edit\/template\//);
-    expect(await pageSummary(fresh)).toEqual({ themeKey: "midnight", avatarUrl: null, blocks: 0 });
-    await ctx.close();
+    await expect(page).toHaveURL(/\/edit\/template\//);
+    expect(await pageSummary(fresh)).toEqual({ displayName: owner, themeKey: "midnight", tagline: "Showcase tagline", blocks: 1 });
+
+    // Each page has its own analytics.
+    await page.goto("/dashboard/templates");
+    await page.getByRole("link", { name: `Analytics for /${fresh}` }).click();
+    await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+    await expect(page.getByText(new RegExp(`/${fresh} · Bots`))).toBeVisible();
   } finally {
-    await unshowcasePage(owner);
+    await removeShowcase("personal-card");
   }
 });

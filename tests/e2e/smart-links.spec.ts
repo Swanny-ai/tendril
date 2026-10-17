@@ -25,19 +25,21 @@ async function createLink(page: Page, slug: string, destination: string, templat
   await expect(page).toHaveURL(/\/dashboard\/links$/);
 }
 
-test("adult warning is on by default, with 13 designs and a live preview", async ({ page }) => {
+test("adult warning is on by default, with 12 designs and a live preview", async ({ page }) => {
   await newCreator(page);
   await page.goto("/dashboard/links/new");
   await expect(page.getByRole("switch", { name: "Adult content warning" })).toBeChecked();
-  await expect(page.getByRole("radiogroup", { name: "Warning page design" }).getByRole("radio")).toHaveCount(13);
-  await expect(page.getByRole("radio", { name: "Dusk" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radiogroup", { name: "Warning page design" }).getByRole("radio")).toHaveCount(12);
+  await expect(page.getByRole("radio", { name: "Clear Blue" })).toHaveAttribute("aria-checked", "true");
 
+  // Clear Blue (the default) is a compact age gate without the destination line.
   const preview = page.getByLabel("Warning page preview");
-  await expect(preview.getByText("Adults only")).toBeVisible();
+  await expect(preview.getByText("Age Restricted")).toBeVisible();
   await page.getByLabel("Destination URL").fill("example.com/vip");
-  await expect(preview.getByText("example.com")).toBeVisible();
   await page.getByRole("radio", { name: "Sorbet" }).click();
   await expect(page.getByRole("radio", { name: "Sorbet" })).toHaveAttribute("aria-checked", "true");
+  await expect(preview.getByText("Adults only")).toBeVisible();
+  await expect(preview.getByText("example.com")).toBeVisible();
   await page.getByRole("button", { name: "Desktop" }).click();
   await expect(preview).toBeVisible();
 
@@ -179,6 +181,11 @@ test("each smart link has a QR code with PNG and SVG downloads", async ({ page }
   const svg = await svgDl;
   expect(svg.suggestedFilename()).toBe("qr-demo-vip.svg");
   expect(await readFile(await svg.path(), "utf8")).toContain("<svg");
+
+  await page.goto("/dashboard/links");
+  await page.getByRole("link", { name: "Link analytics" }).first().click();
+  await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+  await expect(page.getByText("Sent to destination").first()).toBeVisible();
 
   await page.goto("/dashboard/links");
   await page.getByRole("link", { name: "Edit link" }).first().click();

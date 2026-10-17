@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Link2, Loader2, PencilRuler, Trash2 } from "lucide-react";
+import NextLink from "next/link";
+import { BarChart3, Link2, Loader2, PencilRuler, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { LinkTargetPicker, type DomainOption } from "../link-target-picker";
@@ -35,6 +36,10 @@ export function PageCardActions({
           <PencilRuler /> Edit
         </Button>
       </form>
+
+      <NextLink href={`/dashboard/analytics?page=${page.id}`} className={buttonVariants({ size: "sm", variant: "outline" })} aria-label={`Analytics for /${page.username}`}>
+        <BarChart3 /> Analytics
+      </NextLink>
 
       <Dialog
         open={open}

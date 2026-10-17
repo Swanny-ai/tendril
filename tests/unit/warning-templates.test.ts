@@ -4,9 +4,9 @@ import { pickLang, templateCopy, WARNING_COPY } from "@/warning-templates/copy";
 import { getWarningTemplate, isWarningTemplateKey, WARNING_TEMPLATES } from "@/warning-templates/templates";
 
 describe("warning templates", () => {
-  it("has 13 templates with unique keys", () => {
-    expect(WARNING_TEMPLATES).toHaveLength(13);
-    expect(new Set(WARNING_TEMPLATES.map((t) => t.key)).size).toBe(13);
+  it("has 12 templates with unique keys", () => {
+    expect(WARNING_TEMPLATES).toHaveLength(12);
+    expect(new Set(WARNING_TEMPLATES.map((t) => t.key)).size).toBe(12);
   });
   it("only Clear Blue is exempt from the contrast check (it matches a reference look)", () => {
     expect(WARNING_TEMPLATES.filter((t) => t.meetsContrast === false).map((t) => t.key)).toEqual(["clear-blue"]);
@@ -17,7 +17,7 @@ describe("warning templates", () => {
     expect(contrastRatio(t.buttonText, t.buttonSolid)).toBeGreaterThanOrEqual(4.5);
   });
   it("falls back to the default for unknown keys", () => {
-    expect(getWarningTemplate("nope").key).toBe("dusk");
+    expect(getWarningTemplate("nope").key).toBe("clear-blue");
     expect(isWarningTemplateKey("sorbet")).toBe(true);
     expect(isWarningTemplateKey("nope")).toBe(false);
   });

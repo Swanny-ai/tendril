@@ -61,14 +61,6 @@ export const WARNING_TEMPLATES: WarningTemplate[] = [
     iconBg: "#f1ece2", iconColor: "#1c1a24", accent: "#1c1a24", radius: 14, font: "serif",
   },
   {
-    key: "aurora", name: "Aurora", layout: "card",
-    pageBg: "linear-gradient(160deg, #0b3d3a 0%, #1f6f5c 55%, #7fc29b 100%)",
-    cardBg: "rgba(255,255,255,0.10)", cardBorder: "rgba(255,255,255,0.22)",
-    text: "#f0fff6", muted: "#cfeedd", surface: "#155248",
-    buttonBg: "#e9fff1", buttonSolid: "#e9fff1", buttonText: "#0b3d3a",
-    iconBg: "rgba(233,255,241,0.16)", iconColor: "#e9fff1", accent: "#e9fff1", radius: 20, font: "display",
-  },
-  {
     key: "ember", name: "Ember Line", layout: "card",
     pageBg: "#0c0a09", cardBg: "#0c0a09", cardBorder: "#ff6b35",
     text: "#fff4ee", muted: "#d9c2b6", surface: "#0c0a09",
@@ -131,7 +123,8 @@ export const WARNING_TEMPLATES: WarningTemplate[] = [
 
 // Added on request to match a specific reference age gate as closely as possible.
 // Its gray text and white-on-blue button are below WCAG AA, so it's marked meetsContrast: false.
-WARNING_TEMPLATES.push({
+// It's the first design and the default for new links.
+WARNING_TEMPLATES.unshift({
   key: "clear-blue", name: "Clear Blue", layout: "card",
   pageBg: "#ffffff", cardBg: "#ffffff", cardBorder: "#f0f0f0",
   text: "#1a1a1a", muted: "#8a96a3", surface: "#ffffff",
@@ -153,7 +146,7 @@ WARNING_TEMPLATES.push({
   meetsContrast: false,
 });
 
-export const DEFAULT_WARNING_TEMPLATE = "dusk";
+export const DEFAULT_WARNING_TEMPLATE = "clear-blue";
 
 export function getWarningTemplate(key: string | null | undefined): WarningTemplate {
   return WARNING_TEMPLATES.find((t) => t.key === key) ?? WARNING_TEMPLATES[0];

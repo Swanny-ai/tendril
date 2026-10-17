@@ -108,7 +108,7 @@ test("18+ links: the warning shows inside Instagram and confirming opens the def
   const ios = await browser.newContext({ userAgent: IG_IOS, viewport: { width: 390, height: 844 } });
   const iosPage = await ios.newPage();
   await iosPage.goto(`/l/${slug}/warning`);
-  const confirm = iosPage.getByRole("link", { name: /18 or older/i });
+  const confirm = iosPage.getByRole("link", { name: /18 or older|I'm 18+/i });
   const safariHref = (await confirm.getAttribute("href")) ?? "";
   expect(extTarget(safariHref).endsWith(`/l/${slug}?ok=1&ib=1`)).toBe(true); // Instagram's own "open in browser" link
   await confirm.click();
@@ -120,7 +120,7 @@ test("18+ links: the warning shows inside Instagram and confirming opens the def
   const android = await browser.newContext({ userAgent: IG_ANDROID });
   const androidPage = await android.newPage();
   await androidPage.goto(`/l/${slug}/warning`);
-  const intent = (await androidPage.getByRole("link", { name: /18 or older/i }).getAttribute("href")) ?? "";
+  const intent = (await androidPage.getByRole("link", { name: /18 or older|I'm 18+/i }).getAttribute("href")) ?? "";
   expect(intent.startsWith("intent://")).toBe(true);
   expect(intent).toContain(`/l/${slug}?ok=1&ib=1#Intent;`);
   await android.close();
@@ -129,7 +129,7 @@ test("18+ links: the warning shows inside Instagram and confirming opens the def
   const safari = await browser.newContext({ userAgent: PHONE_SAFARI });
   const safariPage = await safari.newPage();
   await safariPage.goto(`/l/${slug}/warning`);
-  await expect(safariPage.getByRole("link", { name: /18 or older/i })).toHaveAttribute("href", `/l/${slug}?ok=1`);
+  await expect(safariPage.getByRole("link", { name: /18 or older|I'm 18+/i })).toHaveAttribute("href", `/l/${slug}?ok=1`);
   await safari.close();
   const landed = await page.request.get(`/l/${slug}?ok=1&ib=1`, { maxRedirects: 0, headers: { "user-agent": PHONE_SAFARI } });
   expect(landed.headers()["location"]).toBe("https://example.com/shop");

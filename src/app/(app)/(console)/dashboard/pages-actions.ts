@@ -12,7 +12,9 @@ import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { STARTER_BLOCKS } from "@/lib/starter-blocks";
 import { usernameSchema } from "@/lib/validation";
+import { getShowcase } from "@/lib/showcase";
 import { getPageTemplate, isLayoutKey } from "@/templates/link-in-bio";
+import { THEME_PRESETS } from "@/themes/presets";
 
 export type PageActionResult = { ok: true; username?: string; editPath?: string } | { ok: false; error: string; field?: "username" | "domain" };
 
@@ -67,13 +69,21 @@ export async function createPageAction(input: { username: string; template?: str
 
   const template = input.template && isLayoutKey(input.template) && input.template !== "classic" ? getPageTemplate(input.template) : null;
   const current = await getCurrentPage(userId);
-  // A template the site owner showcases starts from that page's look (layout, theme, colours) but
-  // clean: no blocks, photos or cards, so the creator fills it with their own content.
-  const showcase = template
-    ? await db.page.findFirst({ where: { layout: template.key, showcase: true }, select: { themeKey: true, themeOverrides: true, warningTemplate: true } })
-    : null;
+  // A showcased template (its gallery preview) starts as a copy of that preview: same photos,
+  // banner, blocks and theme, ready to replace. It keeps the creator's own name, and anything
+  // their plan doesn't include is left off.
+  const limits = PLAN_LIMITS[plan];
+  const showcase = template ? await getShowcase(template.key) : null;
+  const allowedTheme = (key: string) => (limits.customTheme || !THEME_PRESETS.find((t) => t.key === key)?.pro ? key : THEME_PRESETS[0].key);
   const blocks = showcase
-    ? []
+    ? showcase.blocks.slice(0, limits.maxBlocks).map((b, position) => ({
+        type: b.type,
+        position,
+        title: b.title ?? "",
+        url: b.url ?? null,
+        data: (b.data ?? {}) as Prisma.InputJsonValue,
+        contentWarning: b.contentWarning ?? false,
+      }))
     : template
     ? template.sample.blocks.slice(0, PLAN_LIMITS[plan].maxBlocks).map((b, position) => ({
         type: b.type,
@@ -92,12 +102,19 @@ export async function createPageAction(input: { username: string; template?: str
         username,
         // Start from the creator's existing identity so the new page already looks like them.
         displayName: current?.displayName ?? "",
-        avatarUrl: showcase ? null : (current?.avatarUrl ?? null),
+        avatarUrl: showcase ? showcase.avatarUrl : (current?.avatarUrl ?? null),
         layout: template?.key ?? "classic",
-        ...(showcase
-          ? { themeKey: showcase.themeKey, themeOverrides: showcase.themeOverrides ?? Prisma.DbNull, warningTemplate: showcase.warningTemplate }
-          : {}),
         tagline: "",
+        ...(showcase
+          ? {
+              bio: showcase.bio,
+              tagline: showcase.tagline,
+              heroUrl: showcase.heroUrl,
+              themeKey: allowedTheme(showcase.themeKey),
+              themeOverrides: limits.customTheme && showcase.themeOverrides ? (showcase.themeOverrides as Prisma.InputJsonValue) : Prisma.DbNull,
+              warningTemplate: showcase.warningTemplate,
+            }
+          : {}),
         ...target.target,
         blocks: { create: blocks },
       },

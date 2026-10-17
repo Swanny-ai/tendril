@@ -13,9 +13,10 @@ const config = {
 
 const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
-export function ViewsClicksChart({ data }: { data: { day: string; views: number; clicks: number }[] }) {
+export function ViewsClicksChart({ data, labels }: { data: { day: string; views: number; clicks: number }[]; labels?: { views: string; clicks: string } }) {
+  const chartConfig = labels ? { views: { ...config.views, label: labels.views }, clicks: { ...config.clicks, label: labels.clicks } } : config;
   return (
-    <ChartContainer config={config} className="aspect-auto h-72 w-full">
+    <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
       <AreaChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
         <defs>
           {(["views", "clicks"] as const).map((k) => (
@@ -78,5 +79,16 @@ export function BarList({ items }: { items: { label: string; value: number; mute
         </li>
       ))}
     </ul>
+  );
+}
+
+export function BreakdownCard({ title, items }: { title: string; items: { label: string; value: number; muted?: boolean; icon?: React.ReactNode }[] }) {
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-1">
+        <p className="font-heading font-medium">{title}</p>
+        {items.length ? <BarList items={items} /> : <p className="text-sm text-muted-foreground">No data in this range.</p>}
+      </CardContent>
+    </Card>
   );
 }

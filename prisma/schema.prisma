@@ -265,7 +265,7 @@ model SmartLink {
   enabled         Boolean        @default(true)
   // Adult content warning: on by default for every new link
   adultWarning    Boolean        @default(true)
-  warningTemplate String         @default("dusk")
+  warningTemplate String         @default("clear-blue")
   warningTitle    String?
   warningMessage  String?
   warningButton   String?
@@ -325,4 +325,13 @@ model Domain {
   pages      Page[]
 
   @@index([userId])
+}
+
+// A template's public preview in the gallery: a frozen copy of a showcased page (its images are
+// copied too, so later edits or deletes of that page don't change the preview). New pages made
+// from the template start from this content. Set with scripts/showcase-page.mjs.
+model TemplateShowcase {
+  layout    String   @id
+  data      Json
+  updatedAt DateTime @default(now()) @updatedAt
 }

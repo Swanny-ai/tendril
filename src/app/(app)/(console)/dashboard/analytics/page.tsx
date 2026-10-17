@@ -7,9 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getAnalytics, parseRange, RANGES, type RangeKey } from "@/lib/analytics/queries";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
+import { appUrl } from "@/config/brand";
+import { db } from "@/lib/db";
+import { pageUrl } from "@/lib/link-targets";
 import { requirePage } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { BarList, StatCard, ViewsClicksChart } from "./charts";
+import { BreakdownCard, StatCard, ViewsClicksChart } from "./charts";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Analytics" };
@@ -28,10 +31,14 @@ const SOURCE_LABELS: Record<string, string> = { social: "Social apps", search: "
 const OS_LABELS: Record<string, string> = { ios: "iOS", android: "Android", windows: "Windows", macos: "macOS", linux: "Linux", other: "Other", unknown: "Unknown" };
 
 export default async function AnalyticsPage(props: PageProps<"/dashboard/analytics">) {
-  const { userId, page } = await requirePage();
+  const { userId, page: current } = await requirePage();
   const plan = await getPlan(userId);
-  const { range } = await props.searchParams;
+  const { range, page: pageParam } = await props.searchParams;
   const r = parseRange(range, plan);
+  // ?page=<id> picks one of your pages (each template has its own analytics); default: last edited.
+  const pages = await db.page.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, username: true, displayName: true, atRoot: true, domain: { select: { hostname: true } } } });
+  const page = pages.find((p) => p.id === pageParam) ?? pages.find((p) => p.id === current.id) ?? pages[0];
+  const qs = (k: string) => `?${new URLSearchParams({ page: page.id, range: k })}`;
   const data = await getAnalytics(page.id, r.days, plan);
   const delta = (cur: number, prev: number) => (prev ? (cur - prev) / prev : null);
 
@@ -40,7 +47,23 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Bots are filtered out. Times are in UTC.</p>
+          <p className="text-sm text-muted-foreground">
+            {pageUrl(page, page.domain, appUrl).replace(/^https?:\/\//, "")} · Bots are filtered out. Times are in UTC.
+          </p>
+          {pages.length > 1 ? (
+            <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Page">
+              {pages.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`?${new URLSearchParams({ page: p.id, range: r.key })}`}
+                  aria-current={p.id === page.id ? "page" : undefined}
+                  className={cn("rounded-full border px-3 py-1 text-sm", p.id === page.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {p.displayName || `/${p.username}`}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
         </div>
         <nav className="flex rounded-lg border bg-card p-0.5" aria-label="Date range">
           {(Object.keys(RANGES) as RangeKey[]).map((k) => {
@@ -52,7 +75,7 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
             ) : (
               <Link
                 key={k}
-                href={`?range=${k}`}
+                href={qs(k)}
                 aria-current={r.key === k ? "page" : undefined}
                 className={cn("rounded-md px-3 py-1.5 text-sm font-medium", r.key === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
               >
@@ -149,13 +172,3 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
   );
 }
 
-function BreakdownCard({ title, items }: { title: string; items: { label: string; value: number; muted?: boolean; icon?: React.ReactNode }[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{items.length ? <BarList items={items} /> : <p className="text-sm text-muted-foreground">No data in this range.</p>}</CardContent>
-    </Card>
-  );
-}

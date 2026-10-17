@@ -125,3 +125,59 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
 
   return { days, totals, previous, series, topLinks, breakdowns };
 }
+
+export type LinkAnalytics = {
+  days: number;
+  totals: { visits: number; visitors: number; warningViews: number; confirms: number; redirects: number; leaves: number };
+  previousVisits: number;
+  /** views = visits, clicks = visitors sent on to the destination */
+  series: { day: string; views: number; clicks: number }[];
+  breakdowns: null | { countries: { code: string; count: number }[]; devices: { key: string; count: number }[]; os: { key: string; count: number }[] };
+};
+
+/** One deep link's numbers: visits ("hit"), 18+ page views, confirmations, redirects, leaves. Bots excluded. */
+export async function getLinkAnalytics(linkId: string, days: number, plan: PlanName): Promise<LinkAnalytics> {
+  const from = dayStart(days - 1);
+  const to = new Date(Date.now() + 60_000);
+  const prevFrom = dayStart(2 * days - 1);
+  const where = { linkId, isBot: false, ts: { gte: from, lt: to } };
+  const [kinds, previousVisits, visitors, perDay] = await Promise.all([
+    db.smartLinkEvent.groupBy({ by: ["kind"], where, _count: { _all: true } }),
+    db.smartLinkEvent.count({ where: { linkId, isBot: false, kind: "hit", ts: { gte: prevFrom, lt: from } } }),
+    db.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(DISTINCT "visitorHash")::bigint AS n FROM "SmartLinkEvent"
+      WHERE "linkId" = ${linkId} AND "isBot" = false AND kind = 'hit' AND ts >= ${from} AND ts < ${to}`,
+    db.$queryRaw<{ day: Date; kind: string; n: bigint }[]>`
+      SELECT date_trunc('day', ts AT TIME ZONE 'UTC') AS day, kind, COUNT(*)::bigint AS n FROM "SmartLinkEvent"
+      WHERE "linkId" = ${linkId} AND "isBot" = false AND kind IN ('hit', 'redirect') AND ts >= ${from} AND ts < ${to} GROUP BY 1, 2`,
+  ]);
+  const count = (k: string) => kinds.find((r) => r.kind === k)?._count._all ?? 0;
+  const key = (d: Date) => d.toISOString().slice(0, 10);
+  const byDay = new Map(perDay.map((r) => [`${key(r.day)}|${r.kind}`, Number(r.n)]));
+  const series = Array.from({ length: days }, (_, i) => {
+    const d = key(dayStart(days - 1 - i));
+    return { day: d, views: byDay.get(`${d}|hit`) ?? 0, clicks: byDay.get(`${d}|redirect`) ?? 0 };
+  });
+
+  let breakdowns: LinkAnalytics["breakdowns"] = null;
+  if (PLAN_LIMITS[plan].breakdowns) {
+    const hits = { ...where, kind: "hit" };
+    const [countries, devices, os] = await Promise.all([
+      db.smartLinkEvent.groupBy({ by: ["country"], where: hits, _count: { _all: true }, orderBy: { _count: { country: "desc" } }, take: 10 }),
+      db.smartLinkEvent.groupBy({ by: ["device"], where: hits, _count: { _all: true } }),
+      db.smartLinkEvent.groupBy({ by: ["os"], where: hits, _count: { _all: true } }),
+    ]);
+    breakdowns = {
+      countries: countries.map((c) => ({ code: c.country ?? "??", count: c._count._all })),
+      devices: devices.map((d) => ({ key: d.device, count: d._count._all })).sort((a, b) => b.count - a.count),
+      os: os.map((o) => ({ key: o.os ?? "unknown", count: o._count._all })).sort((a, b) => b.count - a.count),
+    };
+  }
+  return {
+    days,
+    totals: { visits: count("hit"), visitors: Number(visitors[0]?.n ?? 0), warningViews: count("view"), confirms: count("confirm"), redirects: count("redirect"), leaves: count("leave") },
+    previousVisits,
+    series,
+    breakdowns,
+  };
+}
