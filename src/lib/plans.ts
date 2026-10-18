@@ -10,7 +10,7 @@ export class PlanError extends Error {
 }
 
 export async function getPlan(userId: string): Promise<PlanName> {
-  const sub = await db.subscription.findUnique({ where: { userId }, select: { plan: true, status: true } });
+  const sub = await db.subscription.findUnique({ where: { userId }, select: { plan: true, status: true, currentPeriodEnd: true } });
   return planFromSubscription(sub);
 }
 

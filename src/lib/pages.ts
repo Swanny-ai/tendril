@@ -45,7 +45,7 @@ async function loadPublicPage(username: string): Promise<PublicPageData | null> 
     where: { username },
     include: {
       blocks: { orderBy: { position: "asc" } },
-      user: { select: { subscription: { select: { plan: true, status: true } } } },
+      user: { select: { subscription: { select: { plan: true, status: true, currentPeriodEnd: true } } } },
     },
   });
   if (!page || !page.published) return null;
@@ -114,7 +114,7 @@ export async function loadRedirectTarget(blockId: string): Promise<RedirectTarge
       page: {
         include: {
           blocks: { select: { id: true, enabled: true, position: true } },
-          user: { select: { subscription: { select: { plan: true, status: true } } } },
+          user: { select: { subscription: { select: { plan: true, status: true, currentPeriodEnd: true } } } },
         },
       },
     },

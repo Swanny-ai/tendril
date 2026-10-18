@@ -27,6 +27,13 @@ export async function syncSubscription(sub: Stripe.Subscription): Promise<{ user
   const plan = isPro && sub.status !== "canceled" && sub.status !== "incomplete_expired" ? "PRO" : "FREE";
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
 
+  // Prepaid Pro (paid in crypto) still running: an inactive card subscription mustn't end it.
+  const current = await db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } });
+  if (plan === "FREE" && current?.status === "prepaid" && current.currentPeriodEnd && current.currentPeriodEnd > new Date()) {
+    await db.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId } });
+    return { userId, plan: "PRO" };
+  }
+
   await db.$transaction([
     db.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId } }),
     db.subscription.upsert({

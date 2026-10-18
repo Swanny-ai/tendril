@@ -44,21 +44,32 @@ export async function recordCommission(invoice: Stripe.Invoice) {
   const paid = invoice.amount_paid ?? 0;
   const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
   if (!invoice.id || paid <= 0 || !customerId) return;
-  const user = await db.user.findUnique({ where: { stripeCustomerId: customerId }, select: { id: true, referredById: true } });
+  const user = await db.user.findUnique({ where: { stripeCustomerId: customerId }, select: { id: true } });
+  if (!user) return;
+  const paidAt = invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date();
+  await creditReferral(user.id, paid, invoice.id, paidAt);
+}
+
+/**
+ * A payment by `userId` (card or crypto) earns whoever referred them a commission at their current
+ * level. `paymentId` makes it count once, however many times the payment is reported.
+ */
+export async function creditReferral(userId: string, paidCents: number, paymentId: string, paidAt: Date) {
+  if (paidCents <= 0) return;
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, referredById: true } });
   if (!user?.referredById) return;
   const earlier = await db.affiliateCommission.findMany({ where: { affiliateId: user.referredById }, distinct: ["referredUserId"], select: { referredUserId: true } });
   const paying = new Set(earlier.map((c) => c.referredUserId)).add(user.id).size;
   const { level } = levelFor(paying);
-  const paidAt = invoice.status_transitions?.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : new Date();
   try {
     await db.affiliateCommission.create({
       data: {
         affiliateId: user.referredById,
         referredUserId: user.id,
-        invoiceId: invoice.id,
-        paidCents: paid,
+        invoiceId: paymentId,
+        paidCents,
         rate: level.rate,
-        amountCents: commissionCents(paid, level.rate),
+        amountCents: commissionCents(paidCents, level.rate),
         availableAt: availableAt(paidAt),
       },
     });

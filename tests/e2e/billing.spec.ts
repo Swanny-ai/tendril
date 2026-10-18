@@ -53,7 +53,7 @@ test("upgrade via webhook unlocks Pro, downgrade restores Free limits", async ({
   await page.goto("/dashboard/billing");
   await expect(page.getByText("Current plan")).toBeVisible();
   await expect(page.getByText("You're on the free plan.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Yearly/ })).toBeVisible();
+  await expect(page.getByText("Upgrade to Pro")).toBeVisible();
 
   // Upgrade (as Stripe would after Checkout)
   const eventId = `evt_${uniqueName("up")}`;
@@ -95,6 +95,13 @@ test("checkout explains when Stripe is not configured", async ({ page }) => {
   const res = await page.request.post("/api/billing/checkout", { data: { interval: "month" } });
   expect(res.status()).toBe(503);
   await page.goto("/dashboard/billing");
-  await expect(page.getByRole("note")).toContainText("Payments aren't configured");
-  await expect(page.getByRole("button", { name: /Yearly/ })).toBeDisabled();
+  if (process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_IPN_SECRET) {
+    // Crypto works, so the page offers that instead of a disabled card checkout.
+    await expect(page.getByRole("note")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Yearly/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /1 year/ })).toBeEnabled();
+  } else {
+    await expect(page.getByRole("note")).toContainText("Payments aren't configured");
+    await expect(page.getByRole("button", { name: /Yearly/ })).toBeDisabled();
+  }
 });

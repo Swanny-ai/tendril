@@ -4,20 +4,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * The mark: the owner's "VR" monogram (a V flowing into an R with a play button in its bowl),
- * redrawn as vector strokes in black on the green tile. Every copy draws the same gradient, so a
- * shared id is safe.
+ * redrawn as vector strokes in black on a solid green tile (no gradient ids, so copies hidden
+ * with CSS can't break the visible one).
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="95 95 1760 1760" aria-hidden className={cn("size-7 shrink-0", className)}>
-      <defs>
-        <linearGradient id="vl-tile" x1="95" y1="95" x2="1855" y2="1855" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#6cf583" />
-          <stop offset="0.55" stopColor="#49f264" />
-          <stop offset="1" stopColor="#35d651" />
-        </linearGradient>
-      </defs>
-      <rect x="95" y="95" width="1760" height="1760" rx="380" fill="url(#vl-tile)" />
+      <rect x="95" y="95" width="1760" height="1760" rx="380" fill="#49f264" />
       <path
         d="M343 830 L627 1290 L925 712 C995 610 1095 588 1220 588 L1300 588 C1460 588 1578 720 1578 890 C1578 1075 1420 1160 1190 1205 L1470 1472"
         fill="none"

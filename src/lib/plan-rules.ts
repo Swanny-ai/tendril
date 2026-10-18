@@ -34,10 +34,23 @@ export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "
 
 export const PRICES_USD = { monthly: 6, yearly: 60 } as const;
 
-export function planFromSubscription(sub: { plan: PlanName; status: string } | null | undefined): PlanName {
-  if (!sub) return "FREE";
+export function planFromSubscription(
+  sub: { plan: PlanName; status: string; currentPeriodEnd?: Date | null } | null | undefined,
+  now: Date = new Date(),
+): PlanName {
+  if (!sub || sub.plan !== "PRO") return "FREE";
+  // Paid in crypto: Pro until the prepaid period ends (nothing renews it).
+  if (sub.status === "prepaid") return sub.currentPeriodEnd && sub.currentPeriodEnd > now ? "PRO" : "FREE";
   const activeStatuses = new Set(["active", "trialing", "past_due"]);
-  return sub.plan === "PRO" && activeStatuses.has(sub.status) ? "PRO" : "FREE";
+  return activeStatuses.has(sub.status) ? "PRO" : "FREE";
+}
+
+/** End of a prepaid period after paying for one more month/year: from today, or from the current end if later. */
+export function extendPrepaid(currentEnd: Date | null | undefined, interval: "month" | "year", now: Date = new Date()): Date {
+  const from = currentEnd && currentEnd > now ? new Date(currentEnd) : new Date(now);
+  if (interval === "year") from.setUTCFullYear(from.getUTCFullYear() + 1);
+  else from.setUTCMonth(from.getUTCMonth() + 1);
+  return from;
 }
 
 export function clampAnalyticsDays(plan: PlanName, requestedDays: number): number {

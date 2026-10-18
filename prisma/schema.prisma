@@ -10,16 +10,16 @@ datasource db {
 // ---------- Auth.js (Prisma adapter) ----------
 
 model User {
-  id               String        @id @default(cuid())
-  email            String        @unique
+  id               String                @id @default(cuid())
+  email            String                @unique
   emailVerified    DateTime?
   name             String?
   image            String?
   passwordHash     String?
-  sessionVersion   Int           @default(0)
-  stripeCustomerId String?       @unique
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  sessionVersion   Int                   @default(0)
+  stripeCustomerId String?               @unique
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
   accounts         Account[]
   sessions         Session[]
   pages            Page[]
@@ -28,15 +28,16 @@ model User {
   smartLinks       SmartLink[]
   domains          Domain[]
   // Affiliate program ("Grow with ViewLink"): this user's code and payout email, and who referred them
-  affiliateCode    String?       @unique
+  affiliateCode    String?               @unique
   payoutEmail      String?
   referredById     String?
-  referredBy       User?         @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
-  referrals        User[]        @relation("Referrals")
+  referredBy       User?                 @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals        User[]                @relation("Referrals")
   referredAt       DateTime?
   affiliateClicks  AffiliateClick[]
   commissions      AffiliateCommission[]
   payoutRequests   PayoutRequest[]
+  cryptoPayments   CryptoPayment[]
 
   @@index([referredById])
 }
@@ -100,45 +101,45 @@ model VerificationToken {
 // ---------- Pages & blocks ----------
 
 model Page {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  username       String   @unique
-  displayName    String   @default("")
-  bio            String   @default("")
-  avatarUrl      String?
-  themeKey       String   @default("paper")
-  themeOverrides Json?
-  seoTitle       String?
-  seoDescription String?
-  published      Boolean  @default(true)
-  showBadge      Boolean  @default(true)
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username        String    @unique
+  displayName     String    @default("")
+  bio             String    @default("")
+  avatarUrl       String?
+  themeKey        String    @default("paper")
+  themeOverrides  Json?
+  seoTitle        String?
+  seoDescription  String?
+  published       Boolean   @default(true)
+  showBadge       Boolean   @default(true)
   // Warning template for content-warning links on the bio page (null = match the page theme)
   warningTemplate String?
   // Inside Instagram/TikTok/etc., link taps open in the phone's default browser (deep link)
-  openInBrowser   Boolean  @default(true)
+  openInBrowser   Boolean   @default(true)
   // Page template: classic | simple-stack | modern-card | spotlight | pro-card | personal-card
-  layout          String   @default("classic")
+  layout          String    @default("classic")
   // Cover/background photo used by the photo templates
   heroUrl         String?
   // Short line under the name, e.g. "Painter" or "20 · Florida"
-  tagline         String   @default("")
+  tagline         String    @default("")
   // Verified badge: Pro creators switch it on themselves (showVerified); the site owner can also
   // grant it to any page (verifiedAt), which keeps it whatever the plan.
   verifiedAt      DateTime?
-  showVerified    Boolean  @default(false)
+  showVerified    Boolean   @default(false)
   // The @username shown on the page: a custom one (null = the page's username), or hidden
   handle          String?
-  showHandle      Boolean  @default(true)
+  showHandle      Boolean   @default(true)
   // Set by the site owner (scripts/showcase-page.mjs): the public preview of its template in the gallery
-  showcase        Boolean  @default(false)
+  showcase        Boolean   @default(false)
   // The page's link: a connected custom domain (null = the ViewLink domain), at its root or at /<username>
   domainId        String?
-  domain          Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
-  atRoot          Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  blocks         Block[]
+  domain          Domain?   @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  atRoot          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  blocks          Block[]
 
   @@index([userId, createdAt])
   @@index([domainId])
@@ -268,29 +269,29 @@ model StripeEvent {
 // ---------- Smart links (short links with an optional 18+ warning page) ----------
 
 model SmartLink {
-  id              String         @id @default(cuid())
+  id              String           @id @default(cuid())
   userId          String
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug            String         @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String           @unique
   destinationUrl  String
-  label           String         @default("")
-  enabled         Boolean        @default(true)
+  label           String           @default("")
+  enabled         Boolean          @default(true)
   // Adult content warning: on by default for every new link
-  adultWarning    Boolean        @default(true)
-  warningTemplate String         @default("clear-blue")
+  adultWarning    Boolean          @default(true)
+  warningTemplate String           @default("clear-blue")
   warningTitle    String?
   warningMessage  String?
   warningButton   String?
-  showBadge       Boolean        @default(true)
+  showBadge       Boolean          @default(true)
   // Inside Instagram/TikTok/etc., show a page that opens the link in the default browser
-  openInBrowser   Boolean        @default(true)
+  openInBrowser   Boolean          @default(true)
   // Custom domain the link is shared on (null = the ViewLink domain)
   domainId        String?
-  domain          Domain?        @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  domain          Domain?          @relation(fields: [domainId], references: [id], onDelete: SetNull)
   // Root: the link is the whole custom domain (example.com/) instead of example.com/<slug>
-  atRoot          Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  atRoot          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   events          SmartLinkEvent[]
 
   @@index([userId, createdAt])
@@ -391,6 +392,25 @@ model PayoutRequest {
   createdAt   DateTime              @default(now())
   paidAt      DateTime?
   commissions AffiliateCommission[]
+
+  @@index([userId, createdAt])
+}
+
+// A Pro payment in crypto through NOWPayments. Crypto can't renew by itself, so each payment
+// adds a prepaid month or year (Subscription.status "prepaid" until currentPeriodEnd).
+model CryptoPayment {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "month" | "year"
+  interval    String
+  amountCents Int
+  invoiceId   String?   @unique
+  // NOWPayments payment_status: waiting, confirming, confirmed, sending, partially_paid, finished, failed, refunded, expired
+  status      String    @default("waiting")
+  payCurrency String?
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([userId, createdAt])
 }
