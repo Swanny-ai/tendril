@@ -1,10 +1,9 @@
 import { ImageResponse } from "next/og";
-import { brand } from "@/config/brand";
 import { getPublicPage } from "@/lib/pages";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = `Profile on ${brand.name}`;
+export const alt = "Profile picture and name";
 
 export default async function OpenGraphImage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -22,7 +21,6 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ use
         <div style={{ display: "flex", width: 120, height: 120, borderRadius: 999, background: accent, marginBottom: 36 }} />
         <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.05 }}>{name}</div>
         {bio ? <div style={{ fontSize: 34, marginTop: 20, opacity: 0.8, maxWidth: 900 }}>{bio}</div> : null}
-        <div style={{ marginTop: "auto", fontSize: 28, opacity: 0.7 }}>{`${brand.domain}/${username}`}</div>
       </div>
     ),
     size,

@@ -23,8 +23,11 @@ test("each template creates its own page with its own link", async ({ page }) =>
   const name = await newCreator(page);
   await page.getByRole("navigation", { name: "Dashboard" }).first().getByRole("link", { name: "Templates" }).click();
   await expect(page.getByRole("heading", { name: "Templates" })).toBeVisible();
-  for (const t of ["Pro Card", "Personal Card", "Spotlight Card", "Modern Card", "Simple Stack"]) {
+  for (const t of ["Spotlight Card", "Modern Card"]) {
     await expect(page.getByRole("heading", { name: t })).toBeVisible();
+  }
+  for (const t of ["Pro Card", "Personal Card", "Simple Stack"]) {
+    await expect(page.getByRole("heading", { name: t })).toHaveCount(0);
   }
 
   await page.getByRole("button", { name: "Use the Spotlight Card template" }).click();
@@ -49,10 +52,16 @@ test("each template creates its own page with its own link", async ({ page }) =>
   await page.goto("/dashboard/editor");
   await page.getByRole("tab", { name: "Theme" }).click();
   await page.getByRole("combobox", { name: "Page template" }).click();
-  await page.getByRole("option", { name: "Pro Card" }).click();
+  await page.getByRole("option", { name: "Modern Card" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   await page.goto(`/${spot}`);
-  await expect(page.locator('img[src="/templates/pro-card.jpg"]')).toHaveCount(1);
+  await expect(page.locator('img[src="/templates/modern-card.jpg"]')).toHaveCount(1);
+  // Back to Spotlight, which shows the @username.
+  await page.goto("/dashboard/editor");
+  await page.getByRole("tab", { name: "Theme" }).click();
+  await page.getByRole("combobox", { name: "Page template" }).click();
+  await page.getByRole("option", { name: "Spotlight Card" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 
   // The @username a template shows can be changed or hidden (the page's link stays).
   await page.goto("/dashboard/editor");
@@ -297,7 +306,7 @@ test("verified badge: pages the site owner verifies keep it on the Free plan", a
 });
 
 test("a showcase is everyone's preview of its template; using it starts from that content", async ({ page }) => {
-  await showcaseTemplate("personal-card");
+  await showcaseTemplate("modern-card");
   try {
     const owner = await newCreator(page);
     await page.goto("/dashboard/templates");
@@ -305,8 +314,8 @@ test("a showcase is everyone's preview of its template; using it starts from tha
     await expect(gallery.getByText("Showcase Star")).toHaveCount(1);
 
     // Using it copies the showcase's content and look, but keeps the creator's own name.
-    await page.getByRole("button", { name: "Use the Personal Card template" }).click();
-    const dialog = page.getByRole("dialog", { name: "New page with Personal Card" });
+    await page.getByRole("button", { name: "Use the Modern Card template" }).click();
+    const dialog = page.getByRole("dialog", { name: "New page with Modern Card" });
     const fresh = `${owner.slice(0, 18)}_fresh`;
     await dialog.getByLabel("Page link").fill(fresh);
     await expect(dialog.getByText("Available")).toBeVisible();
@@ -320,6 +329,6 @@ test("a showcase is everyone's preview of its template; using it starts from tha
     await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
     await expect(page.getByText(new RegExp(`/${fresh} · Bots`))).toBeVisible();
   } finally {
-    await removeShowcase("personal-card");
+    await removeShowcase("modern-card");
   }
 });

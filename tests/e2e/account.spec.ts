@@ -16,7 +16,7 @@ async function newCreator(page: Page) {
 
 test("landing page and claim form prefill signup", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("One link for");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("One link that turns");
   await expect(page.getByRole("heading", { name: "Simple pricing" })).toBeVisible();
   await page.getByLabel("Choose your username").fill("juno.paints");
   await page.getByRole("button", { name: "Claim your page" }).click();

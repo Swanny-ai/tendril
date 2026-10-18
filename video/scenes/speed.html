@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modern Card: IShowSpeed template in motion</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  body { width: 390px; height: 844px; position: relative; background: #0b0b0e; color: #fff; overflow: hidden; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; color: #fff; font: 600 15px Inter; z-index: 70; }
+  .status .icons { display: flex; gap: 6px; align-items: center; }
+  .hero { position: absolute; left: 0; right: 0; top: 0; height: 500px; overflow: hidden; }
+  .hero img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; animation: kenburns 12s linear both; transform-origin: 50% 40%; }
+  @keyframes kenburns { from { transform: scale(1.18); } to { transform: scale(1.02); } }
+  .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(11,11,14,0) 45%, rgba(11,11,14,.65) 72%, #0b0b0e 100%); }
+  .name { position: absolute; top: 420px; left: 0; right: 0; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
+  .name svg { vertical-align: middle; margin-left: 4px; }
+  .role { position: absolute; top: 468px; left: 0; right: 0; text-align: center; font: 500 15px Inter; color: #a3a3a3; }
+  .socials { position: absolute; top: 504px; left: 0; right: 0; display: flex; justify-content: center; gap: 22px; }
+  .card { position: absolute; left: 20px; right: 20px; top: 560px; height: 196px; border-radius: 22px; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+  .card img { width: 100%; height: 100%; object-fit: cover; }
+  .card .lbl { position: absolute; left: 14px; bottom: 12px; font: 700 15px Inter; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+  .play { position: absolute; left: 50%; top: 50%; width: 60px; height: 42px; margin: -21px 0 0 -30px; border-radius: 12px; background: #ff0033; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(255,0,51,.5); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .badge { position: absolute; top: 776px; left: 50%; transform: translateX(-50%); font: 600 12px Inter; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); white-space: nowrap; }
+  .badge em { font-style: normal; color: #49f264; }
+  .tapcard { animation: press .35s ease both; animation-delay: 4.85s; }
+  .chips { position: absolute; left: 0; right: 0; top: 70px; z-index: 20; }
+  .chip { position: absolute; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: rgba(21,21,21,.85); border: 1px solid #2e2e2e; backdrop-filter: blur(10px); font: 600 12px Inter; white-space: nowrap; }
+  .chip small { display: block; font: 500 10.5px Inter; color: #a3a3a3; }
+  .chip .dot { width: 26px; height: 26px; border-radius: 50%; background: #49f264; display: grid; place-items: center; color: #0a0a0a; }
+  .float { animation: up .55s cubic-bezier(.2,.8,.2,1) both, bob 3s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+
+  /* Tap opens the video in a YouTube-style watch page */
+  .opening { position: absolute; left: 50%; top: 330px; z-index: 48; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-radius: 999px; background: #151515; border: 1px solid #2e2e2e; font: 600 14px Inter; white-space: nowrap; opacity: 0; animation: opening 12s linear both; }
+  @keyframes opening { 0%, 41.5% { opacity: 0; transform: translate(-50%, 10px); } 43% { opacity: 1; transform: translate(-50%, 0); } 47% { opacity: 1; } 48.5%, 100% { opacity: 0; } }
+  .opening .yt { width: 26px; height: 18px; border-radius: 5px; background: #ff0033; display: grid; place-items: center; }
+  .yt-page { position: absolute; inset: 0; z-index: 50; background: #0f0f0f; animation: ytin .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: 5.75s; }
+  @keyframes ytin { from { transform: translateY(100%); } to { transform: none; } }
+  .yt-video { position: absolute; left: 0; right: 0; top: 46px; height: 219px; overflow: hidden; background: #000; z-index: 3; }
+  .yt-page > .status { z-index: 4; }
+  .yt-video img { width: 100%; height: 100%; object-fit: cover; animation: playzoom 12s linear both; }
+  @keyframes playzoom { 0%, 48% { transform: scale(1); } 100% { transform: scale(1.08); } }
+  .yt-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.3); }
+  .yt-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #ff0033; }
+  .yt-bar i::after { content: ""; position: absolute; right: -6px; top: -4.5px; width: 12px; height: 12px; border-radius: 50%; background: #ff0033; }
+  .yt-time { position: absolute; left: 10px; bottom: 10px; font: 600 11px Inter; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+  .yt-title { position: absolute; left: 14px; right: 14px; top: 280px; font: 700 18px/1.3 Inter; }
+  .yt-meta { position: absolute; left: 14px; right: 14px; top: 334px; font: 500 12.5px Inter; color: #aaa; display: flex; gap: 8px; white-space: nowrap; }
+  .yt-meta b { color: #fff; font-weight: 600; }
+  .yt-chan { position: absolute; left: 14px; right: 14px; top: 366px; display: flex; align-items: center; gap: 10px; }
+  .yt-chan .av { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; }
+  .yt-chan .av img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+  .yt-chan .sub { height: 36px; padding: 0 16px; border-radius: 999px; background: #f1f1f1; color: #0f0f0f; display: grid; place-items: center; font: 600 13.5px Inter; animation: press .35s ease both; animation-delay: 8.6s; }
+  .yt-chan .sub.done { position: absolute; left: 46px; background: #272727; color: #f1f1f1; opacity: 0; animation: subd 12s linear both; }
+  @keyframes subd { 0%, 72.5% { opacity: 0; } 73.5%, 100% { opacity: 1; } }
+  .yt-chan .acts { margin-left: auto; display: flex; gap: 16px; }
+  .yt-com { position: absolute; left: 12px; right: 12px; top: 420px; padding: 12px 14px; border-radius: 14px; background: #272727; }
+  .yt-com .h { font: 600 14px Inter; } .yt-com .h span { font-weight: 400; color: #aaa; margin-left: 6px; }
+  .yt-com .c { margin-top: 8px; display: flex; gap: 8px; align-items: center; font: 400 13px Inter; color: #e5e5e5; }
+  .yt-com .c i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #49f264, #1f8a3a); flex-shrink: 0; }
+  .yt-next { position: absolute; left: 0; right: 0; top: 508px; }
+  .yt-next .th { position: relative; height: 218px; overflow: hidden; }
+  .yt-next .th img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+  .yt-next .dur { position: absolute; right: 8px; bottom: 8px; padding: 2px 5px; border-radius: 4px; background: rgba(0,0,0,.8); font: 600 11px Inter; }
+  .yt-next .row { display: flex; gap: 10px; padding: 10px 14px; }
+  .yt-next .row .av { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+  .yt-next .row .av img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+  .yt-next .t { font: 600 14px/1.3 Inter; } .yt-next .m { margin-top: 3px; font: 400 12px Inter; color: #aaa; }
+  .yt-scroll { position: absolute; left: 0; right: 0; top: 0; animation: ytscroll 12s cubic-bezier(.4,0,.2,1) both; }
+  @keyframes ytscroll { 0%, 82% { transform: none; } 92%, 100% { transform: translateY(-150px); } }
+  .finger2 { position: absolute; left: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.55); border: 2px solid rgba(255,255,255,.95); box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 81; animation: finger2 12s linear both; }
+  @keyframes finger2 {
+    0%, 63% { opacity: 0; transform: translate(150px, 640px) scale(1); }
+    66% { opacity: 1; transform: translate(120px, 470px) scale(1); }
+    70% { opacity: 1; transform: translate(102px, 366px) scale(1); }
+    71.5% { transform: translate(102px, 366px) scale(.82); }
+    72.8% { transform: translate(102px, 366px) scale(1); }
+    76%, 100% { opacity: 0; transform: translate(102px, 366px) scale(1); }
+  }
+  .finger { position: absolute; left: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.55); border: 2px solid rgba(255,255,255,.95); box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 80; animation: finger 12s linear both; }
+  @keyframes finger {
+    0%, 32% { opacity: 0; transform: translate(260px, 800px) scale(1); }
+    35% { opacity: 1; transform: translate(240px, 760px) scale(1); }
+    39.5% { opacity: 1; transform: translate(173px, 636px) scale(1); }
+    40.6% { transform: translate(173px, 636px) scale(.82); }
+    41.8% { transform: translate(173px, 636px) scale(1); }
+    45%, 100% { opacity: 0; transform: translate(173px, 636px) scale(1); }
+  }
+  .cover { background: #0b0b0e; }
+</style>
+</head>
+<body>
+  <div class="status"><span>9:41</span><span class="icons">
+    <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+    <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".6"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".6"/></svg>
+  </span></div>
+
+  <div class="hero"><img src="assets/sccmva4rg38000009jg8xy3d0cr-734686421d5a09b6.jpg" alt=""></div>
+  <div class="name display up" style="animation-delay:.6s">IShowSpeed</div>
+  <div class="role up" style="animation-delay:.8s">Youtuber</div>
+  <div class="socials">
+    <span class="pop" style="animation-delay:1.0s"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff"/></svg></span>
+    <span class="pop" style="animation-delay:1.1s"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M9 18a3 3 0 1 1 0-6v-8c1 2 3 4 6 4"/></svg></span>
+    <span class="pop" style="animation-delay:1.2s"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.7 15V9l5.8 3z"/></svg></span>
+  </div>
+  <div class="card up" style="animation-delay:1.4s">
+    <div class="tapcard" style="position:absolute;inset:0">
+      <img src="assets/yt-L6S9Vb3RLy4.jpg" alt="">
+      <div class="play"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M7 5v14l12-7z"/></svg></div>
+      <div class="lbl">YouTube</div>
+    </div>
+    <span class="ripple" style="left:173px;top:98px;color:#fff;animation-delay:4.88s"></span>
+  </div>
+  <div class="badge up" style="animation-delay:1.9s">Made with View<em>Link</em></div>
+
+  <div class="chips">
+    <div class="chip float" style="left:16px;top:40px;animation-delay:2.3s,2.3s"><span class="dot">▶</span><span>12,408 views<small>this week</small></span></div>
+    <div class="chip float" style="right:16px;top:120px;animation-delay:2.7s,2.7s"><span class="dot" style="background:#fff;overflow:hidden"><img src="../../public/flags/us.svg" alt="" style="width:26px;height:26px;object-fit:cover"></span><span>New visitor<small>Mobile · from TikTok</small></span></div>
+  </div>
+
+  <div class="opening"><span class="yt"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M7 5v14l12-7z"/></svg></span> Opening YouTube…</div>
+
+  <div class="yt-page">
+    <div class="status" style="position:absolute;background:#0f0f0f"><span>9:41</span><span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".6"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".6"/></svg>
+    </span></div>
+    <div class="yt-video"><img src="assets/yt-L6S9Vb3RLy4.jpg" alt=""><span class="yt-time" id="ytt">0:00 / 1:10:41</span><div class="yt-bar"><i id="prog" style="width:0"></i></div></div>
+    <div class="yt-scroll">
+      <div class="yt-title">Speed vs. Cole Palmer EA FC 1v1! ⚽</div>
+      <div class="yt-meta"><b>@IShowSpeed</b><span>2.6M views</span><span>2d ago</span><b>...more</b></div>
+      <div class="yt-chan">
+        <div class="av"><img src="assets/sccmva4rg38000009jg8xy3d0cr-734686421d5a09b6.jpg" alt=""></div>
+        <div class="sub">Subscribe<span class="ripple" style="left:50%;top:50%;color:#0f0f0f;animation-delay:8.62s"></span></div>
+        <div class="sub done">Subscribed ✓</div>
+        <div class="acts">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4V10zM7 10l4-8a2.5 2.5 0 0 1 2.5 2.5V8h5.3a2 2 0 0 1 2 2.3l-1.2 8a2 2 0 0 1-2 1.7H7"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3v11zM17 14l-4 8a2.5 2.5 0 0 1-2.5-2.5V16H5.2a2 2 0 0 1-2-2.3l1.2-8a2 2 0 0 1 2-1.7H17"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l7 7-7 7M21 12H9a6 6 0 0 0-6 6"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f1f1f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 11l6 6 6-6M5 21h14"/></svg>
+        </div>
+      </div>
+      <div class="yt-com"><div class="h">Comments<span>2.2K</span></div><div class="c"><i></i>Found this straight from his bio link 🔥</div></div>
+      <div class="yt-next">
+        <div class="th"><img src="assets/sccmva4rg38000009jg8xy3d0cr-734686421d5a09b6.jpg" alt=""><span class="dur">24:18</span></div>
+        <div class="row"><div class="av"><img src="assets/sccmva4rg38000009jg8xy3d0cr-734686421d5a09b6.jpg" alt=""></div><div><div class="t">Courtside with Speed: the full vlog</div><div class="m">IShowSpeed · 1.3M views · 5d ago</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="finger"></div>
+  <div class="finger2"></div>
+  <div class="cover"></div>
+  <script>
+    window.SCENE = {
+      duration: 12,
+      update(t) {
+        const k = Math.max(0, Math.min(1, (t - 6.2) / 5.8));
+        document.getElementById("prog").style.width = `${k * 9}%`;
+        const sec = Math.floor(k * 380);
+        document.getElementById("ytt").textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} / 1:10:41`;
+      },
+    };
+  </script>
+  <script src="driver.js"></script>
+</body>
+</html>

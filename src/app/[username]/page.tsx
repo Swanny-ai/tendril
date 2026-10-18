@@ -28,14 +28,14 @@ export async function generateMetadata(props: PageProps<"/[username]">): Promise
   const page = await getPublicPage(username.toLowerCase());
   if (!page) return { title: "Page not found", robots: { index: false } };
   const title = page.seoTitle || page.displayName || `@${page.username}`;
-  const description = page.seoDescription || page.bio || `${title} on ${brand.name}`;
+  const description = page.seoDescription || page.bio || undefined;
   const url = `${appUrl}/${page.username}`;
   return {
     // The tab shows only the brand; link previews (Open Graph) keep the page's own title.
     title: { absolute: brand.name },
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, type: "profile", siteName: brand.name },
+    openGraph: { title, description, type: "profile" },
     twitter: { card: "summary_large_image", title, description },
   };
 }

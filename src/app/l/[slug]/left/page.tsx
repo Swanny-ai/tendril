@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
-import { brand } from "@/config/brand";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 import { pickLang, WARNING_COPY } from "@/warning-templates/copy";
+import { creatorLinkMetadata } from "@/lib/link-metadata";
 import { getWarningTemplate } from "@/warning-templates/templates";
 
 export const instant = false;
 // The tab shows only the brand (no "Adults only · …" or similar).
-export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
+// Link previews show only the domain (a link's label is the creator's private note).
+export async function generateMetadata(): Promise<Metadata> {
+  return creatorLinkMetadata(null);
+}
 
 export default async function SmartLinkLeftPage(props: PageProps<"/l/[slug]/left">) {
   await connection();

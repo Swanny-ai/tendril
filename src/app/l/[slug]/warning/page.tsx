@@ -3,18 +3,22 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { BrowserEscape } from "@/components/browser-escape";
-import { appHost, appUrl, brand } from "@/config/brand";
+import { appHost, appUrl } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 import { isLinkEntry, publicLinkBase } from "@/lib/link-paths";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 import { pickLang, templateCopy } from "@/warning-templates/copy";
 import { getWarningTemplate } from "@/warning-templates/templates";
+import { creatorLinkMetadata } from "@/lib/link-metadata";
 import { WarningScreen } from "@/warning-templates/warning-screen";
 
 export const instant = false;
 // The tab shows only the brand (no "Adults only · …" or similar).
-export const metadata: Metadata = { title: { absolute: brand.name }, robots: { index: false, follow: false } };
+// Link previews show only the domain (a link's label is the creator's private note).
+export async function generateMetadata(): Promise<Metadata> {
+  return creatorLinkMetadata(null);
+}
 
 export default async function SmartLinkWarningPage(props: PageProps<"/l/[slug]/warning">) {
   await connection();

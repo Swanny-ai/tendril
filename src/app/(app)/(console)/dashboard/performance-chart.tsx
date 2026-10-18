@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,8 +71,7 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
           <YAxis tickLine={false} axisLine={false} width={36} allowDecimals={false} />
           <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => formatBucket(String(p?.[0]?.payload?.key ?? ""), bucket, true)} />} />
           {legend ? <ChartLegend content={<ChartLegendContent />} /> : null}
-          {average > 0 ? <ReferenceLine y={average} stroke="var(--muted-foreground)" strokeDasharray="4 4" ifOverflow="extendDomain" /> : null}
-          <Area dataKey="views" type="monotone" stroke="var(--color-views)" fill="url(#fill-global-views)" strokeWidth={2} dot={series.length <= 48} />
+          <Area dataKey="views" type="monotone" stroke="var(--color-views)" fill="url(#fill-global-views)" strokeWidth={2} dot={false} />
         </AreaChart>
       </ChartContainer>
     </div>

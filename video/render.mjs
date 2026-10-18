@@ -17,6 +17,8 @@ const FPS = 30;
 
 const SCENES = {
   hero: { width: 390, height: 844, scale: 2, duration: 12, poster: 2.6, bitrate: 1_800_000 },
+  sophie: { width: 390, height: 844, scale: 2, duration: 12, poster: 3.2, bitrate: 2_000_000 },
+  speed: { width: 390, height: 844, scale: 2, duration: 12, poster: 3.2, bitrate: 2_000_000 },
   editor: { width: 1280, height: 800, scale: 1.5, duration: 12, poster: 5, bitrate: 2_200_000 },
   analytics: { width: 1280, height: 800, scale: 1.5, duration: 12, poster: 7, bitrate: 2_200_000 },
 };

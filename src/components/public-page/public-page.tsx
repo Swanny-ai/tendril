@@ -6,10 +6,7 @@ import { cardImage, type BlockData, type BlockKind } from "@/lib/blocks";
 import type { ThemeTokens } from "@/themes/presets";
 import { Countdown } from "./layouts/countdown";
 import { ModernCard } from "./layouts/modern-card";
-import { PersonalCard } from "./layouts/personal-card";
-import { ProCard } from "./layouts/pro-card";
 import { Embed } from "./layouts/shared";
-import { SimpleStack } from "./layouts/simple-stack";
 import { Spotlight } from "./layouts/spotlight";
 import { SocialGlyph, socialMeta } from "./social";
 import { VerifiedBadge } from "./verified-badge";
@@ -69,11 +66,8 @@ function initials(name: string) {
 }
 
 const LAYOUT_COMPONENTS = {
-  "simple-stack": SimpleStack,
   "modern-card": ModernCard,
   spotlight: Spotlight,
-  "pro-card": ProCard,
-  "personal-card": PersonalCard,
 } as const;
 
 export function PublicPage({ page, preview = false }: { page: RenderPage; preview?: boolean }) {

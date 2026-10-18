@@ -13,22 +13,21 @@ import {
   MousePointerClick,
   Radio,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { LiveDemo } from "@/components/marketing/live-demo";
 import { LoopVideo } from "@/components/marketing/loop-video";
 import {
   AudienceTabs,
   CountUp,
   EarningsCalculator,
-  EscapeDemo,
   Reveal,
-  TemplateSwitcher,
 } from "@/components/marketing/interactive";
 import { SocialGlyph } from "@/components/public-page/social";
 import { buttonVariants } from "@/components/ui/button";
 import { appHost, brand } from "@/config/brand";
 import { PRICES_USD } from "@/lib/plan-rules";
-import { LAYOUTS } from "@/templates/link-in-bio";
 import { WARNING_TEMPLATES } from "@/warning-templates/templates";
 
 export const metadata: Metadata = {
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
     "Bio pages and smart deep links that open in the real browser, with 18+ warning pages, custom domains and live analytics. Free to start.",
 };
 
-// Apps your link is shared from (icons only, from simple-icons).
+// Apps your link is shared from (icons from simple-icons; Fanvue uses its own app icon).
 const APPS = [
   "instagram",
   "tiktok",
@@ -51,6 +50,7 @@ const APPS = [
   "twitch",
   "whatsapp",
   "onlyfans",
+  "fanvue",
 ];
 
 const STEPS = [
@@ -68,43 +68,6 @@ const STEPS = [
     icon: MousePointerClick,
     title: "Fans land in their browser",
     body: "Visitors leave the app's built-in browser, so logins, saved cards and checkouts just work.",
-  },
-];
-
-const SHOWCASE = [
-  {
-    eyebrow: "Editor",
-    path: "/edit/template/yourname",
-    title: "Build it in minutes, see it as you go",
-    body: "Add a link and type its title, drag it into place, try a theme. The phone preview follows every change, and your page is live as soon as it saves.",
-    points: [
-      "Drag-and-drop ordering",
-      "Templates that restyle the whole page",
-      "Autosave with a live preview",
-    ],
-    video: {
-      src: "/videos/editor.mp4",
-      poster: "/videos/editor-poster.jpg",
-      label:
-        "Adding a link, reordering links and switching themes in the ViewLink editor",
-    },
-  },
-  {
-    eyebrow: "Global dashboard",
-    path: "/dashboard",
-    title: "Watch your audience arrive",
-    body: "Every view across your bio pages and deep links in one place: totals, growth, your best links, a world map, and visitors showing up live.",
-    points: [
-      "Live activity, refreshed every 5 seconds",
-      "Any date range, in your own time zone",
-      "One-click CSV export",
-    ],
-    video: {
-      src: "/videos/analytics.mp4",
-      poster: "/videos/analytics-poster.jpg",
-      label:
-        "The ViewLink global dashboard filling in with views, top links, a world map and live visitors",
-    },
   },
 ];
 
@@ -200,17 +163,16 @@ export default function LandingPage() {
             <div className="min-w-0">
               <p className="mb-5 inline-flex items-center gap-2 rounded-full border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground">
                 <span className="size-1.5 rounded-full bg-[var(--plum)] shadow-[0_0_8px_var(--plum)]" />{" "}
-                Link in bio + smart deep links
+                Built to raise your conversion rate
               </p>
               <h1 className="text-4xl leading-[1.02] font-semibold tracking-tight sm:text-6xl">
-                One link for{" "}
-                <span className="text-[var(--plum)]">everything</span>
-                <br />
-                you make.
+                One link that turns{" "}
+                <span className="text-[var(--plum)]">clicks into sales.</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-                A bio page your fans love, and links that open in their real
-                browser, so logins, saved cards and checkouts actually work.
+                Fans tap your link in Instagram or TikTok and land in their real
+                browser, signed in with their saved cards ready. More of them
+                buy.
               </p>
               <form action="/signup" className="mt-8 max-w-md">
                 <label htmlFor="claim" className="sr-only">
@@ -270,23 +232,14 @@ export default function LandingPage() {
                 aria-hidden
                 className="absolute top-1/2 left-1/2 size-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--plum)]/20 blur-3xl"
               />
-              <div className="absolute top-20 -left-6 z-10 hidden w-32 -rotate-[8deg] overflow-hidden rounded-3xl border-4 border-[#262626] shadow-2xl sm:block">
-                <Image
-                  src="/templates/spotlight.jpg"
-                  alt=""
-                  width={288}
-                  height={512}
-                  className="h-auto w-full"
-                />
-              </div>
               <div className="absolute top-0 left-1/2 h-[580px] w-[270px] -translate-x-1/2 overflow-hidden rounded-[44px] border-[9px] border-[#262626] bg-[#262626] shadow-2xl">
                 <LoopVideo
                   eager
-                  src="/videos/hero.mp4"
-                  poster="/videos/hero-poster.jpg"
+                  src="/videos/speed.mp4"
+                  poster="/videos/speed-poster.jpg"
                   width={390}
                   height={844}
-                  label="A ViewLink page building itself, a visitor tapping a link, confirming an 18+ warning and reaching the destination"
+                  label="The Modern Card template: a photo header, name and social icons animate in, then a tap opens the video link"
                   className="h-full overflow-hidden rounded-[35px]"
                 />
               </div>
@@ -345,21 +298,145 @@ export default function LandingPage() {
                   className="flex items-center gap-2 text-sm text-muted-foreground"
                   aria-hidden={i >= APPS.length}
                 >
-                  <SocialGlyph network={a} size={20} />
+                  {a === "fanvue" ? (
+                    <span
+                      aria-hidden
+                      className="inline-block size-5 bg-current [mask:url(/brands/fanvue-mark.png)_center/contain_no-repeat]"
+                    />
+                  ) : (
+                    <SocialGlyph network={a} size={20} />
+                  )}
                   <span className="capitalize">
                     {a === "x"
                       ? "X"
                       : a === "onlyfans"
                         ? "OnlyFans"
-                        : a === "tiktok"
-                          ? "TikTok"
-                          : a === "youtube"
-                            ? "YouTube"
-                            : a === "whatsapp"
-                              ? "WhatsApp"
-                              : a}
+                        : a === "fanvue"
+                          ? "Fanvue"
+                          : a === "tiktok"
+                            ? "TikTok"
+                            : a === "youtube"
+                              ? "YouTube"
+                              : a === "whatsapp"
+                                ? "WhatsApp"
+                                : a}
                   </span>
                 </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Conversion statement */}
+        <section className="relative overflow-hidden border-b">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-[radial-gradient(50%_60%_at_50%_0%,color-mix(in_oklch,var(--plum)_14%,transparent),transparent)]"
+          />
+          <div className="mx-auto max-w-6xl px-4 py-24 text-center">
+            <Reveal>
+              <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
+                Higher conversion rate
+              </p>
+              <h2 className="mx-auto mt-3 max-w-5xl text-5xl leading-[0.95] font-semibold tracking-tight sm:text-7xl lg:text-8xl">
+                Every click
+                <br />
+                <span className="text-[var(--plum)]">counts.</span>
+              </h2>
+              <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+                In-app browsers lose sales: no saved passwords, no Apple Pay, no
+                card autofill. ViewLink sends fans to the browser where buying
+                takes one tap.
+              </p>
+            </Reveal>
+            <div className="mx-auto mt-14 grid max-w-5xl gap-5 text-left md:grid-cols-2">
+              <Reveal>
+                <BeforeAfter
+                  tone="bad"
+                  title="Stuck in the app"
+                  body="The link opens in Instagram's browser. Fans are logged out, can't use Apple Pay, and leave."
+                />
+              </Reveal>
+              <Reveal delay={150}>
+                <BeforeAfter
+                  tone="good"
+                  title="Straight to checkout"
+                  body="ViewLink opens the real browser. Fans are signed in, pay in one tap, and buy."
+                />
+              </Reveal>
+            </div>
+            <Link
+              href="/signup"
+              className={buttonVariants({
+                size: "lg",
+                className: "mt-12 h-12 rounded-full px-7 text-base",
+              })}
+            >
+              Start converting more <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </section>
+
+        {/* Templates in motion */}
+        <section className="overflow-x-clip border-b">
+          <div className="mx-auto max-w-6xl px-4 py-20">
+            <Reveal className="text-center">
+              <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
+                Templates in motion
+              </p>
+              <h2 className="mx-auto mt-2 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
+                Pages fans can&apos;t scroll past.
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+                Full-screen photos, glowing featured links, countdowns and 18+
+                checks that open in the real browser.
+              </p>
+            </Reveal>
+            <div className="mt-12 grid justify-items-center gap-10 sm:grid-cols-2">
+              {[
+                {
+                  src: "/videos/sophie.mp4",
+                  poster: "/videos/sophie-poster.jpg",
+                  name: "Spotlight Card",
+                  note: "Featured link, countdown and an 18+ check",
+                  label:
+                    "The Spotlight Card template: a full-screen photo, a glowing featured link and a countdown; a tap shows the 18+ check and the link opens in Safari",
+                },
+                {
+                  src: "/videos/speed.mp4",
+                  poster: "/videos/speed-poster.jpg",
+                  name: "Modern Card",
+                  note: "Photo header, socials and a video card",
+                  label:
+                    "The Modern Card template: a photo header, name and social icons animate in, then a tap opens the video link",
+                },
+              ].map((v, i) => (
+                <Reveal
+                  key={v.name}
+                  delay={i * 150}
+                  className={i ? "sm:mt-16" : undefined}
+                >
+                  <div className="relative">
+                    <div
+                      aria-hidden
+                      className="absolute -inset-8 -z-10 rounded-full bg-[var(--plum)]/15 blur-3xl"
+                    />
+                    <div className="h-[560px] w-[262px] overflow-hidden rounded-[44px] border-[9px] border-[#262626] bg-[#262626] shadow-2xl transition-transform duration-500 hover:-translate-y-2 hover:rotate-1">
+                      <LoopVideo
+                        src={v.src}
+                        poster={v.poster}
+                        width={390}
+                        height={844}
+                        label={v.label}
+                        className="h-full overflow-hidden rounded-[35px]"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-5 text-center font-semibold">{v.name}</p>
+                  <p className="text-center text-sm text-muted-foreground">
+                    {v.note}
+                  </p>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -399,31 +476,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* What fans see */}
-        <section className="border-t">
-          <div className="mx-auto max-w-6xl px-4 py-20">
-            <Reveal>
-              <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
-                What your fans see
-              </p>
-              <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
-                From a tap in the app to a paid checkout.
-              </h2>
-            </Reveal>
-            <div className="mt-10">
-              <EscapeDemo />
-            </div>
-          </div>
-        </section>
-
         {/* Numbers */}
         <section
           aria-label="ViewLink in numbers"
           className="border-y bg-card/40"
         >
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 text-center md:grid-cols-4">
+          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 px-4 py-10 text-center sm:grid-cols-3">
             {[
-              { n: LAYOUTS.length, s: "", label: "Page templates" },
               {
                 n: WARNING_TEMPLATES.length,
                 s: "",
@@ -439,6 +498,55 @@ export default function LandingPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{x.label}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Dashboard */}
+        <section className="overflow-x-clip border-t">
+          <div className="mx-auto max-w-6xl px-4 py-20">
+            <Reveal className="text-center">
+              <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
+                Your dashboard
+              </p>
+              <h2 className="mx-auto mt-2 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
+                Watch your audience arrive, live.
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+                Every view across your bio pages and deep links in one place:
+                totals, growth, your best links, a world map and visitors
+                showing up as it happens.
+              </p>
+            </Reveal>
+            <Reveal className="relative mt-10">
+              <div
+                aria-hidden
+                className="absolute inset-x-10 -top-6 -bottom-6 -z-10 rounded-[3rem] bg-[var(--plum)]/15 blur-3xl"
+              />
+              <div className="overflow-hidden rounded-2xl border bg-card shadow-2xl">
+                <div
+                  aria-hidden
+                  className="flex items-center gap-1.5 border-b bg-muted px-4 py-2.5"
+                >
+                  <span className="size-2.5 rounded-full bg-[#f85863]/80" />
+                  <span className="size-2.5 rounded-full bg-[#f4a124]/80" />
+                  <span className="size-2.5 rounded-full bg-[#49f264]/80" />
+                  <span className="mx-auto rounded-md bg-background px-3 py-0.5 text-xs text-muted-foreground">
+                    {appHost}/dashboard
+                  </span>
+                </div>
+                <LoopVideo
+                  src="/videos/analytics.mp4"
+                  poster="/videos/analytics-poster.jpg"
+                  width={1280}
+                  height={800}
+                  label="The ViewLink dashboard filling in with views, top links, a world map and live visitors"
+                  className="aspect-[8/5]"
+                />
+              </div>
+            </Reveal>
+            <Reveal className="mt-6">
+              <LiveDemo />
+            </Reveal>
           </div>
         </section>
 
@@ -494,7 +602,7 @@ export default function LandingPage() {
                 title="Pages that look made for you"
               >
                 <div aria-hidden className="mt-4 flex gap-2">
-                  {["pro-card", "spotlight", "modern-card"].map((t) => (
+                  {["spotlight", "modern-card"].map((t) => (
                     <Image
                       key={t}
                       src={`/templates/${t}.jpg`}
@@ -564,81 +672,6 @@ export default function LandingPage() {
                   </div>
                 </div>
               </Tile>
-            </div>
-          </div>
-        </section>
-
-        {/* Template switcher */}
-        <section className="border-t">
-          <div className="mx-auto max-w-6xl px-4 py-20">
-            <Reveal>
-              <TemplateSwitcher />
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Product videos */}
-        <section aria-labelledby="showcase-title" className="border-t">
-          <div className="mx-auto max-w-6xl px-4 py-20">
-            <h2
-              id="showcase-title"
-              className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl"
-            >
-              See it in action
-            </h2>
-            <p className="mt-2 max-w-2xl text-muted-foreground">
-              Real screens from the product.
-            </p>
-            <div className="mt-12 space-y-20">
-              {SHOWCASE.map((s, i) => (
-                <Reveal
-                  key={s.title}
-                  className="grid items-center gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14"
-                >
-                  <div className={i % 2 ? "lg:order-2" : undefined}>
-                    <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
-                      {s.eyebrow}
-                    </p>
-                    <h3 className="mt-2 text-2xl font-semibold sm:text-3xl">
-                      {s.title}
-                    </h3>
-                    <p className="mt-3 leading-relaxed text-muted-foreground">
-                      {s.body}
-                    </p>
-                    <ul className="mt-5 space-y-2">
-                      {s.points.map((p) => (
-                        <li key={p} className="flex items-start gap-2 text-sm">
-                          <Check
-                            className="mt-0.5 size-4 shrink-0 text-[var(--plum)]"
-                            aria-hidden
-                          />{" "}
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="overflow-hidden rounded-2xl border bg-card shadow-2xl">
-                    <div
-                      aria-hidden
-                      className="flex items-center gap-1.5 border-b bg-muted px-4 py-2.5"
-                    >
-                      <span className="size-2.5 rounded-full bg-[#f85863]/80" />
-                      <span className="size-2.5 rounded-full bg-[#f4a124]/80" />
-                      <span className="size-2.5 rounded-full bg-[#49f264]/80" />
-                      <span className="ml-3 truncate text-xs text-muted-foreground">
-                        {appHost}
-                        {s.path}
-                      </span>
-                    </div>
-                    <LoopVideo
-                      {...s.video}
-                      width={1280}
-                      height={800}
-                      className="aspect-[8/5]"
-                    />
-                  </div>
-                </Reveal>
-              ))}
             </div>
           </div>
         </section>
@@ -810,6 +843,116 @@ function Tile({
       <div className="mt-2 text-sm leading-relaxed text-muted-foreground">
         {children}
       </div>
+    </div>
+  );
+}
+
+const PATH = ["Tap", "Sign in", "Pay", "Sale"];
+
+function BeforeAfter({
+  tone,
+  title,
+  body,
+}: {
+  tone: "bad" | "good";
+  title: string;
+  body: string;
+}) {
+  const bad = tone === "bad";
+  const color = bad ? "#f85863" : "var(--plum)";
+  const reached = bad ? 1 : PATH.length; // steps the fan gets through
+  return (
+    <div
+      className="group relative h-full overflow-hidden rounded-[28px] border bg-card p-7 transition-colors duration-300"
+      style={{
+        borderColor: `color-mix(in oklab, ${color} 35%, var(--border))`,
+      }}
+    >
+      <div
+        aria-hidden
+        className="absolute -top-24 -right-24 size-56 rounded-full blur-3xl"
+        style={{ background: `color-mix(in oklab, ${color} 22%, transparent)` }}
+      />
+      <span
+        className="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold tracking-widest uppercase"
+        style={{
+          background: `color-mix(in oklab, ${color} 16%, transparent)`,
+          color,
+        }}
+      >
+        {bad ? (
+          <X className="size-3.5" aria-hidden />
+        ) : (
+          <Check className="size-3.5" aria-hidden />
+        )}
+        {bad ? "Before" : "After ViewLink"}
+      </span>
+      <h3 className="relative mt-5 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+        {title}
+      </h3>
+      <p className="relative mt-2 text-muted-foreground">{body}</p>
+
+      <ol
+        className="relative mt-8 flex items-start"
+        aria-label={
+          bad ? "The fan stops at sign in" : "The fan completes every step"
+        }
+      >
+        {PATH.map((step, i) => {
+          const ok = i < reached;
+          const failed = bad && i === reached;
+          return (
+            <li
+              key={step}
+              className="relative flex flex-1 flex-col items-center text-center"
+            >
+              {i > 0 ? (
+                <span
+                  aria-hidden
+                  className="absolute top-[18px] right-1/2 left-[-50%] h-0.5"
+                  style={
+                    i < reached
+                      ? { background: color }
+                      : {
+                          backgroundImage: `repeating-linear-gradient(90deg, ${failed ? color : "var(--border)"} 0 6px, transparent 6px 11px)`,
+                        }
+                  }
+                />
+              ) : null}
+              <span
+                className="relative z-10 grid size-9 place-items-center rounded-full border-2 bg-card"
+                style={
+                  ok || failed
+                    ? {
+                        borderColor: color,
+                        color,
+                        background: ok
+                          ? `color-mix(in oklab, ${color} 16%, var(--card))`
+                          : "var(--card)",
+                      }
+                    : {
+                        borderColor: "var(--border)",
+                        color: "var(--muted-foreground)",
+                      }
+                }
+              >
+                {failed ? (
+                  <X className="size-4" aria-hidden />
+                ) : ok ? (
+                  <Check className="size-4" aria-hidden />
+                ) : (
+                  <span className="size-1.5 rounded-full bg-current" />
+                )}
+              </span>
+              <span
+                className={`mt-2 text-xs font-medium ${ok || failed ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                {step}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

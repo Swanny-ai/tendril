@@ -10,7 +10,6 @@ const fraunces = Fraunces({ variable: "--font-serif", subsets: ["latin"], displa
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: { default: `${brand.name}: ${brand.tagline}`, template: `%s · ${brand.name}` },
-  description: "A fast, beautiful link-in-bio page with real analytics and per-link content warnings.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
