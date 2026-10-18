@@ -4,7 +4,9 @@ import { appHost } from "@/config/brand";
 import { isAppHost } from "@/lib/domain-names";
 import { getVerifiedDomain } from "@/lib/domains";
 import { detectInAppBrowser } from "@/lib/in-app";
+import { isLinkEntry } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
+import { openStep, warningStep } from "@/lib/smart-link-steps";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
 
 const NO_STORE = { "Cache-Control": "no-store", "Referrer-Policy": "strict-origin-when-cross-origin" };
@@ -45,6 +47,13 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
       }
     });
   };
+
+  // Custom domains: the proxy sends a visitor's first request here (marked as the entry), and the
+  // 18+ or "open in browser" page is rendered at the link's own clean address in this response.
+  if (!confirmed && !escaped && isLinkEntry(headers, appHost)) {
+    if (link.adultWarning) return warningStep(headers, link, slug, true);
+    if (link.openInBrowser && detectInAppBrowser(headers.get("user-agent") ?? "")) return openStep(headers, link, slug, true);
+  }
 
   // Deep link: inside Instagram, TikTok, Facebook... links without an 18+ warning get a page
   // with an "Open in browser" button. Links with a warning show the warning here instead, and

@@ -36,7 +36,7 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
       domain: { select: { hostname: true } },
       user: {
         select: {
-          subscription: { select: { plan: true, status: true } },
+          subscription: { select: { plan: true, status: true, currentPeriodEnd: true } },
           pages: { select: { username: true, displayName: true, avatarUrl: true }, orderBy: { createdAt: "asc" }, take: 1 },
         },
       },

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type Stripe from "stripe";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { planFromSubscription } from "@/lib/plan-rules";
 import { availableAt, commissionCents, levelFor, normalizeCode, REF_COOKIE } from "@/lib/affiliate-rules";
 
 // Affiliate program data (rules in affiliate-rules.ts).
@@ -88,7 +89,7 @@ export async function getAffiliateOverview(userId: string) {
     db.user.findMany({
       where: { referredById: userId },
       orderBy: { referredAt: "desc" },
-      select: { id: true, email: true, referredAt: true, createdAt: true, subscription: { select: { plan: true, status: true } } },
+      select: { id: true, email: true, referredAt: true, createdAt: true, subscription: { select: { plan: true, status: true, currentPeriodEnd: true } } },
     }),
     db.affiliateCommission.findMany({ where: { affiliateId: userId }, select: { referredUserId: true, paidCents: true, amountCents: true, availableAt: true, payoutId: true, payout: { select: { status: true } } } }),
     db.payoutRequest.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, amountCents: true, email: true, status: true, createdAt: true, paidAt: true } }),
@@ -119,7 +120,7 @@ export async function getAffiliateOverview(userId: string) {
       id: r.id,
       email: r.email,
       joined: r.referredAt ?? r.createdAt,
-      plan: r.subscription?.plan === "PRO" && ["active", "trialing", "past_due"].includes(r.subscription.status) ? "Pro" : "Free",
+      plan: planFromSubscription(r.subscription) === "PRO" ? "Pro" : "Free",
       paidCents: perReferral.get(r.id)?.paid ?? 0,
       earnedCents: perReferral.get(r.id)?.earned ?? 0,
     })),

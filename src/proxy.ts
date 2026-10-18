@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
 import { apexOfWww, isAppHost } from "@/lib/domain-names";
-import { detectInAppBrowser } from "@/lib/in-app";
 import { LINK_BASE_HEADER, LINK_ENTRY_HEADER } from "@/lib/link-paths";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
@@ -66,23 +65,8 @@ async function linkEntry(request: NextRequest, slug: string, base: string) {
   const headers = cleanHeaders(request);
   headers.set(LINK_BASE_HEADER, base);
   const q = request.nextUrl.searchParams;
-  if (q.get("ok") !== "1" && q.get("ib") !== "1") {
-    let info: { adultWarning: boolean; openInBrowser: boolean } | null | undefined;
-    try {
-      const res = await fetch(new URL(`/api/link-status?${new URLSearchParams({ kind: "smart", id: slug, page: "entry" })}`, apiBase(request)));
-      info = res.status === 404 ? null : res.ok ? await res.json() : undefined;
-    } catch {
-      info = undefined; // lookup failed: let /l/<slug> decide
-    }
-    if (info === null) return notFound();
-    const step = info?.adultWarning ? "warning" : info?.openInBrowser && detectInAppBrowser(request.headers.get("user-agent") ?? "") ? "open" : null;
-    if (step) {
-      headers.set(LINK_ENTRY_HEADER, "1"); // this view is also the visit
-      url.pathname = `/l/${slug}/${step}`;
-      url.search = "";
-      return NextResponse.rewrite(url, { request: { headers } });
-    }
-  }
+  // A first visit: /l/<slug> renders the 18+ or "open in browser" page itself (one request).
+  if (q.get("ok") !== "1" && q.get("ib") !== "1") headers.set(LINK_ENTRY_HEADER, "1");
   url.pathname = `/l/${slug}`;
   return NextResponse.rewrite(url, { request: { headers } });
 }
@@ -113,7 +97,7 @@ async function customDomain(request: NextRequest, host: string) {
     }
   }
   if (PASSTHROUGH.has(parts[0])) return NextResponse.next({ request: { headers: cleanHeaders(request) } });
-  if (parts[0] === "l") return smartLinkPages(request, parts, cleanHeaders(request)) ?? NextResponse.next({ request: { headers: cleanHeaders(request) } });
+  if (parts[0] === "l") return NextResponse.next({ request: { headers: cleanHeaders(request) } });
 
   // /<slug> is the creator's smart link; /<slug>/(warning|open|left) its steps.
   // /<path>: a bio page assigned to this domain, else a deep link.
@@ -126,20 +110,12 @@ async function customDomain(request: NextRequest, host: string) {
     return linkEntry(request, parts[0], `/${parts[0]}`);
   }
   if (parts.length === 2 && ["warning", "open", "left"].includes(parts[1])) {
-    if (!(await exists(request, "smart", parts[0], parts[1]))) return notFound();
     const headers = cleanHeaders(request);
     headers.set(LINK_BASE_HEADER, `/${parts[0]}`);
     url.pathname = `/l/${parts.join("/")}`;
     return NextResponse.rewrite(url, { request: { headers } });
   }
   return notFound();
-}
-
-function smartLinkPages(request: NextRequest, parts: string[], headers?: Headers) {
-  if (parts[0] === "l" && parts.length === 3) {
-    return exists(request, "smart", parts[1], parts[2]).then((ok) => (ok ? NextResponse.next(headers ? { request: { headers } } : undefined) : notFound()));
-  }
-  return null;
 }
 
 export async function proxy(request: NextRequest) {
@@ -151,9 +127,6 @@ export async function proxy(request: NextRequest) {
   }
 
   const parts = request.nextUrl.pathname.split("/").filter(Boolean);
-  if (parts[0] === "l" && parts.length === 3 && ["warning", "left", "open"].includes(parts[2])) {
-    return (await smartLinkPages(request, parts)) ?? NextResponse.next();
-  }
   if (parts[0] === "go" && parts.length === 3 && parts[2] === "warning") {
     if (!(await exists(request, "block", parts[1], "warning"))) return notFound();
   }
