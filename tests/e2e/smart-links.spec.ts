@@ -110,7 +110,7 @@ test("turning the warning off redirects straight away; pausing makes the link 40
   expect((await page.request.get(`/l/${slug}`, { maxRedirects: 0 })).status()).toBe(404);
 });
 
-test("free plan allows 3 smart links; names are validated", async ({ page }) => {
+test("free plan allows 1 deep link; names are validated", async ({ page }) => {
   await newCreator(page);
   await page.goto("/dashboard/links/new");
   await page.getByLabel("Link name").fill("demo-vip");
@@ -123,11 +123,11 @@ test("free plan allows 3 smart links; names are validated", async ({ page }) => 
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page.getByRole("main").getByText("Only http and https links are allowed")).toBeVisible();
 
-  for (let i = 1; i <= 3; i++) await createLink(page, `${uniqueName("cap").replace(/_/g, "-")}-${i}`, `https://example.com/${i}`);
-  await expect(page.getByText("3 / 3 used")).toBeVisible();
+  await createLink(page, `${uniqueName("cap").replace(/_/g, "-")}-1`, "https://example.com/1");
+  await expect(page.getByText("1 / 1 used")).toBeVisible();
   await expect(page.getByRole("link", { name: "Upgrade for more links" })).toBeVisible();
   await page.goto("/dashboard/links/new");
-  await expect(page.getByText(/used all 3 deep links/)).toBeVisible();
+  await expect(page.getByText(/used the 1 deep link/)).toBeVisible();
 });
 
 test("bio-page content warnings can use a warning template", async ({ page }) => {

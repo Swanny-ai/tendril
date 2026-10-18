@@ -58,7 +58,7 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
   if ("error" in v) return v.error!;
   const count = await db.smartLink.count({ where: { userId } });
   if (count >= v.limits.maxSmartLinks) {
-    return { ok: false, error: `Your plan includes ${v.limits.maxSmartLinks} smart links. Upgrade to Pro for more.` };
+    return { ok: false, error: `Your plan includes ${v.limits.maxSmartLinks} deep link${v.limits.maxSmartLinks === 1 ? "" : "s"}. Upgrade to Pro for more.` };
   }
   if (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } })) {
     return { ok: false, error: "That link name is taken.", field: "slug" };

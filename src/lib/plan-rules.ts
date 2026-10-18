@@ -6,8 +6,8 @@ export type PlanName = "FREE" | "PRO";
 export const PLAN_LIMITS = {
   FREE: {
     maxBlocks: 12,
-    maxSmartLinks: 3,
-    maxPages: 2,
+    maxSmartLinks: 1,
+    maxPages: 1,
     customDomains: 0,
     analyticsDays: 30,
     breakdowns: false,

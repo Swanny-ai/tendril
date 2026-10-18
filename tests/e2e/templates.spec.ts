@@ -35,6 +35,10 @@ test("each template creates its own page with its own link", async ({ page }) =>
   const spot = `${name.slice(0, 18)}_spot`;
   await dialog.getByLabel("Page link").fill(spot);
   await expect(dialog.getByText("Available")).toBeVisible();
+  // Free accounts get one page; a second one needs Pro.
+  await dialog.getByRole("button", { name: "Create page" }).click();
+  await expect(page.getByText(/Free accounts can have 1 page\./).first()).toBeVisible();
+  await setPlanByUsername(name, "PRO");
   await dialog.getByRole("button", { name: "Create page" }).click();
   await expect(page).toHaveURL(/\/edit\/template\//);
   await expect(page.getByText(new RegExp(`/${spot}$`)).first()).toBeVisible();
@@ -309,6 +313,7 @@ test("a showcase is everyone's preview of its template; using it starts from tha
   await showcaseTemplate("modern-card");
   try {
     const owner = await newCreator(page);
+    await setPlanByUsername(owner, "PRO"); // a second page needs Pro
     await page.goto("/dashboard/templates");
     const gallery = page.getByRole("list", { name: "Link-in-bio templates" });
     await expect(gallery.getByText("Showcase Star")).toHaveCount(1);

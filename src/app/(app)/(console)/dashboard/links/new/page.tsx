@@ -25,7 +25,7 @@ export default async function NewSmartLinkPage() {
       </div>
       {count >= limits.maxSmartLinks ? (
         <p className="rounded-lg border px-4 py-3 text-sm">
-          You&apos;ve used all {limits.maxSmartLinks} deep links on your plan.{" "}
+          You&apos;ve used {limits.maxSmartLinks === 1 ? "the 1 deep link" : `all ${limits.maxSmartLinks} deep links`} on your plan.{" "}
           <Link href="/dashboard/billing" className="font-medium text-primary underline-offset-4 hover:underline">
             Upgrade to Pro
           </Link>{" "}

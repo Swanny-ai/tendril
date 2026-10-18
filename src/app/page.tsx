@@ -74,7 +74,7 @@ const STEPS = [
 const FAQ = [
   [
     "Is it really free?",
-    "Yes. The free plan covers a full bio page, deep links, 18+ warning pages and 30 days of analytics. Pro adds custom domains, more templates and longer history.",
+    "Yes. The free plan covers one bio page and one deep link, with 18+ warning pages and 30 days of analytics. Pro adds up to 25 pages, 100 deep links, custom domains and longer history.",
   ],
   [
     'What does "opens in the real browser" mean?',
@@ -725,8 +725,8 @@ export default function LandingPage() {
                 note="forever"
                 cta="Start free"
                 features={[
-                  "A full bio page",
-                  "Deep links that open in the real browser",
+                  "1 bio page",
+                  "1 deep link that opens in the real browser",
                   "18+ warning pages",
                   "Views, clicks and CTR (30 days)",
                 ]}
@@ -739,7 +739,7 @@ export default function LandingPage() {
                 cta="Go Pro"
                 features={[
                   "Verified badge",
-                  "Unlimited blocks and pages",
+                  "Unlimited blocks, 25 pages and 100 deep links",
                   "All templates plus custom colors and fonts",
                   'Remove the "Made with" badge',
                   "Custom warning text",
