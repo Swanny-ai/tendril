@@ -18,12 +18,12 @@ export async function closeDb() {
   await p?.end();
 }
 
-/** Records one bio-page view for a username, as if a visitor just opened the page. */
-export async function addPageView(username: string, country = "MA"): Promise<void> {
+/** Records one bio-page view for a username, as if a visitor just opened the page (browser as lib/ua.ts stores it). */
+export async function addPageView(username: string, country = "MA", browser: string | null = null): Promise<void> {
   await db().query(
-    `INSERT INTO "PageView" ("pageId", ts, "visitorHash", source, country, device)
-     SELECT id, now() AT TIME ZONE 'UTC', md5(random()::text), 'direct', $2, 'mobile' FROM "Page" WHERE username = $1`,
-    [username, country],
+    `INSERT INTO "PageView" ("pageId", ts, "visitorHash", source, country, device, browser)
+     SELECT id, now() AT TIME ZONE 'UTC', md5(random()::text), 'direct', $2, 'mobile', $3 FROM "Page" WHERE username = $1`,
+    [username, country, browser],
   );
 }
 
@@ -78,4 +78,18 @@ export async function pageSummary(username: string): Promise<{ displayName: stri
     [username],
   );
   return rows[0];
+}
+
+/** Creates a deep link for a username's account with one visit ("hit") from the given browser. */
+export async function addSmartLinkHit(username: string, slug: string, label: string, browser: string): Promise<void> {
+  const { rows } = await db().query<{ id: string }>(
+    `INSERT INTO "SmartLink" (id, "userId", slug, "destinationUrl", label, "adultWarning", "updatedAt")
+     SELECT 'sl_' || md5(random()::text), p."userId", $2, 'https://example.com/e2e', $3, false, now() FROM "Page" p WHERE p.username = $1
+     ON CONFLICT (slug) DO UPDATE SET label = EXCLUDED.label RETURNING id`,
+    [username, slug, label],
+  );
+  await db().query(
+    `INSERT INTO "SmartLinkEvent" ("linkId", kind, ts, "visitorHash", country, device, browser) VALUES ($1, 'hit', now() AT TIME ZONE 'UTC', md5(random()::text), 'MA', 'mobile', $2)`,
+    [rows[0].id, browser],
+  );
 }

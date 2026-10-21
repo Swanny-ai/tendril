@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { clampAnalyticsDays, PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
+import { platformCounts } from "./platform";
 import { referrerLabel } from "./referrer";
 
 export const RANGES = { "7d": 7, "30d": 30, "90d": 90, "365d": 365 } as const;
@@ -25,6 +26,8 @@ export type Analytics = {
     countries: { code: string; count: number }[];
     devices: { key: string; count: number }[];
     os: { key: string; count: number }[];
+    /** the app or browser people viewed from (Instagram, TikTok, Safari, ...) */
+    platforms: { label: string; count: number }[];
   };
 };
 
@@ -35,6 +38,11 @@ function dayStart(daysAgo: number) {
   d.setUTCHours(0, 0, 0, 0);
   d.setUTCDate(d.getUTCDate() - daysAgo);
   return d;
+}
+
+/** The current window (whole UTC days, ending now) and the start of the equally long one before it. */
+export function dayWindow(days: number) {
+  return { from: dayStart(days - 1), to: new Date(Date.now() + 60_000), prevFrom: dayStart(2 * days - 1) };
 }
 
 async function totalsBetween(pageId: string, from: Date, to: Date): Promise<Totals> {
@@ -54,9 +62,7 @@ async function totalsBetween(pageId: string, from: Date, to: Date): Promise<Tota
 }
 
 export async function getAnalytics(pageId: string, days: number, plan: PlanName): Promise<Analytics> {
-  const from = dayStart(days - 1);
-  const to = new Date(Date.now() + 60_000);
-  const prevFrom = dayStart(2 * days - 1);
+  const { from, to, prevFrom } = dayWindow(days);
   const where = { pageId, ts: { gte: from, lt: to } };
 
   const [totals, previous, viewDays, clickDays, clicksByBlock, warnByBlock, blocks] = await Promise.all([
@@ -101,12 +107,13 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
 
   let breakdowns: Analytics["breakdowns"] = null;
   if (PLAN_LIMITS[plan].breakdowns) {
-    const [src, ref, ctry, dev, os] = await Promise.all([
+    const [src, ref, ctry, dev, os, browser] = await Promise.all([
       db.pageView.groupBy({ by: ["source"], where, _count: { _all: true } }),
       db.pageView.groupBy({ by: ["referrerHost"], where, _count: { _all: true } }),
       db.pageView.groupBy({ by: ["country"], where, _count: { _all: true } }),
       db.pageView.groupBy({ by: ["device"], where, _count: { _all: true } }),
       db.pageView.groupBy({ by: ["os"], where, _count: { _all: true } }),
+      db.pageView.groupBy({ by: ["browser"], where, _count: { _all: true } }),
     ]);
     const labelCounts = new Map<string, number>();
     for (const r of ref) {
@@ -120,6 +127,7 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
       countries: desc(ctry.map((r) => ({ code: r.country ?? "??", count: r._count._all }))).slice(0, 12),
       devices: desc(dev.map((r) => ({ key: r.device, count: r._count._all }))),
       os: desc(os.map((r) => ({ key: r.os ?? "unknown", count: r._count._all }))),
+      platforms: platformCounts(browser.map((r) => ({ browser: r.browser, count: r._count._all }))),
     };
   }
 
@@ -132,14 +140,12 @@ export type LinkAnalytics = {
   previousVisits: number;
   /** views = visits, clicks = visitors sent on to the destination */
   series: { day: string; views: number; clicks: number }[];
-  breakdowns: null | { countries: { code: string; count: number }[]; devices: { key: string; count: number }[]; os: { key: string; count: number }[] };
+  breakdowns: null | { countries: { code: string; count: number }[]; devices: { key: string; count: number }[]; os: { key: string; count: number }[]; platforms: { label: string; count: number }[] };
 };
 
 /** One deep link's numbers: visits ("hit"), 18+ page views, confirmations, redirects, leaves. Bots excluded. */
 export async function getLinkAnalytics(linkId: string, days: number, plan: PlanName): Promise<LinkAnalytics> {
-  const from = dayStart(days - 1);
-  const to = new Date(Date.now() + 60_000);
-  const prevFrom = dayStart(2 * days - 1);
+  const { from, to, prevFrom } = dayWindow(days);
   const where = { linkId, isBot: false, ts: { gte: from, lt: to } };
   const [kinds, previousVisits, visitors, perDay] = await Promise.all([
     db.smartLinkEvent.groupBy({ by: ["kind"], where, _count: { _all: true } }),
@@ -162,15 +168,17 @@ export async function getLinkAnalytics(linkId: string, days: number, plan: PlanN
   let breakdowns: LinkAnalytics["breakdowns"] = null;
   if (PLAN_LIMITS[plan].breakdowns) {
     const hits = { ...where, kind: "hit" };
-    const [countries, devices, os] = await Promise.all([
+    const [countries, devices, os, browser] = await Promise.all([
       db.smartLinkEvent.groupBy({ by: ["country"], where: hits, _count: { _all: true }, orderBy: { _count: { country: "desc" } }, take: 10 }),
       db.smartLinkEvent.groupBy({ by: ["device"], where: hits, _count: { _all: true } }),
       db.smartLinkEvent.groupBy({ by: ["os"], where: hits, _count: { _all: true } }),
+      db.smartLinkEvent.groupBy({ by: ["browser"], where: hits, _count: { _all: true } }),
     ]);
     breakdowns = {
       countries: countries.map((c) => ({ code: c.country ?? "??", count: c._count._all })),
       devices: devices.map((d) => ({ key: d.device, count: d._count._all })).sort((a, b) => b.count - a.count),
       os: os.map((o) => ({ key: o.os ?? "unknown", count: o._count._all })).sort((a, b) => b.count - a.count),
+      platforms: platformCounts(browser.map((b) => ({ browser: b.browser, count: b._count._all }))),
     };
   }
   return {

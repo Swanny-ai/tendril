@@ -5,6 +5,10 @@ import { appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
 import { smartLinkUrl } from "@/lib/domains";
 import { pageUrl } from "@/lib/link-targets";
+import { PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
+import { platformCounts } from "./platform";
+import { dayWindow, type Analytics, type Totals } from "./queries";
+import { referrerLabel } from "./referrer";
 import { bucketKeys, previousPeriod, type ResolvedRange } from "./ranges";
 
 // The global dashboard counts a "view" as either a bio-page view or a smart-link
@@ -58,13 +62,25 @@ export async function getSources(userId: string): Promise<Source[]> {
 /** Unified view rows for one owner (all their pages and smart links) between two instants. */
 function viewRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
-    SELECT 'p' || pv.id::text AS id, pv.ts, pv.country, pv.device, pv."visitorHash" AS vh, pv."pageId" AS src
+    SELECT 'p' || pv.id::text AS id, pv.ts, pv.country, pv.device, pv.os, pv.browser, pv."visitorHash" AS vh, pv."pageId" AS src
     FROM "PageView" pv
     WHERE pv."pageId" IN (SELECT id FROM "Page" WHERE "userId" = ${userId}) AND pv."isBot" = false AND pv.ts >= ${from} AND pv.ts < ${to}
     UNION ALL
-    SELECT 'l' || e.id::text, e.ts, e.country, e.device, e."visitorHash", e."linkId"
+    SELECT 'l' || e.id::text, e.ts, e.country, e.device, e.os, e.browser, e."visitorHash", e."linkId"
     FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
     WHERE l."userId" = ${userId} AND e.kind = 'hit' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
+}
+
+/** Unified "clicks" for one owner: bio-page link clicks plus smart-link redirects to the destination. */
+function clickRows(userId: string, from: Date, to: Date) {
+  return Prisma.sql`
+    SELECT c.ts, c."pageId" AS src
+    FROM "ClickEvent" c
+    WHERE c."pageId" IN (SELECT id FROM "Page" WHERE "userId" = ${userId}) AND c."isBot" = false AND c.ts >= ${from} AND c.ts < ${to}
+    UNION ALL
+    SELECT e.ts, e."linkId"
+    FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
+    WHERE l."userId" = ${userId} AND e.kind = 'redirect' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
 
 const n = (x: bigint | number | null | undefined) => Number(x ?? 0);
@@ -179,4 +195,85 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
     topLocations: locations ? locations.map((r) => ({ code: r.country ?? "??", name: countryName(r.country), views: n(r.views) })) : null,
     activeLinks: links.map((r) => ({ label: byId.get(r.src)?.label ?? "Deleted link", path: byId.get(r.src)?.path ?? "", url: byId.get(r.src)?.url ?? "", views: n(r.views) })),
   };
+}
+
+export type Overview = Omit<Analytics, "topLinks"> & { top: (Source & { views: number; clicks: number; ctr: number })[] };
+
+/** The analytics page's "All" view: every bio page and smart link combined, by UTC day. */
+export async function getOverview(userId: string, sources: Source[], days: number, plan: PlanName): Promise<Overview> {
+  const { from, to, prevFrom } = dayWindow(days);
+  const rows = viewRows(userId, from, to);
+  const clicks = clickRows(userId, from, to);
+  const day = Prisma.sql`date_trunc('day', ts AT TIME ZONE 'UTC')`;
+  const totalsBetween = async (a: Date, b: Date): Promise<Totals> => {
+    // Visitor hashes rotate daily, so "visitors" = sum of daily unique visitors (as on a single page).
+    const [v, c] = await Promise.all([
+      db.$queryRaw<{ views: bigint; visitors: bigint }[]>`
+        WITH v AS (${viewRows(userId, a, b)}), d AS (SELECT COUNT(*) AS c, COUNT(DISTINCT vh) AS u FROM v GROUP BY ${day})
+        SELECT COALESCE(SUM(c), 0)::bigint AS views, COALESCE(SUM(u), 0)::bigint AS visitors FROM d`,
+      db.$queryRaw<{ n: bigint }[]>`WITH c AS (${clickRows(userId, a, b)}) SELECT COUNT(*)::bigint AS n FROM c`,
+    ]);
+    const views = n(v[0]?.views);
+    const clickCount = n(c[0]?.n);
+    return { views, visitors: n(v[0]?.visitors), clicks: clickCount, ctr: views ? clickCount / views : 0 };
+  };
+
+  const [totals, previous, viewDays, clickDays, viewsBySource, clicksBySource] = await Promise.all([
+    totalsBetween(from, to),
+    totalsBetween(prevFrom, from),
+    db.$queryRaw<{ day: Date; n: bigint }[]>`WITH v AS (${rows}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM v GROUP BY 1`,
+    db.$queryRaw<{ day: Date; n: bigint }[]>`WITH c AS (${clicks}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM c GROUP BY 1`,
+    db.$queryRaw<{ src: string; n: bigint }[]>`WITH v AS (${rows}) SELECT src, COUNT(*)::bigint AS n FROM v GROUP BY src`,
+    db.$queryRaw<{ src: string; n: bigint }[]>`WITH c AS (${clicks}) SELECT src, COUNT(*)::bigint AS n FROM c GROUP BY src`,
+  ]);
+
+  const key = (d: Date) => new Date(d).toISOString().slice(0, 10);
+  const vMap = new Map(viewDays.map((r) => [key(r.day), n(r.n)]));
+  const cMap = new Map(clickDays.map((r) => [key(r.day), n(r.n)]));
+  const series = Array.from({ length: days }, (_, i) => {
+    const d = key(new Date(from.getTime() + i * 86_400_000));
+    return { day: d, views: vMap.get(d) ?? 0, clicks: cMap.get(d) ?? 0 };
+  });
+
+  const srcViews = new Map(viewsBySource.map((r) => [r.src, n(r.n)]));
+  const srcClicks = new Map(clicksBySource.map((r) => [r.src, n(r.n)]));
+  const top = sources
+    .map((s) => {
+      const views = srcViews.get(s.id) ?? 0;
+      const sent = srcClicks.get(s.id) ?? 0;
+      return { ...s, views, clicks: sent, ctr: views ? sent / views : 0 };
+    })
+    .sort((a, b) => b.views - a.views || b.clicks - a.clicks);
+
+  let breakdowns: Analytics["breakdowns"] = null;
+  if (PLAN_LIMITS[plan].breakdowns) {
+    const group = (col: "country" | "device" | "os" | "browser") =>
+      db.$queryRaw<{ k: string | null; n: bigint }[]>`WITH v AS (${rows}) SELECT ${Prisma.raw(col)} AS k, COUNT(*)::bigint AS n FROM v GROUP BY 1`;
+    // Traffic sources and referrers are only recorded for bio-page views.
+    const pageViews = { pageId: { in: sources.filter((s) => s.kind === "page").map((s) => s.id) }, isBot: false, ts: { gte: from, lt: to } };
+    const [ctry, dev, os, browser, src, ref] = await Promise.all([
+      group("country"),
+      group("device"),
+      group("os"),
+      group("browser"),
+      db.pageView.groupBy({ by: ["source"], where: pageViews, _count: { _all: true } }),
+      db.pageView.groupBy({ by: ["referrerHost"], where: pageViews, _count: { _all: true } }),
+    ]);
+    const labelCounts = new Map<string, number>();
+    for (const r of ref) {
+      const label = referrerLabel(r.referrerHost);
+      labelCounts.set(label, (labelCounts.get(label) ?? 0) + r._count._all);
+    }
+    const desc = <T extends { count: number }>(xs: T[]) => xs.sort((a, b) => b.count - a.count);
+    breakdowns = {
+      sources: desc(src.map((r) => ({ key: r.source, count: r._count._all }))),
+      referrers: desc([...labelCounts].map(([label, count]) => ({ label, count }))).slice(0, 10),
+      countries: desc(ctry.map((r) => ({ code: r.k ?? "??", count: n(r.n) }))).slice(0, 12),
+      devices: desc(dev.map((r) => ({ key: r.k ?? "unknown", count: n(r.n) }))),
+      os: desc(os.map((r) => ({ key: r.k ?? "unknown", count: n(r.n) }))),
+      platforms: platformCounts(browser.map((r) => ({ browser: r.k, count: n(r.n) }))),
+    };
+  }
+
+  return { days, totals, previous, series, top, breakdowns };
 }

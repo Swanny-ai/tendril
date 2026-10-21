@@ -1,65 +1,48 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Lock, ShieldAlert } from "lucide-react";
-import { CountryFlag } from "@/components/country-flag";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAnalytics, parseRange, RANGES, type RangeKey } from "@/lib/analytics/queries";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
-import { getPlan } from "@/lib/plans";
-import { appUrl } from "@/config/brand";
+import { getOverview, getSources, type Source } from "@/lib/analytics/global";
+import { getAnalytics, getLinkAnalytics, parseRange, RANGES, type RangeKey } from "@/lib/analytics/queries";
 import { db } from "@/lib/db";
-import { pageUrl } from "@/lib/link-targets";
+import { PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
+import { getPlan } from "@/lib/plans";
 import { requirePage } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { BreakdownCard, StatCard, ViewsClicksChart } from "./charts";
+import { StatCard, ViewsClicksChart } from "./charts";
+import { BreakdownGrid, delta, fmt, LinkReport, pct, UpgradeCard } from "./report";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Analytics" };
 
-const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
-const fmt = new Intl.NumberFormat("en-US");
-const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
-const countryName = (code: string) => {
-  try {
-    return /^[A-Z]{2}$/.test(code) ? (regionNames.of(code) ?? code) : "Unknown";
-  } catch {
-    return code;
-  }
-};
-const SOURCE_LABELS: Record<string, string> = { social: "Social apps", search: "Search", web: "Other websites", direct: "Direct" };
-const OS_LABELS: Record<string, string> = { ios: "iOS", android: "Android", windows: "Windows", macos: "macOS", linux: "Linux", other: "Other", unknown: "Unknown" };
+const pill = (active: boolean) =>
+  cn("rounded-full border px-3 py-1 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground");
 
 export default async function AnalyticsPage(props: PageProps<"/dashboard/analytics">) {
-  const { userId, page: current } = await requirePage();
-  const plan = await getPlan(userId);
-  const { range, page: pageParam } = await props.searchParams;
+  const { userId } = await requirePage();
+  const [plan, sources] = await Promise.all([getPlan(userId), getSources(userId)]);
+  const { range, source: sourceParam, page: pageParam } = await props.searchParams;
   const r = parseRange(range, plan);
-  // ?page=<id> picks one of your pages (each template has its own analytics); default: last edited.
-  const pages = await db.page.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, username: true, displayName: true, atRoot: true, domain: { select: { hostname: true } } } });
-  const page = pages.find((p) => p.id === pageParam) ?? pages.find((p) => p.id === current.id) ?? pages[0];
-  const qs = (k: string) => `?${new URLSearchParams({ page: page.id, range: k })}`;
-  const data = await getAnalytics(page.id, r.days, plan);
-  const delta = (cur: number, prev: number) => (prev ? (cur - prev) / prev : null);
+  // ?source=<page or deep link id> narrows to one of them (?page= is the older name); default: everything.
+  const selected = sources.find((s) => s.id === (sourceParam ?? pageParam)) ?? null;
+  const href = (source: string | null, rangeKey: RangeKey) => `?${new URLSearchParams(source ? { source, range: rangeKey } : { range: rangeKey })}`;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold">Analytics</h1>
           <p className="text-sm text-muted-foreground">
-            {pageUrl(page, page.domain, appUrl).replace(/^https?:\/\//, "")} · Bots are filtered out. Times are in UTC.
+            {selected ? selected.url : "All bio pages and deep links"} · Bots are filtered out. Times are in UTC.
           </p>
-          {pages.length > 1 ? (
-            <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Page">
-              {pages.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`?${new URLSearchParams({ page: p.id, range: r.key })}`}
-                  aria-current={p.id === page.id ? "page" : undefined}
-                  className={cn("rounded-full border px-3 py-1 text-sm", p.id === page.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-                >
-                  {p.displayName || `/${p.username}`}
+          {sources.length > 1 ? (
+            <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Source">
+              <Link href={href(null, r.key)} aria-current={selected ? undefined : "page"} className={pill(!selected)}>
+                All
+              </Link>
+              {sources.map((s) => (
+                <Link key={s.id} href={href(s.id, r.key)} aria-current={s.id === selected?.id ? "page" : undefined} className={pill(s.id === selected?.id)}>
+                  {s.label}
                 </Link>
               ))}
             </nav>
@@ -75,7 +58,7 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
             ) : (
               <Link
                 key={k}
-                href={qs(k)}
+                href={href(selected?.id ?? null, k)}
                 aria-current={r.key === k ? "page" : undefined}
                 className={cn("rounded-md px-3 py-1.5 text-sm font-medium", r.key === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
               >
@@ -86,6 +69,101 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
         </nav>
       </div>
 
+      {!selected ? (
+        <AllReport userId={userId} sources={sources} days={r.days} plan={plan} rangeKey={r.key} href={href} />
+      ) : selected.kind === "page" ? (
+        <PageReport pageId={selected.id} days={r.days} plan={plan} />
+      ) : (
+        <DeepLinkReport linkId={selected.id} days={r.days} plan={plan} />
+      )}
+    </div>
+  );
+}
+
+async function AllReport({
+  userId,
+  sources,
+  days,
+  plan,
+  rangeKey,
+  href,
+}: {
+  userId: string;
+  sources: Source[];
+  days: number;
+  plan: PlanName;
+  rangeKey: RangeKey;
+  href: (source: string | null, rangeKey: RangeKey) => string;
+}) {
+  const data = await getOverview(userId, sources, days, plan);
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Views" value={fmt.format(data.totals.views)} delta={delta(data.totals.views, data.previous.views)} />
+        <StatCard label="Visitors" hint="Unique per day" value={fmt.format(data.totals.visitors)} delta={delta(data.totals.visitors, data.previous.visitors)} />
+        <StatCard label="Clicks" value={fmt.format(data.totals.clicks)} delta={delta(data.totals.clicks, data.previous.clicks)} />
+        <StatCard label="Click-through rate" value={pct(data.totals.ctr)} delta={delta(data.totals.ctr, data.previous.ctr)} />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Views and clicks</CardTitle>
+          <CardDescription>Last {data.days} days · Clicks are link clicks on your bio pages plus deep-link visitors sent to the destination.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ViewsClicksChart data={data.series} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bio pages and deep links</CardTitle>
+          <CardDescription>Views and clicks for each one. Pick one for its full report.</CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {data.top.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bio pages or deep links yet.</p>
+          ) : (
+            <table className="w-full text-sm" data-testid="all-sources">
+              <thead className="text-left text-muted-foreground">
+                <tr className="border-b">
+                  <th className="py-2 pr-4 font-medium">Name</th>
+                  <th className="py-2 pr-4 font-medium">Type</th>
+                  <th className="py-2 pr-4 text-right font-medium">Views</th>
+                  <th className="py-2 pr-4 text-right font-medium">Clicks</th>
+                  <th className="py-2 text-right font-medium">CTR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.top.map((s) => (
+                  <tr key={s.id} className="border-b last:border-0">
+                    <td className="max-w-[320px] truncate py-2.5 pr-4 font-medium">
+                      <Link href={href(s.id, rangeKey)} className="hover:underline">
+                        {s.kind === "page" ? s.label.replace(/ \(bio page\)$/, "") : s.label}
+                      </Link>
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">{s.url}</span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">{s.kind === "page" ? "Bio page" : "Deep link"}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.views)}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.clicks)}</td>
+                    <td className="py-2.5 text-right tabular-nums">{pct(s.ctr)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      {data.breakdowns ? <BreakdownGrid data={data.breakdowns} note=" · bio pages" /> : <UpgradeCard />}
+    </>
+  );
+}
+
+async function PageReport({ pageId, days, plan }: { pageId: string; days: number; plan: PlanName }) {
+  const data = await getAnalytics(pageId, days, plan);
+  return (
+    <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Views" value={fmt.format(data.totals.views)} delta={delta(data.totals.views, data.previous.views)} />
         <StatCard label="Visitors" hint="Unique per day" value={fmt.format(data.totals.visitors)} delta={delta(data.totals.visitors, data.previous.visitors)} />
@@ -141,34 +219,12 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
         </CardContent>
       </Card>
 
-      {data.breakdowns ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <BreakdownCard title="Traffic sources" items={data.breakdowns.sources.map((s) => ({ label: SOURCE_LABELS[s.key] ?? s.key, value: s.count }))} />
-          <BreakdownCard title="Top referrers" items={data.breakdowns.referrers.map((s) => ({ label: s.label, value: s.count }))} />
-          <BreakdownCard title="Countries" items={data.breakdowns.countries.map((c) => ({ label: countryName(c.code), icon: <CountryFlag code={c.code} />, value: c.count }))} />
-          <BreakdownCard
-            title="Devices"
-            items={[
-              ...data.breakdowns.devices.map((d) => ({ label: d.key[0].toUpperCase() + d.key.slice(1), value: d.count })),
-              ...data.breakdowns.os.map((o) => ({ label: `· ${OS_LABELS[o.key] ?? o.key}`, value: o.count, muted: true })),
-            ]}
-          />
-        </div>
-      ) : (
-        <Card className="relative overflow-hidden">
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <Lock className="size-6 text-muted-foreground" />
-            <div>
-              <p className="font-semibold">See where your visitors come from</p>
-              <p className="text-sm text-muted-foreground">Referrers, countries, devices and up to a year of history are part of Pro.</p>
-            </div>
-            <Link href="/dashboard/billing" className={buttonVariants()}>
-              Upgrade to Pro
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      {data.breakdowns ? <BreakdownGrid data={data.breakdowns} /> : <UpgradeCard />}
+    </>
   );
 }
 
+async function DeepLinkReport({ linkId, days, plan }: { linkId: string; days: number; plan: PlanName }) {
+  const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true } }), getLinkAnalytics(linkId, days, plan)]);
+  return <LinkReport data={data} adultWarning={link?.adultWarning ?? false} />;
+}

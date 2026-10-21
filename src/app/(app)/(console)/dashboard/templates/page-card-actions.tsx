@@ -37,7 +37,7 @@ export function PageCardActions({
         </Button>
       </form>
 
-      <NextLink href={`/dashboard/analytics?page=${page.id}`} className={buttonVariants({ size: "sm", variant: "outline" })} aria-label={`Analytics for /${page.username}`}>
+      <NextLink href={`/dashboard/analytics?source=${page.id}`} className={buttonVariants({ size: "sm", variant: "outline" })} aria-label={`Analytics for /${page.username}`}>
         <BarChart3 /> Analytics
       </NextLink>
 
