@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOutAction } from "../../../(auth)/actions";
 
-export function UserMenu({ username }: { username: string }) {
+export function UserMenu({ label }: { label: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Account menu" className="rounded-full" />}>
@@ -22,7 +22,7 @@ export function UserMenu({ username }: { username: string }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>@{username}</DropdownMenuLabel>
+          <DropdownMenuLabel className="max-w-56 truncate">{label}</DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/dashboard/settings" />}>

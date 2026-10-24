@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.redirect(new URL("/login", request.url));
   const page = await getCurrentPage(session.user.id);
-  if (!page) return NextResponse.redirect(new URL("/onboarding", request.url));
+  if (!page) return NextResponse.redirect(new URL("/dashboard/templates", request.url));
   const domain = page.domainId ? await db.domain.findUnique({ where: { id: page.domainId }, select: { hostname: true } }) : null;
   return NextResponse.redirect(new URL(editPagePath(page, domain), request.url));
 }

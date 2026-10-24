@@ -85,8 +85,30 @@ export function UpgradeCard() {
 }
 
 /** One deep link: visits, unique visitors, redirects, 18+ confirmations or leaves, then breakdowns. */
-export function LinkReport({ data, adultWarning }: { data: LinkAnalytics; adultWarning: boolean }) {
+export function LinkReport({ data, adultWarning, twoSteps = false }: { data: LinkAnalytics; adultWarning: boolean; twoSteps?: boolean }) {
   const rate = (n: number, d: number) => (d ? `${Math.round((Math.min(n, d) / d) * 100)}%` : "—");
+  // Two-Steps pages: visitors open the page, reach Step 2 and tap its links (no redirect, no 18+ page).
+  if (twoSteps)
+    return (
+      <>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Visits" value={fmt.format(data.totals.visits)} delta={delta(data.totals.visits, data.previousVisits)} />
+          <StatCard label="Visitors" hint="Unique" value={fmt.format(data.totals.visitors)} delta={null} />
+          <StatCard label="Opened Step 2" value={fmt.format(data.totals.step2)} delta={null} hint={rate(data.totals.step2, data.totals.visits)} />
+          <StatCard label="Link taps" value={fmt.format(data.totals.taps)} delta={null} hint={data.totals.visits ? `${(data.totals.taps / data.totals.visits).toFixed(1)} per visit` : undefined} />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Visits and link taps</CardTitle>
+            <CardDescription>Last {data.days} days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ViewsClicksChart data={data.series} labels={{ views: "Visits", clicks: "Link taps" }} />
+          </CardContent>
+        </Card>
+        {data.breakdowns ? <BreakdownGrid data={data.breakdowns} /> : <UpgradeCard />}
+      </>
+    );
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

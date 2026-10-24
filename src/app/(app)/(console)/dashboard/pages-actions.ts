@@ -137,7 +137,6 @@ export async function deletePageAction(pageId: string): Promise<PageActionResult
   const pages = await db.page.findMany({ where: { userId }, select: { id: true, username: true }, orderBy: { createdAt: "asc" } });
   const page = pages.find((p) => p.id === pageId);
   if (!page) return { ok: false, error: "That page no longer exists." };
-  if (pages.length <= 1) return { ok: false, error: "You need at least one page." };
   await invalidatePageFromAction(page.id);
   await db.$transaction([
     db.pageView.deleteMany({ where: { pageId: page.id } }),
@@ -147,7 +146,8 @@ export async function deletePageAction(pageId: string): Promise<PageActionResult
     db.page.delete({ where: { id: page.id } }),
   ]);
   expireUsername(page.username);
-  await rememberCurrentPage(pages.find((p) => p.id !== page.id)!.id);
+  const next = pages.find((p) => p.id !== page.id);
+  if (next) await rememberCurrentPage(next.id);
   return { ok: true };
 }
 

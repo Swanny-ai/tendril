@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { DEFAULT_LANDING, defaultIntroSection } from "@/lib/link-landing";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { DEFAULT_WARNING_TEMPLATE } from "@/warning-templates/templates";
 import type { LinkMode } from "./links-list";
 import { SmartLinkForm } from "./smart-link-form";
@@ -12,7 +12,7 @@ import { TemplateUpsell } from "./template-upsell";
 /** Create a deep link: a template page (Customize template) or a classic deep link (Deeplinks). */
 export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
   const listHref = mode === "template" ? "/dashboard/links" : "/dashboard/deeplinks";
-  const { userId } = await requirePage();
+  const { userId } = await requireAccount();
   const limits = PLAN_LIMITS[await getPlan(userId)];
   const domains = await db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } });
   const count = await db.smartLink.count({ where: { userId } });

@@ -8,14 +8,17 @@ import { countryName, getGlobalStats, getLiveStats, getSources } from "@/lib/ana
 import { isValidTimeZone, resolveRange, TIMEZONE_OPTIONS } from "@/lib/analytics/ranges";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AutoRefresh } from "./auto-refresh";
 import { DashboardToolbar } from "./dashboard-toolbar";
 import { LiveNumber } from "./live-number";
 import { LivePanels } from "./live-panels";
 import { PerformanceChart } from "./performance-chart";
+import { WelcomeCelebration } from "./welcome-celebration";
 import { WorldMap } from "./world-map";
+import { attributeReferral } from "@/lib/affiliate";
+import { db } from "@/lib/db";
 
 export const instant = false;
 
@@ -54,7 +57,7 @@ function ProLock({ what }: { what: string }) {
 }
 
 export default async function GlobalDashboardPage(props: PageProps<"/dashboard">) {
-  const { userId } = await requirePage();
+  const { userId } = await requireAccount();
   const q = await props.searchParams;
   const plan = await getPlan(userId);
   const limits = PLAN_LIMITS[plan];
@@ -69,9 +72,14 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
   const tzLabel = TIMEZONE_OPTIONS.find((o) => o.tz === tz)?.label ?? tz;
   const countries = stats.countries?.filter((c) => c.code !== "??") ?? [];
   const countryTotal = stats.countries?.reduce((s, c) => s + c.views, 0) ?? 0;
+  // New accounts (email sign-up sends ?welcome=1; Google sign-ups are just minutes old) get a welcome.
+  const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
+  const isNew = q.welcome === "1" || (!!account && now.getTime() - account.createdAt.getTime() < 15 * 60_000);
+  if (isNew) await attributeReferral(userId);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {isNew ? <WelcomeCelebration userId={userId} /> : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Global dashboard</h1>

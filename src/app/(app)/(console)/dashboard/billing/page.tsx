@@ -11,7 +11,7 @@ import {
 import { db } from "@/lib/db";
 import { PLAN_LIMITS, PRICES_USD } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { cryptoConfigured } from "@/lib/crypto-pay";
 import { stripeConfigured } from "@/lib/stripe";
 import {
@@ -39,11 +39,11 @@ const PRO_FEATURES = [
 export default async function BillingPage(
   props: PageProps<"/dashboard/billing">,
 ) {
-  const { userId, page } = await requirePage();
+  const { userId, page } = await requireAccount();
   const [plan, sub, blockCount, user] = await Promise.all([
     getPlan(userId),
     db.subscription.findUnique({ where: { userId } }),
-    db.block.count({ where: { pageId: page.id } }),
+    page ? db.block.count({ where: { pageId: page.id } }) : 0,
     db.user.findUnique({
       where: { id: userId },
       select: { stripeCustomerId: true },

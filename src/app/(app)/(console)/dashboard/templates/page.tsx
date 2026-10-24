@@ -4,7 +4,7 @@ import { appHost, appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
 import { pageUrl } from "@/lib/link-targets";
 import { getShowcases, showcasePage } from "@/lib/showcase";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { PageLinkBar } from "../page-link-bar";
 import { PageCardActions } from "./page-card-actions";
 import { PAGE_TEMPLATES, type PageTemplate } from "@/templates/link-in-bio";
@@ -37,7 +37,7 @@ function samplePage(t: PageTemplate): RenderPage {
 }
 
 export default async function TemplatesPage() {
-  const { userId, page: current } = await requirePage();
+  const { userId, page: current } = await requireAccount();
   const [pages, domains] = await Promise.all([
     db.page.findMany({
       where: { userId },
@@ -46,6 +46,9 @@ export default async function TemplatesPage() {
     }),
     db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } }),
   ]);
+  // Suggested name for a new page: the current page's, else the start of the account's email.
+  const email = current ? "" : ((await db.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email ?? "");
+  const nameBase = current?.username ?? (email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "") || "mypage");
   const layoutName = (key: string) => PAGE_TEMPLATES.find((t) => t.key === key)?.name ?? "Classic";
   // Template previews are the same for everyone: the frozen showcase for the template (set by the
   // site owner with scripts/showcase-page.mjs), else the built-in sample.
@@ -70,7 +73,7 @@ export default async function TemplatesPage() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{p.displayName || `/${p.username}`}</p>
                     <p className="text-sm text-muted-foreground">
-                      {layoutName(p.layout)} template{p.id === current.id ? " · last edited" : ""}
+                      {layoutName(p.layout)} template{p.id === current?.id ? " · last edited" : ""}
                     </p>
                   </div>
                   {p.domain ? (
@@ -78,7 +81,7 @@ export default async function TemplatesPage() {
                   ) : null}
                 </div>
                 <PageLinkBar url={url} />
-                <PageCardActions page={p} appHost={appHost} domains={domains} canDelete={pages.length > 1} />
+                <PageCardActions page={p} appHost={appHost} domains={domains} canDelete />
               </li>
             );
           })}
@@ -111,7 +114,7 @@ export default async function TemplatesPage() {
                     name={t.name}
                     appHost={appHost}
                     domains={domains}
-                    suggestion={`${current.username.slice(0, 18)}_${t.key.split("-")[0]}`}
+                    suggestion={`${nameBase.slice(0, 18)}_${t.key.split("-")[0]}`}
                   />
                 </div>
               </div>

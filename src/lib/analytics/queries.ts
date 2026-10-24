@@ -54,7 +54,7 @@ async function totalsBetween(pageId: string, from: Date, to: Date): Promise<Tota
       SELECT COALESCE(SUM(c), 0)::bigint AS n FROM (
         SELECT COUNT(DISTINCT "visitorHash") AS c FROM "PageView"
         WHERE "pageId" = ${pageId} AND ts >= ${from} AND ts < ${to}
-        GROUP BY date_trunc('day', ts AT TIME ZONE 'UTC')
+        GROUP BY to_char(ts, 'YYYY-MM-DD')
       ) t`,
   ]);
   const visitors = Number(visitorRows[0]?.n ?? 0);
@@ -68,18 +68,19 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
   const [totals, previous, viewDays, clickDays, clicksByBlock, warnByBlock, blocks] = await Promise.all([
     totalsBetween(pageId, from, to),
     totalsBetween(pageId, prevFrom, from),
-    db.$queryRaw<{ day: Date; n: bigint }[]>`
-      SELECT date_trunc('day', ts AT TIME ZONE 'UTC') AS day, COUNT(*)::bigint AS n
+    db.$queryRaw<{ day: string; n: bigint }[]>`
+      SELECT to_char(ts, 'YYYY-MM-DD') AS day, COUNT(*)::bigint AS n
       FROM "PageView" WHERE "pageId" = ${pageId} AND ts >= ${from} AND ts < ${to} GROUP BY 1`,
-    db.$queryRaw<{ day: Date; n: bigint }[]>`
-      SELECT date_trunc('day', ts AT TIME ZONE 'UTC') AS day, COUNT(*)::bigint AS n
+    db.$queryRaw<{ day: string; n: bigint }[]>`
+      SELECT to_char(ts, 'YYYY-MM-DD') AS day, COUNT(*)::bigint AS n
       FROM "ClickEvent" WHERE "pageId" = ${pageId} AND "isBot" = false AND ts >= ${from} AND ts < ${to} GROUP BY 1`,
     db.clickEvent.groupBy({ by: ["blockId"], where: { ...where, isBot: false }, _count: { _all: true } }),
     db.warningView.groupBy({ by: ["blockId"], where, _count: { _all: true } }),
     db.block.findMany({ where: { pageId, type: "LINK" }, select: { id: true, title: true, url: true, contentWarning: true, position: true } }),
   ]);
 
-  const key = (d: Date) => d.toISOString().slice(0, 10);
+  // Days are UTC dates ("YYYY-MM-DD"), whatever the database session time zone.
+  const key = (d: Date | string) => (typeof d === "string" ? d : d.toISOString().slice(0, 10));
   const vMap = new Map(viewDays.map((r) => [key(r.day), Number(r.n)]));
   const cMap = new Map(clickDays.map((r) => [key(r.day), Number(r.n)]));
   const series = Array.from({ length: days }, (_, i) => {
@@ -136,7 +137,7 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
 
 export type LinkAnalytics = {
   days: number;
-  totals: { visits: number; visitors: number; warningViews: number; confirms: number; redirects: number; leaves: number };
+  totals: { visits: number; visitors: number; warningViews: number; confirms: number; redirects: number; leaves: number; step2: number; taps: number };
   previousVisits: number;
   /** views = visits, clicks = visitors sent on to the destination */
   series: { day: string; views: number; clicks: number }[];
@@ -153,16 +154,18 @@ export async function getLinkAnalytics(linkId: string, days: number, plan: PlanN
     db.$queryRaw<{ n: bigint }[]>`
       SELECT COUNT(DISTINCT "visitorHash")::bigint AS n FROM "SmartLinkEvent"
       WHERE "linkId" = ${linkId} AND "isBot" = false AND kind = 'hit' AND ts >= ${from} AND ts < ${to}`,
-    db.$queryRaw<{ day: Date; kind: string; n: bigint }[]>`
-      SELECT date_trunc('day', ts AT TIME ZONE 'UTC') AS day, kind, COUNT(*)::bigint AS n FROM "SmartLinkEvent"
-      WHERE "linkId" = ${linkId} AND "isBot" = false AND kind IN ('hit', 'redirect') AND ts >= ${from} AND ts < ${to} GROUP BY 1, 2`,
+    db.$queryRaw<{ day: string; kind: string; n: bigint }[]>`
+      SELECT to_char(ts, 'YYYY-MM-DD') AS day, kind, COUNT(*)::bigint AS n FROM "SmartLinkEvent"
+      WHERE "linkId" = ${linkId} AND "isBot" = false AND kind IN ('hit', 'redirect', 'tap') AND ts >= ${from} AND ts < ${to} GROUP BY 1, 2`,
   ]);
   const count = (k: string) => kinds.find((r) => r.kind === k)?._count._all ?? 0;
-  const key = (d: Date) => d.toISOString().slice(0, 10);
+  // Days are UTC dates ("YYYY-MM-DD"), whatever the database session time zone.
+  const key = (d: Date | string) => (typeof d === "string" ? d : d.toISOString().slice(0, 10));
   const byDay = new Map(perDay.map((r) => [`${key(r.day)}|${r.kind}`, Number(r.n)]));
   const series = Array.from({ length: days }, (_, i) => {
     const d = key(dayStart(days - 1 - i));
-    return { day: d, views: byDay.get(`${d}|hit`) ?? 0, clicks: byDay.get(`${d}|redirect`) ?? 0 };
+    // clicks: visitors sent to the destination, or taps on a Two-Steps page's links
+    return { day: d, views: byDay.get(`${d}|hit`) ?? 0, clicks: (byDay.get(`${d}|redirect`) ?? 0) + (byDay.get(`${d}|tap`) ?? 0) };
   });
 
   let breakdowns: LinkAnalytics["breakdowns"] = null;
@@ -183,7 +186,7 @@ export async function getLinkAnalytics(linkId: string, days: number, plan: PlanN
   }
   return {
     days,
-    totals: { visits: count("hit"), visitors: Number(visitors[0]?.n ?? 0), warningViews: count("view"), confirms: count("confirm"), redirects: count("redirect"), leaves: count("leave") },
+    totals: { visits: count("hit"), visitors: Number(visitors[0]?.n ?? 0), warningViews: count("view"), confirms: count("confirm"), redirects: count("redirect"), leaves: count("leave"), step2: count("step2"), taps: count("tap") },
     previousVisits,
     series,
     breakdowns,

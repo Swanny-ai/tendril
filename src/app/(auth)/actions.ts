@@ -50,9 +50,7 @@ export async function signupAction(_prev: AuthFormState, form: FormData): Promis
   await attributeReferral(user.id); // arrived through someone's /join/<code> link
   await sendVerification(user.id, user.email);
 
-  const username = String(form.get("username") ?? "");
-  const next = username ? `/onboarding?u=${encodeURIComponent(username)}` : "/onboarding";
-  await signIn("credentials", { email: email.data, password: password.data, redirectTo: next });
+  await signIn("credentials", { email: email.data, password: password.data, redirectTo: "/dashboard?welcome=1" });
   return undefined;
 }
 

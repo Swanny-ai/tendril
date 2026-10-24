@@ -8,7 +8,7 @@ import { editLinkPath } from "@/lib/edit-paths";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { getSmartLinkStats } from "@/lib/smart-links";
 import { getWarningTemplate } from "@/warning-templates/templates";
 import { parseLanding } from "@/lib/link-landing";
@@ -44,7 +44,7 @@ const fmt = new Intl.NumberFormat("en-US");
 /** Deep links of one kind: template pages ("Customize template") or classic deep links ("Deeplinks"). */
 export async function LinksList({ mode }: { mode: LinkMode }) {
   const c = COPY[mode];
-  const { userId } = await requirePage();
+  const { userId } = await requireAccount();
   const plan = await getPlan(userId);
   const limits = PLAN_LIMITS[plan];
   const all = await db.smartLink.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { domain: { select: { hostname: true } } } });

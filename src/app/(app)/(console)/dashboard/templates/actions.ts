@@ -25,7 +25,7 @@ export async function applyTemplateAction(key: string): Promise<ApplyResult> {
     where: { id: current.id },
     select: { id: true, blocks: { orderBy: { position: "asc" }, select: { type: true, title: true, url: true } } },
   }));
-  if (!page) return { ok: false, error: "Claim your page first." };
+  if (!page) return { ok: false, error: "Create a page first." };
 
   const template = key === "classic" ? null : getPageTemplate(key);
   let addedSamples = false;

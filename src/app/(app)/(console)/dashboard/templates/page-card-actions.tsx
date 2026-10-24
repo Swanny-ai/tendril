@@ -21,7 +21,7 @@ export function PageCardActions({
   page: { id: string; username: string; domainId: string | null; atRoot: boolean };
   appHost: string;
   domains: DomainOption[];
-  canDelete: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

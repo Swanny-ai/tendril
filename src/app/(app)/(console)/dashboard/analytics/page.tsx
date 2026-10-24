@@ -7,9 +7,10 @@ import { getAnalytics, getLinkAnalytics, parseRange, RANGES, type RangeKey } fro
 import { db } from "@/lib/db";
 import { PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { StatCard, ViewsClicksChart } from "./charts";
+import { parseLanding } from "@/lib/link-landing";
 import { BreakdownGrid, delta, fmt, LinkReport, pct, UpgradeCard } from "./report";
 
 export const instant = false;
@@ -19,7 +20,7 @@ const pill = (active: boolean) =>
   cn("rounded-full border px-3 py-1 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground");
 
 export default async function AnalyticsPage(props: PageProps<"/dashboard/analytics">) {
-  const { userId } = await requirePage();
+  const { userId } = await requireAccount();
   const [plan, sources] = await Promise.all([getPlan(userId), getSources(userId)]);
   const { range, source: sourceParam, page: pageParam } = await props.searchParams;
   const r = parseRange(range, plan);
@@ -225,6 +226,6 @@ async function PageReport({ pageId, days, plan }: { pageId: string; days: number
 }
 
 async function DeepLinkReport({ linkId, days, plan }: { linkId: string; days: number; plan: PlanName }) {
-  const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true } }), getLinkAnalytics(linkId, days, plan)]);
-  return <LinkReport data={data} adultWarning={link?.adultWarning ?? false} />;
+  const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true, landingPage: true } }), getLinkAnalytics(linkId, days, plan)]);
+  return <LinkReport data={data} adultWarning={link?.adultWarning ?? false} twoSteps={!!parseLanding(link?.landingPage)?.enabled} />;
 }

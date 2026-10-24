@@ -71,7 +71,7 @@ function viewRows(userId: string, from: Date, to: Date) {
     WHERE l."userId" = ${userId} AND e.kind = 'hit' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
 
-/** Unified "clicks" for one owner: bio-page link clicks plus smart-link redirects to the destination. */
+/** Unified "clicks" for one owner: bio-page link clicks, deep links sending visitors on, and taps on Two-Steps pages' links. */
 function clickRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
     SELECT c.ts, c."pageId" AS src
@@ -80,7 +80,7 @@ function clickRows(userId: string, from: Date, to: Date) {
     UNION ALL
     SELECT e.ts, e."linkId"
     FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
-    WHERE l."userId" = ${userId} AND e.kind = 'redirect' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
+    WHERE l."userId" = ${userId} AND e.kind IN ('redirect', 'tap') AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
 
 const n = (x: bigint | number | null | undefined) => Number(x ?? 0);
@@ -204,7 +204,7 @@ export async function getOverview(userId: string, sources: Source[], days: numbe
   const { from, to, prevFrom } = dayWindow(days);
   const rows = viewRows(userId, from, to);
   const clicks = clickRows(userId, from, to);
-  const day = Prisma.sql`date_trunc('day', ts AT TIME ZONE 'UTC')`;
+  const day = Prisma.sql`to_char(ts, 'YYYY-MM-DD')`;
   const totalsBetween = async (a: Date, b: Date): Promise<Totals> => {
     // Visitor hashes rotate daily, so "visitors" = sum of daily unique visitors (as on a single page).
     const [v, c] = await Promise.all([
@@ -221,13 +221,14 @@ export async function getOverview(userId: string, sources: Source[], days: numbe
   const [totals, previous, viewDays, clickDays, viewsBySource, clicksBySource] = await Promise.all([
     totalsBetween(from, to),
     totalsBetween(prevFrom, from),
-    db.$queryRaw<{ day: Date; n: bigint }[]>`WITH v AS (${rows}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM v GROUP BY 1`,
-    db.$queryRaw<{ day: Date; n: bigint }[]>`WITH c AS (${clicks}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM c GROUP BY 1`,
+    db.$queryRaw<{ day: string; n: bigint }[]>`WITH v AS (${rows}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM v GROUP BY 1`,
+    db.$queryRaw<{ day: string; n: bigint }[]>`WITH c AS (${clicks}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM c GROUP BY 1`,
     db.$queryRaw<{ src: string; n: bigint }[]>`WITH v AS (${rows}) SELECT src, COUNT(*)::bigint AS n FROM v GROUP BY src`,
     db.$queryRaw<{ src: string; n: bigint }[]>`WITH c AS (${clicks}) SELECT src, COUNT(*)::bigint AS n FROM c GROUP BY src`,
   ]);
 
-  const key = (d: Date) => new Date(d).toISOString().slice(0, 10);
+  // Days are UTC dates ("YYYY-MM-DD"), whatever the database session time zone.
+  const key = (d: Date | string) => (typeof d === "string" ? d : new Date(d).toISOString().slice(0, 10));
   const vMap = new Map(viewDays.map((r) => [key(r.day), n(r.n)]));
   const cMap = new Map(clickDays.map((r) => [key(r.day), n(r.n)]));
   const series = Array.from({ length: days }, (_, i) => {

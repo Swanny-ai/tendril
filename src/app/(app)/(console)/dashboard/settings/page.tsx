@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { requirePage } from "@/lib/session";
+import { requireAccount } from "@/lib/session";
 import { DeleteAccountForm, PasswordForm } from "./forms";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
-  const { userId } = await requirePage();
+  const { userId } = await requireAccount();
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
     select: { email: true, emailVerified: true, passwordHash: true, createdAt: true, accounts: { select: { provider: true } } },
