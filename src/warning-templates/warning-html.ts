@@ -2,10 +2,13 @@
 // warning pages can be served as one tiny document. The React <WarningScreen> renders this too,
 // which keeps the dashboard preview and the live page identical.
 import { brand } from "@/config/brand";
+import { applyWarningColors, type WarningColors } from "./colors";
 import type { WarningTemplate } from "./templates";
 
 export type WarningScreenProps = {
   template: WarningTemplate;
+  /** Creator color overrides on top of the template (Pro). */
+  colors?: WarningColors | null;
   title: string;
   message: string;
   button: string;
@@ -56,7 +59,7 @@ function icon(t: WarningTemplate, size = 28) {
 
 /** The warning screen's markup (use with WARNING_CSS). */
 export function warningHtml(p: WarningScreenProps): string {
-  const t = p.template;
+  const t = applyWarningColors(p.template, p.colors);
   const tag = p.preview ? "span" : "a";
   const heading = p.preview ? "p" : "h1";
   const c = t.compact ? " c" : "";

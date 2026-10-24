@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { PLAN_LIMITS, planFromSubscription } from "@/lib/plan-rules";
 import { parseUserAgent } from "@/lib/ua";
 import { clientIp, countryFromHeaders, visitorHash } from "@/lib/analytics/visitor";
+import { parseLanding, type LandingPage } from "@/lib/link-landing";
+import { parseWarningColors, type WarningColors } from "@/warning-templates/colors";
 import { DEFAULT_WARNING_TEMPLATE } from "@/warning-templates/templates";
 
 export const smartLinkTag = (slug: string) => `smart-link:${slug}`;
@@ -18,6 +20,9 @@ export type SmartLinkTarget = {
   warningTitle: string | null;
   warningMessage: string | null;
   warningButton: string | null;
+  warningColors: WarningColors | null;
+  /** Profile page shown first (only when turned on). */
+  landing: LandingPage | null;
   showBadge: boolean;
   openInBrowser: boolean;
   label: string;
@@ -62,6 +67,12 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
     warningTitle: limits.customWarningText ? link.warningTitle : null,
     warningMessage: limits.customWarningText ? link.warningMessage : null,
     warningButton: limits.customWarningText ? link.warningButton : null,
+    warningColors: limits.customWarningText ? parseWarningColors(link.warningColors) : null,
+    landing: (() => {
+      const l = parseLanding(link.landingPage);
+      // Template pages are Pro: after a downgrade the link works as a plain deep link again.
+      return l?.enabled && limits.templatePages ? l : null;
+    })(),
     showBadge: limits.removeBadge ? link.showBadge : true,
     openInBrowser: link.openInBrowser,
     label: link.label,

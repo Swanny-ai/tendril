@@ -1,5 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
+import sharp from "sharp";
 import { db } from "@/lib/db";
 
 // Image storage for avatars, cover photos and link images, kept in Postgres and served by
@@ -21,10 +22,35 @@ export function checkImage(file: unknown): ImageCheck {
 
 const KEY = /^[a-z0-9]+-[a-f0-9]{16}\.(jpg|png|webp|gif)$/i;
 
-/** Saves an uploaded image for a page and returns its public URL. */
+/** Longest side of a stored photo; larger uploads are scaled down. */
+const MAX_SIDE = 1600;
+
+/**
+ * Photos are re-encoded as WebP (max 1600 px, quality 80, phone rotation applied, metadata
+ * dropped) so pages load fast. GIFs are kept as they are, so animations still play. If the
+ * image can't be read, or WebP would be bigger, the original is kept.
+ */
+export async function optimizeImage(file: File, ext: string): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string; ext: string }> {
+  const original = new Uint8Array(await file.arrayBuffer());
+  if (ext === "gif") return { bytes: original, contentType: file.type, ext };
+  try {
+    const webp = await sharp(original)
+      .rotate()
+      .resize({ width: MAX_SIDE, height: MAX_SIDE, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80, effort: 4 })
+      .toBuffer();
+    if (webp.length < original.length || ext !== "webp") return { bytes: Uint8Array.from(webp), contentType: "image/webp", ext: "webp" };
+  } catch {
+    // Not a readable image for sharp: store it unchanged.
+  }
+  return { bytes: original, contentType: file.type, ext };
+}
+
+/** Saves an uploaded image for a page (optimized, see above) and returns its public URL. */
 export async function saveImage(pageId: string, file: File, ext: string): Promise<string> {
-  const key = `${pageId}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  await db.media.create({ data: { key, pageId, contentType: file.type, bytes: new Uint8Array(await file.arrayBuffer()) } });
+  const img = await optimizeImage(file, ext);
+  const key = `${pageId}-${crypto.randomBytes(8).toString("hex")}.${img.ext}`;
+  await db.media.create({ data: { key, pageId, contentType: img.contentType, bytes: img.bytes } });
   return `/media/${key}`;
 }
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { appHost } from "@/config/brand";
+import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { checkLinkTarget } from "@/lib/link-targets";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
@@ -8,6 +9,9 @@ import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { invalidateSmartLinkFromAction } from "@/lib/smart-links";
 import { normalizeDestinationUrl, smartLinkSchema, type SmartLinkInput } from "@/lib/validation";
+import { checkImage, saveImage } from "@/lib/media";
+import { parseLanding } from "@/lib/link-landing";
+import { parseWarningColors } from "@/warning-templates/colors";
 import { isWarningTemplateKey } from "@/warning-templates/templates";
 
 export type LinkActionResult = { ok: true; id?: string } | { ok: false; error: string; field?: string };
@@ -19,13 +23,20 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
     return { error: { ok: false as const, error: issue.message, field: String(issue.path[0] ?? "") } };
   }
   const data = parsed.data;
-  const dest = normalizeDestinationUrl(data.destinationUrl, appHost);
+  // Template on: the destination is optional (the first section link stands in for it).
+  const landing = parseLanding(data.landingPage);
+  const firstLink = landing?.enabled ? landing.sections.find((s) => s.kind === "link" && s.url)?.url : undefined;
+  if (landing?.enabled && !firstLink && !data.destinationUrl) return { error: { ok: false as const, error: "Add at least one link to your page." } };
+  const dest = normalizeDestinationUrl(landing?.enabled && firstLink ? data.destinationUrl || firstLink : data.destinationUrl, appHost);
   if (!dest.ok) return { error: { ok: false as const, error: dest.error, field: "destinationUrl" } };
   if (!isWarningTemplateKey(data.warningTemplate)) return { error: { ok: false as const, error: "Pick a warning design.", field: "warningTemplate" } };
 
   const limits = PLAN_LIMITS[await getPlan(userId)];
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
+  if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Customize template is part of Pro." } };
+  const warningColors = parseWarningColors(data.warningColors);
+  if (warningColors && !limits.customWarningText) return { error: { ok: false as const, error: "Custom colors are part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
   // Domain + Root/Path: same rules as bio pages (one root per domain, no shared paths).
   const target = await checkLinkTarget(userId, { domainId: data.domainId, atRoot: data.atRoot }, data.slug, { linkId });
@@ -37,11 +48,14 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
       slug: data.slug,
       destinationUrl: dest.url,
       label: data.label ?? "",
-      adultWarning: data.adultWarning,
+      // Template on = its links carry their own 18+ popups; the full-page check is off.
+      adultWarning: landing?.enabled ? false : data.adultWarning,
       warningTemplate: data.warningTemplate,
       warningTitle: data.warningTitle || null,
       warningMessage: data.warningMessage || null,
       warningButton: data.warningButton || null,
+      warningColors: warningColors ?? Prisma.DbNull,
+      landingPage: landing ? (landing as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       showBadge: data.showBadge,
       openInBrowser: data.openInBrowser,
       domainId: data.domainId || null,
@@ -103,4 +117,13 @@ export async function deleteSmartLinkAction(id: string): Promise<LinkActionResul
   await db.smartLink.delete({ where: { id } });
   invalidateSmartLinkFromAction(link.slug);
   return { ok: true };
+}
+
+/** Avatar / cover image for a link's profile page; returns its /media/ URL. */
+export async function uploadLinkImageAction(form: FormData): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const userId = await requireUserId();
+  const file = form.get("file");
+  const check = checkImage(file);
+  if (!check.ok) return { ok: false, error: check.error };
+  return { ok: true, url: await saveImage(userId, file as File, check.ext) };
 }

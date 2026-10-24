@@ -15,6 +15,7 @@ export const PLAN_LIMITS = {
     verifiedBadge: false,
     removeBadge: false,
     customWarningText: false,
+    templatePages: false,
   },
   PRO: {
     maxBlocks: 200,
@@ -27,10 +28,11 @@ export const PLAN_LIMITS = {
     verifiedBadge: true,
     removeBadge: true,
     customWarningText: true,
+    templatePages: true,
   },
 } as const satisfies Record<PlanName, Record<string, number | boolean>>;
 
-export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "breakdowns" | "verifiedBadge";
+export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "breakdowns" | "verifiedBadge" | "templatePages";
 
 export const PRICES_USD = { monthly: 6, yearly: 60 } as const;
 

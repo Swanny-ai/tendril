@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // Image uploads (up to 4 MB, then converted to small WebP files) go through Server Actions.
+  experimental: { serverActions: { bodySizeLimit: "4.4mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

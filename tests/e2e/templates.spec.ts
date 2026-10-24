@@ -179,7 +179,7 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await page.getByLabel("Link name").fill(slug);
   await page.getByLabel("Domain").selectOption({ label: host });
   await page.getByLabel("Destination URL").fill("https://example.com/shop");
-  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  await page.getByRole("switch", { name: "18+ age check" }).click();
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page).toHaveURL(/\/dashboard\/links$/);
   await expect(page.getByRole("link", { name: `${host}/${slug}` })).toBeVisible();
@@ -217,7 +217,7 @@ test("custom domains: add, see DNS steps, use on a link, and serve links on that
   await page.getByRole("radio", { name: "Root" }).click();
   await expect(page.getByText(`https://${host}/`)).toBeVisible();
   await page.getByLabel("Destination URL").fill("https://example.com/root");
-  await page.getByRole("switch", { name: "Adult content warning" }).click();
+  await page.getByRole("switch", { name: "18+ age check" }).click();
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page).toHaveURL(/\/dashboard\/links$/);
   await expect(page.getByRole("link", { name: `${host}/`, exact: true })).toBeVisible();

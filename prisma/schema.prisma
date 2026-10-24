@@ -283,6 +283,10 @@ model SmartLink {
   warningMessage  String?
   warningButton   String?
   showBadge       Boolean          @default(true)
+  // Pro: color overrides on top of the design ({ pageBg, cardBg, text, buttonBg, buttonText } as hex)
+  warningColors   Json?
+  // Optional profile page shown before the link continues (cover, avatar, sections; see lib/link-landing.ts)
+  landingPage     Json?
   // Inside Instagram/TikTok/etc., show a page that opens the link in the default browser
   openInBrowser   Boolean          @default(true)
   // Custom domain the link is shared on (null = the ViewLink domain)
@@ -293,6 +297,7 @@ model SmartLink {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   events          SmartLinkEvent[]
+  reports         LinkReport[]
 
   @@index([userId, createdAt])
 }
@@ -312,6 +317,19 @@ model SmartLinkEvent {
   isBot       Boolean   @default(false)
 
   @@index([linkId, ts])
+}
+
+// A visitor's report about a deep link's page (Report button on template pages).
+model LinkReport {
+  id          String    @id @default(cuid())
+  linkId      String
+  link        SmartLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  reason      String
+  details     String    @default("")
+  visitorHash String
+  createdAt   DateTime  @default(now())
+
+  @@index([linkId, createdAt])
 }
 
 // Uploaded images (avatars, cover photos, link images), served by /media/<key>.

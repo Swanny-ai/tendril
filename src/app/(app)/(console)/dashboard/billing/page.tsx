@@ -30,6 +30,7 @@ const PRO_FEATURES = [
   "All themes, custom colors and fonts",
   "Remove the “Made with” badge",
   "Custom content-warning text",
+  "Customize template: your own link page with cover, photo links and countdown",
   "Custom domains, up to 25 pages and 100 deep links",
   "Referrers, countries and devices",
   "Up to a year of analytics history",

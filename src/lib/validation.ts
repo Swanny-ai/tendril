@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RESERVED_USERNAMES } from "@/config/reserved";
 import { BLOCK_KINDS } from "@/lib/blocks";
+import { WARNING_COLOR_KEYS } from "@/warning-templates/colors";
 
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
 
@@ -121,6 +122,11 @@ export const smartLinkSchema = z.object({
   warningTitle: z.string().trim().max(80).optional().nullable(),
   warningMessage: z.string().trim().max(300).optional().nullable(),
   warningButton: z.string().trim().max(40).optional().nullable(),
+  warningColors: z
+    .partialRecord(z.enum(WARNING_COLOR_KEYS), z.string().regex(/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i, "Colors must be hex, like #1a2b3c"))
+    .optional()
+    .nullable(),
+  landingPage: z.unknown().optional(),
   showBadge: z.boolean().default(true),
   openInBrowser: z.boolean().default(true),
   domainId: z.string().max(40).nullable().optional(),

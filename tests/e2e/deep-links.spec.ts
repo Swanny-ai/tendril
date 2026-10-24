@@ -29,7 +29,7 @@ async function newCreatorWithLink(page: Page, warning = false) {
   await expect(page.getByText("Available", { exact: true })).toBeVisible();
   await page.getByLabel("Destination URL").fill("https://example.com/shop");
   await expect(page.getByRole("switch", { name: "Open in phone browser" })).toBeChecked(); // on by default
-  if (!warning) await page.getByRole("switch", { name: "Adult content warning" }).click();
+  if (!warning) await page.getByRole("switch", { name: "18+ age check" }).click();
   await page.getByRole("button", { name: "Create link" }).click();
   await expect(page).toHaveURL(/\/dashboard\/links$/);
   return { name, slug };

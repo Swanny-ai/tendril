@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
+import { setPlanByUsername } from "./db";
 import { DEMO, login, TEST_PASSWORD, uniqueName } from "./helpers";
 
 async function newCreator(page: Page) {
@@ -25,26 +26,32 @@ async function createLink(page: Page, slug: string, destination: string, templat
   await expect(page).toHaveURL(/\/dashboard\/links$/);
 }
 
-test("adult warning is on by default, with 12 designs and a live preview", async ({ page }) => {
+test("18+ age check is on by default, with 12 designs and a live phone preview", async ({ page }) => {
   await newCreator(page);
   await page.goto("/dashboard/links/new");
-  await expect(page.getByRole("switch", { name: "Adult content warning" })).toBeChecked();
-  await expect(page.getByRole("radiogroup", { name: "Warning page design" }).getByRole("radio")).toHaveCount(12);
+  await expect(page.getByRole("switch", { name: "18+ age check" })).toBeChecked();
+  await expect(page.getByRole("radiogroup", { name: "Age check design" }).getByRole("radio")).toHaveCount(12);
   await expect(page.getByRole("radio", { name: "Clear Blue" })).toHaveAttribute("aria-checked", "true");
 
   // Clear Blue (the default) is a compact age gate without the destination line.
-  const preview = page.getByLabel("Warning page preview");
+  const preview = page.getByLabel("Age check preview");
+  await expect(page.getByTestId("phone-preview")).toContainText("9:41");
   await expect(preview.getByText("Age Restricted")).toBeVisible();
   await page.getByLabel("Destination URL").fill("example.com/vip");
   await page.getByRole("radio", { name: "Sorbet" }).click();
   await expect(page.getByRole("radio", { name: "Sorbet" })).toHaveAttribute("aria-checked", "true");
   await expect(preview.getByText("Adults only")).toBeVisible();
   await expect(preview.getByText("example.com")).toBeVisible();
-  await page.getByRole("button", { name: "Desktop" }).click();
-  await expect(preview).toBeVisible();
+  await expect(page.getByTestId("phone-preview")).toContainText("/l/");
 
-  // Free plan: custom wording and badge removal are locked
+  // Off: the phone shows where visitors go instead
+  await page.getByRole("switch", { name: "18+ age check" }).click();
+  await expect(page.getByLabel("Direct link preview")).toContainText("Goes straight to example.com");
+  await page.getByRole("switch", { name: "18+ age check" }).click();
+
+  // Free plan: colors, custom wording and badge removal are locked
   await expect(page.getByLabel("Title")).toBeDisabled();
+  await expect(page.getByLabel("Button hex")).toBeDisabled();
   await expect(page.getByRole("switch", { name: "Show Made with badge" })).toBeDisabled();
 });
 
@@ -96,8 +103,8 @@ test("turning the warning off redirects straight away; pausing makes the link 40
   const slug = uniqueName("direct").replace(/_/g, "-");
   await createLink(page, slug, "https://example.com/direct");
   await page.getByRole("link", { name: `/l/${slug}` }).click();
-  await page.getByRole("switch", { name: "Adult content warning" }).click();
-  await expect(page.getByText("Visitors will be sent straight to your destination")).toBeVisible();
+  await page.getByRole("switch", { name: "18+ age check" }).click();
+  await expect(page.getByText("Visitors go straight to example.com")).toBeVisible();
   await page.getByRole("button", { name: "Save link" }).click();
   await expect(page).toHaveURL(/\/dashboard\/links$/);
 
@@ -150,6 +157,39 @@ test("bio-page content warnings can use a warning template", async ({ page }) =>
   await page.getByRole("combobox", { name: "Content-warning page style" }).click();
   await page.getByRole("option", { name: "Match my page theme" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+});
+
+test("Pro: custom 18+ colors show in the preview and on the live page, and reset to the design", async ({ page, browser }) => {
+  const name = await newCreator(page);
+  await setPlanByUsername(name, "PRO");
+  const slug = uniqueName("color").replace(/_/g, "-");
+  await page.goto("/dashboard/links/new");
+  await page.getByLabel("Link name").fill(slug);
+  await expect(page.getByText("Available", { exact: true })).toBeVisible();
+  await page.getByLabel("Destination URL").fill("https://example.com/colors");
+  await page.getByLabel("Button hex").fill("#ff0000");
+  await page.getByLabel("Background hex").fill("123456");
+  const previewButton = page.getByLabel("Age check preview").getByTestId("warning-continue");
+  await expect(previewButton).toHaveCSS("background-color", "rgb(255, 0, 0)");
+  await page.getByRole("button", { name: "Create link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+
+  const visitor = await browser.newContext({ locale: "en-US" });
+  const v = await visitor.newPage();
+  await v.goto(`/l/${slug}/warning`);
+  await expect(v.getByTestId("warning-continue")).toHaveCSS("background-color", "rgb(255, 0, 0)");
+  await expect(v.locator(".w-root")).toHaveCSS("background-color", "rgb(18, 52, 86)");
+
+  // Edit: colors load back, and Reset to design removes them
+  await page.getByRole("link", { name: `/l/${slug}` }).click();
+  await expect(page.getByRole("textbox", { name: "Button hex" })).toHaveValue("#ff0000");
+  await page.getByRole("button", { name: "Reset to design" }).click();
+  await expect(page.getByRole("textbox", { name: "Button hex" })).toHaveValue("");
+  await page.getByRole("button", { name: "Save link" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/links$/);
+  await v.reload();
+  await expect(v.getByTestId("warning-continue")).toHaveCSS("background-color", "rgb(0, 175, 240)");
+  await visitor.close();
 });
 
 test("Clear Blue template renders the reference age gate", async ({ page, browser }) => {

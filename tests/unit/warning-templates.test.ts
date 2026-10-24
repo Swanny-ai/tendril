@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { contrastRatio } from "@/themes/presets";
 import { pickLang, templateCopy, WARNING_COPY } from "@/warning-templates/copy";
+import { applyWarningColors, parseWarningColors } from "@/warning-templates/colors";
 import { getWarningTemplate, isWarningTemplateKey, WARNING_TEMPLATES } from "@/warning-templates/templates";
+import { warningHtml } from "@/warning-templates/warning-html";
 
 describe("warning templates", () => {
   it("has 12 templates with unique keys", () => {
@@ -43,4 +45,25 @@ describe("warning copy", () => {
     ["", "en"],
     [null, "en"],
   ])("%s → %s", (header, lang) => expect(pickLang(header)).toBe(lang));
+});
+
+describe("warning colors", () => {
+  it("keeps only known keys with valid hex values", () => {
+    expect(parseWarningColors({ pageBg: "#ABC", buttonBg: "red", text: "#12345", evil: "#000000" })).toEqual({ pageBg: "#aabbcc" });
+    expect(parseWarningColors({ buttonBg: "url(x)" })).toBeNull();
+    expect(parseWarningColors(null)).toBeNull();
+    expect(parseWarningColors(["#ffffff"])).toBeNull();
+  });
+  it("overrides the design's colors and leaves the rest alone", () => {
+    const t = getWarningTemplate("dusk");
+    const c = applyWarningColors(t, { pageBg: "#101010", text: "#eeeeee", buttonBg: "#ff0000", buttonText: "#000000", cardBg: "#202020" });
+    expect(c).toMatchObject({ pageBg: "#101010", cardBg: "#202020", surface: "#202020", text: "#eeeeee", muted: "#eeeeeeb3", buttonBg: "#ff0000", buttonSolid: "#ff0000", buttonText: "#000000" });
+    expect(c.radius).toBe(t.radius);
+    expect(applyWarningColors(t, null)).toBe(t);
+  });
+  it("is applied by the shared renderer (preview = live page)", () => {
+    const html = warningHtml({ template: getWarningTemplate("clear-blue"), colors: { buttonBg: "#ff0000" }, title: "T", message: "M", button: "B", leave: "L", continueHref: "/c", leaveHref: "/l", showBadge: false });
+    expect(html).toContain("background:#ff0000");
+    expect(html).not.toContain("#00aff0;color");
+  });
 });

@@ -3,10 +3,12 @@ import { after } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { isAppHost } from "@/lib/domain-names";
-import { htmlResponse, leanLeftPage, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
+import { detectInAppBrowser } from "@/lib/in-app";
+import { htmlResponse, leanLandingPage, leanLeftPage, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
 import { publicLinkBase } from "@/lib/link-paths";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
 import { pickLang, templateCopy, WARNING_COPY } from "@/warning-templates/copy";
+import { applyWarningColors } from "@/warning-templates/colors";
 import { getWarningTemplate } from "@/warning-templates/templates";
 
 // The steps a deep link can show before its destination, served as lean HTML (lib/lean-link-pages).
@@ -56,6 +58,7 @@ export function warningStep(h: Headers, link: SmartLink, slug: string, entry: bo
       userAgent: ua,
       lang,
       template,
+      colors: link.warningColors,
       title: link.warningTitle || copy.title,
       message: link.warningMessage || copy.message,
       button: link.warningButton || copy.button,
@@ -66,6 +69,40 @@ export function warningStep(h: Headers, link: SmartLink, slug: string, entry: bo
       leaveHref: leave,
       showBadge: link.showBadge,
       escape: link.openInBrowser ? { target: escapeTarget, stay: `${base}?ok=1&ib=1` } : null,
+    }),
+  );
+}
+
+/** The creator's profile page ("Template"), shown before the link continues. */
+/** `step2`: the visitor tapped Step 1's button (the visit was already counted). */
+export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = false): Response {
+  if (!step2) track(h, link.id, ["hit"]);
+  const base = publicLinkBase(h, slug, appHost);
+  // Step 1 is only for visitors inside a social app (Instagram, TikTok...): in a real browser
+  // (Safari, Chrome...) they get Step 2 straight away.
+  const ua = h.get("user-agent") ?? "";
+  const inApp = !!detectInAppBrowser(ua);
+  // Step 1 is on as soon as it has its button.
+  const showStep1 = !!link.landing?.introSections.length && !step2 && inApp;
+  // From Step 1, the button opens Step 2 in the phone's browser when "Open in phone browser" is on.
+  const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${hostOf(h)}`;
+  const deepLink = link.openInBrowser && inApp ? inAppDeepLink(ua, `${origin}${base}?step=2`) : null;
+  const step2Href = deepLink || `${base}?step=2`;
+  const lang = pickLang(h.get("accept-language"));
+  const copy = WARNING_COPY[lang];
+  return htmlResponse(
+    leanLandingPage({
+      host: hostOf(h),
+      lang,
+      age: { title: copy.title, message: copy.message, button: copy.button, leave: copy.leave },
+      page: link.landing!,
+      fallbackName: link.owner?.name ?? link.label ?? slug,
+      showBadge: link.showBadge,
+      slug,
+      step: showStep1 ? 1 : 2,
+      step2Href,
+      // Inside Instagram, TikTok...: show Step 1, then straight away open Step 2 in the phone's browser.
+      autoOpen: showStep1 && deepLink ? deepLink : undefined,
     }),
   );
 }
@@ -94,6 +131,6 @@ export function leftStep(h: Headers, link: SmartLink): Response {
   const lang = pickLang(h.get("accept-language"));
   const copy = WARNING_COPY[lang];
   track(h, link.id, ["leave"]);
-  const t = getWarningTemplate(link.warningTemplate);
+  const t = applyWarningColors(getWarningTemplate(link.warningTemplate), link.warningColors);
   return htmlResponse(leanLeftPage({ host: hostOf(h), lang, title: copy.leftTitle, message: copy.leftMessage, pageBg: t.pageBg, text: t.text, muted: t.muted }));
 }

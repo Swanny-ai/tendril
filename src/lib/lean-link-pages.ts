@@ -2,6 +2,7 @@ import "server-only";
 import { brand } from "@/config/brand";
 import { openInBrowserUrl, platformFromUserAgent, pressAndHoldOnly } from "@/lib/deeplink";
 import { detectInAppBrowser, type InAppBrowser } from "@/lib/in-app";
+import { LANDING_CSS, LANDING_JS, LANDING_SHEETS_JS, landingHtml, type LandingRenderInput } from "@/lib/link-landing";
 import { WARNING_CSS, esc, warningHtml, type WarningScreenProps } from "@/warning-templates/warning-html";
 
 // Deep link pages (18+ warning, "open in browser", "you left") as single, self-contained HTML
@@ -25,13 +26,21 @@ const ICON_MORE_V = `<svg width="16" height="16" viewBox="0 0 24 24" fill="curre
 
 const APP_NAMES: Record<Exclude<InAppBrowser, null>, string> = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", snapchat: "Snapchat", linkedin: "LinkedIn", twitter: "X" };
 
-type DocOptions = { lang?: string; host: string; css: string; body: string; config?: Record<string, string> };
+type DocOptions = {
+  lang?: string;
+  host: string;
+  css: string;
+  body: string;
+  config?: Record<string, string>;
+  /** Navigate here as the very first thing, before the page draws (opening the phone's browser). */
+  goNow?: string;
+};
 
 /** A whole page. Link previews show only the domain; the tab shows only the brand. */
-function documentHtml({ lang = "en", host, css, body, config }: DocOptions): string {
+function documentHtml({ lang = "en", host, css, body, config, goNow }: DocOptions): string {
   const script = config ? `<script>${ESCAPE_JS}(${JSON.stringify(config).replace(/</g, "\\u003c")})</script>` : "";
   return (
-    `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
+    `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8">${goNow ? `<script>location.href=${JSON.stringify(goNow).replace(/</g, "\\u003c")}</script>` : ""}<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
     `<title>${esc(brand.name)}</title><meta name="robots" content="noindex,nofollow"><meta property="og:title" content="${esc(host)}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${esc(host)}">` +
     `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body>${body}${script}</body></html>`
   );
@@ -126,4 +135,11 @@ export function leanLeftPage(p: { host: string; lang: string; title: string; mes
 const NOT_FOUND_CSS = `body{align-items:center;justify-content:center;text-align:center;background:#151515;color:#fff;padding:0 1.25rem}h1{margin:0 0 .5rem}p{margin:0;color:#a3a3a3}`;
 export function leanNotFound(host: string, message = "It may have been removed or turned off."): Response {
   return htmlResponse(documentHtml({ host, css: NOT_FOUND_CSS, body: `<main><h1>This link isn&apos;t available</h1><p>${esc(message)}</p></main>` }), 404);
+}
+
+/** The creator's profile page (a deep link's "Template"). */
+export function leanLandingPage(p: Omit<LandingRenderInput, "preview" | "now" | "popupFor"> & { host: string; lang?: string; autoOpen?: string }): string {
+  // autoOpen: inside a social app, open Step 2 in the phone's browser immediately, before Step 1 even draws
+  // (Step 1 and its button stay as the fallback if the app refuses).
+  return documentHtml({ lang: p.lang, host: p.host, css: LANDING_CSS, body: landingHtml(p) + `<script>${LANDING_JS}${LANDING_SHEETS_JS}</script>`, goNow: p.autoOpen });
 }

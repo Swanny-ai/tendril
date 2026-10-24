@@ -2,15 +2,18 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Settings } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Palette, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   // Bio pages: the list and the template gallery; editing a page also counts as this section.
   { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate, also: ["/dashboard/editor", "/edit/template/"] },
-  // Deep links are edited at /edit/<link> (but /edit/template/ belongs to Templates).
-  { href: "/dashboard/links", label: "Deep links", icon: Link2, also: ["/edit/"] },
+  // Template pages (deep links that open a designed page). Deep links are edited at /edit/<link>
+  // (but /edit/template/ belongs to Templates).
+  { href: "/dashboard/links", label: "Customize template", icon: Palette, also: ["/edit/"] },
+  // Classic deep links: short link, open in browser, optional 18+ page.
+  { href: "/dashboard/deeplinks", label: "Deeplinks", icon: Link2 },
   { href: "/dashboard/domains", label: "Custom domains", icon: Globe },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift },
