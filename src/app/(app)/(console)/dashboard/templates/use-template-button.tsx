@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LinkTargetPicker, type DomainOption } from "../link-target-picker";
+import { celebrate } from "@/lib/celebrate";
 import { createPageAction } from "../pages-actions";
 
 type Check = { state: "idle" | "checking" | "ok" | "bad"; message?: string };
@@ -69,6 +70,7 @@ export function UseTemplateButton({
       }
       setOpen(false);
       toast.success(`Created your ${name} page. Make it yours in the editor.`);
+      celebrate();
       router.push(res.editPath ?? "/dashboard/editor");
     });
 

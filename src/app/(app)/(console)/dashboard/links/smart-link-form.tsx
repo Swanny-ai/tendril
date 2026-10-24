@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { appHost } from "@/config/brand";
 import { defaultIntroSection, type LandingPage } from "@/lib/link-landing";
+import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import { applyWarningColors, isHexColor, normalizeHex, parseWarningColors, type WarningColorKey, type WarningColors } from "@/warning-templates/colors";
 import { templateCopy, WARNING_COPY } from "@/warning-templates/copy";
@@ -175,7 +176,8 @@ export function SmartLinkForm({
       toast.error(res.error);
       return;
     }
-    toast.success(id ? "Link saved" : "Link created");
+    toast.success(id ? "Link saved" : "Link created 🎉");
+    if (!id) celebrate();
     router.push(listHref);
     router.refresh();
   }
