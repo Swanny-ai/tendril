@@ -9,6 +9,7 @@ import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { invalidateSmartLinkFromAction } from "@/lib/smart-links";
 import { normalizeDestinationUrl, smartLinkSchema, type SmartLinkInput } from "@/lib/validation";
+import { copySlug } from "@/lib/copy-names";
 import { checkImage, saveImage } from "@/lib/media";
 import { parseLanding } from "@/lib/link-landing";
 import { parseWarningColors } from "@/warning-templates/colors";
@@ -135,4 +136,41 @@ export async function uploadLinkImageAction(form: FormData): Promise<{ ok: true;
   const check = checkImage(file);
   if (!check.ok) return { ok: false, error: check.error };
   return { ok: true, url: await saveImage(userId, file as File, check.ext) };
+}
+
+/** A copy of a deep link (settings, 18+ page, Two-Steps page) at a new name, "<name>-copy". */
+export async function duplicateSmartLinkAction(id: string): Promise<LinkActionResult & { slug?: string }> {
+  const userId = await requireUserId();
+  const link = await db.smartLink.findFirst({ where: { id, userId } });
+  if (!link) return { ok: false, error: "That link no longer exists." };
+  const limits = PLAN_LIMITS[await getPlan(userId)];
+  if ((await db.smartLink.count({ where: { userId } })) >= limits.maxSmartLinks) {
+    return { ok: false, error: `Your plan includes ${limits.maxSmartLinks} deep link${limits.maxSmartLinks === 1 ? "" : "s"}. Upgrade to Pro for more.` };
+  }
+  const slug = await copySlug(link.slug);
+  if (!slug) return { ok: false, error: "Couldn't find a free name for the copy." };
+  const json = (v: unknown) => (v === null ? Prisma.DbNull : (v as Prisma.InputJsonValue));
+  const copy = await db.smartLink.create({
+    data: {
+      userId,
+      slug,
+      destinationUrl: link.destinationUrl,
+      label: link.label ? `${link.label} (copy)`.slice(0, 80) : "",
+      enabled: link.enabled,
+      adultWarning: link.adultWarning,
+      warningTemplate: link.warningTemplate,
+      warningTitle: link.warningTitle,
+      warningMessage: link.warningMessage,
+      warningButton: link.warningButton,
+      warningColors: json(link.warningColors),
+      landingPage: json(link.landingPage),
+      showBadge: link.showBadge,
+      openInBrowser: link.openInBrowser,
+      // Same domain, but always at a path: a domain has only one Root.
+      domainId: link.domainId,
+      atRoot: false,
+    },
+  });
+  invalidateSmartLinkFromAction(copy.slug);
+  return { ok: true, id: copy.id, slug: copy.slug };
 }

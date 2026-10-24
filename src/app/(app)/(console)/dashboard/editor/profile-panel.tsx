@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ImageUp, Lock, Trash2 } from "lucide-react";
+import { shrinkImage } from "@/lib/shrink-image";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,11 +91,11 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 className="sr-only"
                 id="avatar-file"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const f = e.target.files?.[0];
                   if (!f) return;
                   const fd = new FormData();
-                  fd.set("file", f);
+                  fd.set("file", await shrinkImage(f));
                   void upload(fd);
                 }}
               />
@@ -114,7 +115,7 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
                   <Trash2 /> Remove
                 </Button>
               ) : null}
-              <p className="w-full text-xs text-muted-foreground">JPG, PNG, WebP or GIF, up to 4 MB.</p>
+              <p className="w-full text-xs text-muted-foreground">JPG, PNG, WebP or GIF. Large photos are resized automatically.</p>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -213,11 +214,11 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
               className="sr-only"
               id="hero-file"
               aria-label="Cover photo file"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
                 const fd = new FormData();
-                fd.set("file", f);
+                fd.set("file", await shrinkImage(f));
                 void uploadHero(fd);
               }}
             />
@@ -237,7 +238,7 @@ export function ProfilePanel({ canVerifiedBadge = false }: { canVerifiedBadge?: 
                 <Trash2 /> Remove
               </Button>
             ) : null}
-            <p className="w-full text-xs text-muted-foreground">A tall (portrait) photo works best. Up to 4 MB.</p>
+            <p className="w-full text-xs text-muted-foreground">A tall (portrait) photo works best.</p>
           </div>
         </CardContent>
       </Card>

@@ -25,6 +25,7 @@ import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
+import { shrinkImage } from "@/lib/shrink-image";
 import { SocialGlyph, socialMeta } from "@/components/public-page/social";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1063,12 +1064,12 @@ function ImagePicker({
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.set("file", file);
+      fd.set("file", await shrinkImage(file));
       const res = await uploadLinkImageAction(fd);
       if (res.ok) onChange(res.url);
       else toast.error(res.error);
     } catch {
-      toast.error("Upload failed. Try a smaller image (max 4 MB).");
+      toast.error("Upload failed. Please try another photo.");
     } finally {
       setBusy(false);
     }

@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { AlignLeft, ChevronDown, GripVertical, Heading, ImagePlus, Link2, PlaySquare, Plus, ShieldAlert, Timer, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { shrinkImage } from "@/lib/shrink-image";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -447,7 +448,7 @@ function ImageCardEditor({ block, onSave }: { block: EditorBlock; onSave: (data:
                   if (!file) return;
                   setBusy(true);
                   const form = new FormData();
-                  form.append("file", file);
+                  form.append("file", await shrinkImage(file));
                   const res = await uploadBlockImageAction(form);
                   setBusy(false);
                   if (!res.ok || !res.data) {

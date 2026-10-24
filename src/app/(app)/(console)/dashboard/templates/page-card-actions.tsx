@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import NextLink from "next/link";
-import { BarChart3, Link2, Loader2, PencilRuler, Trash2 } from "lucide-react";
+import { BarChart3, CopyPlus, Link2, Loader2, PencilRuler, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { LinkTargetPicker, type DomainOption } from "../link-target-picker";
-import { deletePageAction, editPageAction, updatePageLinkAction } from "../pages-actions";
+import { deletePageAction, duplicatePageAction, editPageAction, updatePageLinkAction } from "../pages-actions";
 
 /** Edit, change link and delete buttons for one of the creator's bio pages. */
 export function PageCardActions({
@@ -87,6 +87,23 @@ export function PageCardActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        aria-label={`Duplicate /${page.username}`}
+        onClick={() =>
+          start(async () => {
+            const res = await duplicatePageAction(page.id);
+            if (!res.ok) return void toast.error(res.error);
+            toast.success(`Duplicated as /${res.username}`);
+            router.refresh();
+          })
+        }
+      >
+        <CopyPlus /> Duplicate
+      </Button>
 
       {canDelete ? (
         <Button

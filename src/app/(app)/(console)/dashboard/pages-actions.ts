@@ -12,6 +12,7 @@ import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { STARTER_BLOCKS } from "@/lib/starter-blocks";
 import { usernameSchema } from "@/lib/validation";
+import { copyUsername } from "@/lib/copy-names";
 import { getShowcase } from "@/lib/showcase";
 import { getPageTemplate, isLayoutKey } from "@/templates/link-in-bio";
 import { THEME_PRESETS } from "@/themes/presets";
@@ -148,4 +149,58 @@ export async function deletePageAction(pageId: string): Promise<PageActionResult
   expireUsername(page.username);
   await rememberCurrentPage(pages.find((p) => p.id !== page.id)!.id);
   return { ok: true };
+}
+
+/** A copy of a bio page (design, profile and blocks) at a new name, "<username>_copy". */
+export async function duplicatePageAction(pageId: string): Promise<PageActionResult> {
+  const userId = await requireUserId();
+  const page = await db.page.findFirst({ where: { id: pageId, userId }, include: { blocks: { orderBy: { position: "asc" } } } });
+  if (!page) return { ok: false, error: "That page no longer exists." };
+  const plan = await getPlan(userId);
+  if ((await db.page.count({ where: { userId } })) >= PLAN_LIMITS[plan].maxPages) {
+    return { ok: false, error: plan === "FREE" ? `Free accounts can have ${PLAN_LIMITS.FREE.maxPages} page${PLAN_LIMITS.FREE.maxPages === 1 ? "" : "s"}. Upgrade to Pro for more.` : "You've reached the page limit." };
+  }
+  const username = await copyUsername(page.username);
+  if (!username) return { ok: false, error: "Couldn't find a free name for the copy." };
+  const copy = await db.page.create({
+    data: {
+      userId,
+      username,
+      displayName: page.displayName,
+      bio: page.bio,
+      avatarUrl: page.avatarUrl,
+      themeKey: page.themeKey,
+      themeOverrides: page.themeOverrides === null ? Prisma.DbNull : (page.themeOverrides as Prisma.InputJsonValue),
+      seoTitle: page.seoTitle,
+      seoDescription: page.seoDescription,
+      published: page.published,
+      showBadge: page.showBadge,
+      warningTemplate: page.warningTemplate,
+      openInBrowser: page.openInBrowser,
+      layout: page.layout,
+      heroUrl: page.heroUrl,
+      tagline: page.tagline,
+      // A badge granted by the site owner (verifiedAt) belongs to the original page only.
+      showVerified: page.showVerified,
+      handle: page.handle,
+      showHandle: page.showHandle,
+      // Same domain, but always at a path: a domain has only one Root.
+      domainId: page.domainId,
+      atRoot: false,
+      blocks: {
+        create: page.blocks.map((b) => ({
+          type: b.type,
+          position: b.position,
+          enabled: b.enabled,
+          title: b.title,
+          url: b.url,
+          data: b.data as Prisma.InputJsonValue,
+          contentWarning: b.contentWarning,
+          contentWarningText: b.contentWarningText,
+        })),
+      },
+    },
+  });
+  expireUsername(copy.username);
+  return { ok: true, username: copy.username };
 }

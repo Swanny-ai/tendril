@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { BarChart3, Copy, Pencil, Trash2 } from "lucide-react";
+import { BarChart3, Copy, CopyPlus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { QrCodeButton } from "@/components/qr-code-button";
-import { deleteSmartLinkAction, toggleSmartLinkAction } from "./actions";
+import { deleteSmartLinkAction, duplicateSmartLinkAction, toggleSmartLinkAction } from "./actions";
 
 export function LinkRowActions({ id, slug, url, editHref, enabled }: { id: string; slug: string; url: string; editHref: string; enabled: boolean }) {
   const router = useRouter();
@@ -45,6 +45,23 @@ export function LinkRowActions({ id, slug, url, editHref, enabled }: { id: strin
       <Link href={editHref} className={buttonVariants({ variant: "ghost", size: "icon-sm" })} aria-label="Edit link">
         <Pencil />
       </Link>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Duplicate link"
+        title="Duplicate"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const res = await duplicateSmartLinkAction(id);
+            if (!res.ok) return void toast.error(res.error);
+            toast.success(`Duplicated as /${res.slug}`);
+            router.refresh();
+          })
+        }
+      >
+        <CopyPlus />
+      </Button>
       <Button
         variant="ghost"
         size="icon-sm"

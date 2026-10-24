@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { shrinkImage } from "@/lib/shrink-image";
 import {
   LANDING_CSS,
   landingHtml,
@@ -56,7 +57,7 @@ export function LandingPhone({
 
   async function upload(f: File) {
     const fd = new FormData();
-    fd.set("file", f);
+    fd.set("file", await shrinkImage(f));
     try {
       const res = await uploadLinkImageAction(fd);
       if (!res.ok) return toast.error(res.error);
@@ -67,7 +68,7 @@ export function LandingPhone({
         onSelect(s.id);
       }
     } catch {
-      toast.error("Upload failed. Try a smaller image (max 4 MB).");
+      toast.error("Upload failed. Please try another photo.");
     }
   }
 
