@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Settings, UserRound } from "lucide-react";
+import { LogOut, Settings, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOutAction } from "../../../(auth)/actions";
 
-export function UserMenu({ label }: { label: string }) {
+export function UserMenu({ label, admin = false }: { label: string; admin?: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Account menu" className="rounded-full" />}>
@@ -28,6 +28,11 @@ export function UserMenu({ label }: { label: string }) {
         <DropdownMenuItem render={<Link href="/dashboard/settings" />}>
           <Settings /> Settings
         </DropdownMenuItem>
+        {admin ? (
+          <DropdownMenuItem render={<Link href="/admin" />}>
+            <ShieldCheck /> Admin dashboard
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={() => void signOutAction()}>
           <LogOut /> Sign out
         </DropdownMenuItem>

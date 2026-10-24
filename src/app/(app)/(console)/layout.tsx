@@ -1,6 +1,7 @@
 import { Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
+import { isAdmin } from "@/lib/admin";
 import { requireAccount } from "@/lib/session";
 import { DashboardNav } from "./dashboard/nav";
 import { UserMenu } from "./dashboard/user-menu";
@@ -13,9 +14,10 @@ export const instant = false;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, page } = await requireAccount();
-  const [plan, user] = await Promise.all([
+  const [plan, user, admin] = await Promise.all([
     getPlan(userId),
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true } }),
+    isAdmin(userId),
   ]);
 
   return (
@@ -28,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <p className="font-medium">{plan === "PRO" ? "Pro plan" : "Free plan"}</p>
             <p className="text-muted-foreground">{plan === "PRO" ? "Thanks for supporting us." : "Unlock themes, analytics and more."}</p>
           </div>
-          <UserMenu label={page ? `@${page.username}` : user.email} />
+          <UserMenu label={page ? `@${page.username}` : user.email} admin={admin} />
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -36,7 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:hidden">
           <Logo href="/dashboard" />
           <div className="ml-auto">
-            <UserMenu label={page ? `@${page.username}` : user.email} />
+            <UserMenu label={page ? `@${page.username}` : user.email} admin={admin} />
           </div>
         </header>
         {/* Only ask for confirmation when the site can actually send the email. */}
