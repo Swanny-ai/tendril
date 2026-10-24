@@ -578,7 +578,7 @@ export function landingHtml({
           .map((s) => {
             const m = socialMeta(s.network);
             const href = /^https?:\/\//i.test(s.handle) ? s.handle : m.href(s.handle);
-            return link(href, "lp-si", glyph(s.network, 20, vars.text), ` aria-label="${esc(m.label)}"`);
+            return link(href, "lp-si", glyph(s.network, 20, vars.text), ` aria-label="${esc(m.label)}"${preview ? "" : " data-tap=\"\""}`);
           })
           .join("")}</div>`
       : "") +
@@ -614,7 +614,7 @@ export function landingHtml({
         href,
         `lp-btn lp-link${zc(s)}${anim}${sel(s)}`,
         `${tools(s)}<span${edit(`sec:${s.id}:title`)}${ts(s)}>${blockIconHtml(s.icon, s.url)}${esc(s.title || "Link title")}</span>`,
-        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}`,
+        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}${!s.deep && !preview ? ` data-tap=""` : ""}`,
       );
     }
     const net = networkOfUrl(href);
@@ -631,7 +631,7 @@ export function landingHtml({
       href,
       `lp-card${zc(s)}${s.size === "small" ? " sm" : ""}${s.highlight || s.color ? " hl" : ""}${anim}${sel(s)}`,
       inner,
-      `${cardStyle}${secAttr(s)}`,
+      `${cardStyle}${secAttr(s)}${preview ? "" : ` data-tap=""`}`,
     );
   };
   const boxStyle = (s: LandingSection) =>
@@ -705,7 +705,7 @@ export function landingHtml({
 
   return (
     nameFontLink +
-    `<div class="lp${preview ? " pv" : ""}" style="${style}">` +
+    `<div class="lp${preview ? " pv" : ""}"${!preview && slug ? ` data-slug="${esc(slug)}"` : ""} style="${style}">` +
     `<div class="lp-bd" style="${backdrop ? bgImage(backdrop) : `background:radial-gradient(circle at 30% 20%,${p.accent}66,${vars.bg} 70%)`}"></div>` +
     `<div class="lp-col">${backdrop ? `<div class="lp-cbg" style="${bgImage(backdrop)}"></div>` : ""}<div class="lp-tint"></div>${hero}${head}<div class="lp-list">${blocks.map((b) => `<div class="lp-it">${b}</div>`).join("")}${preview ? (step === 1 ? (p.sections.length ? "" : ADD_BAR_STEP1) : ADD_BAR) : ""}${step === 1 && p.sections.length ? `<p class="lp-hint">Press and hold, then choose Open Link.</p>` : ""}</div>` +
     madeWith +
@@ -776,4 +776,4 @@ export const REPORT_REASONS = ["Content involving minors", "Scam or fraud", "Imp
 export const LANDING_SHEETS_JS = `(function(){var d=document;d.addEventListener("click",function(e){var o=e.target.closest&&e.target.closest("[data-pop]");if(o){var p=d.getElementById(o.getAttribute("data-pop"));if(p){p.hidden=false;p.classList.remove("lp-sent")}return}var c=e.target.closest&&e.target.closest("[data-close]");if(c||(e.target.classList&&e.target.classList.contains("lp-pop")&&e.target.id!=="lp-age")){var q=(c||e.target).closest(".lp-pop");if(q){q.hidden=true;var f=q.querySelector("form");if(f)f.reset()}}});d.addEventListener("submit",function(e){var f=e.target;if(!f.classList||!f.classList.contains("lp-form"))return;e.preventDefault();var b=f.querySelector("[type=submit]");b.disabled=true;var r=f.querySelector("input[name=reason]:checked");fetch("/api/link-report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({slug:f.getAttribute("data-slug"),reason:r?r.value:"",details:f.details.value})}).then(function(x){if(!x.ok)throw 0;b.disabled=false;f.closest(".lp-pop").classList.add("lp-sent")}).catch(function(){b.disabled=false;b.textContent="Couldn’t send. Try again"})})})();`;
 
 /** Live page only: countdowns tick, and 18+ links ask first. */
-export const LANDING_JS = `(function(){document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-deep]");if(a){e.preventDefault();location.href=a.getAttribute("data-deep")}});var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;
+export const LANDING_JS = `(function(){document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("a[data-tap]"),r=document.querySelector(".lp[data-slug]");if(t&&r&&navigator.sendBeacon)navigator.sendBeacon("/api/link-tap",JSON.stringify({slug:r.getAttribute("data-slug")}))});document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-deep]");if(a){e.preventDefault();location.href=a.getAttribute("data-deep")}});var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;

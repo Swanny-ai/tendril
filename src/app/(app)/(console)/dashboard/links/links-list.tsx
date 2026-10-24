@@ -98,9 +98,19 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                 <tr className="border-b">
                   <th className="py-2 pr-4 font-medium">Link</th>
                   <th className="py-2 pr-4 font-medium">{mode === "template" ? "Page" : "Warning"}</th>
-                  <th className="py-2 pr-4 text-right font-medium">Warning views</th>
-                  <th className="py-2 pr-4 text-right font-medium">Confirmed</th>
-                  <th className="py-2 pr-4 text-right font-medium">Visits</th>
+                  {mode === "template" ? (
+                    <>
+                      <th className="py-2 pr-4 text-right font-medium">Visits</th>
+                      <th className="py-2 pr-4 text-right font-medium">Opened Step 2</th>
+                      <th className="py-2 pr-4 text-right font-medium">Link taps</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-2 pr-4 text-right font-medium">Warning views</th>
+                      <th className="py-2 pr-4 text-right font-medium">Confirmed</th>
+                      <th className="py-2 pr-4 text-right font-medium">Visits</th>
+                    </>
+                  )}
                   <th className="py-2 text-right font-medium">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -131,11 +141,21 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                           <span className="text-muted-foreground">Off</span>
                         )}
                       </td>
-                      <td className="py-3 pr-4 text-right tabular-nums">{l.adultWarning ? fmt.format(views) : "—"}</td>
-                      <td className="py-3 pr-4 text-right tabular-nums">
-                        {l.adultWarning && views ? `${Math.round((Math.min(confirms, views) / views) * 100)}%` : "—"}
-                      </td>
-                      <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
+                      {mode === "template" ? (
+                        <>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "hit"))}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "step2"))}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "tap"))}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-3 pr-4 text-right tabular-nums">{l.adultWarning ? fmt.format(views) : "—"}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">
+                            {l.adultWarning && views ? `${Math.round((Math.min(confirms, views) / views) * 100)}%` : "—"}
+                          </td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
+                        </>
+                      )}
                       <td className="py-3 text-right">
                         <LinkRowActions id={l.id} slug={l.slug} url={smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)} editHref={editLinkPath(l, l.domain)} enabled={l.enabled} />
                       </td>

@@ -101,7 +101,8 @@ export async function invalidateUserSmartLinksFromRoute(userId: string) {
 }
 
 // hit: every visit to /l/<slug> (the link's "view" in dashboards); view: warning page shown
-export type SmartLinkEventKind = "hit" | "view" | "confirm" | "redirect" | "leave";
+// step2: a Two-Steps page showed Step 2; tap: a visitor tapped a link on a Two-Steps page.
+export type SmartLinkEventKind = "hit" | "view" | "confirm" | "redirect" | "leave" | "step2" | "tap";
 
 export async function recordSmartLinkEvent(headers: Headers, linkId: string, kind: SmartLinkEventKind) {
   const ua = headers.get("user-agent") ?? "";

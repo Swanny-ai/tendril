@@ -76,7 +76,6 @@ export function warningStep(h: Headers, link: SmartLink, slug: string, entry: bo
 /** The creator's profile page ("Template"), shown before the link continues. */
 /** `step2`: the visitor tapped Step 1's button (the visit was already counted). */
 export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = false): Response {
-  if (!step2) track(h, link.id, ["hit"]);
   const base = publicLinkBase(h, slug, appHost);
   // Step 1 is only for visitors inside a social app (Instagram, TikTok...): in a real browser
   // (Safari, Chrome...) they get Step 2 straight away.
@@ -84,6 +83,8 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
   const inApp = !!detectInAppBrowser(ua);
   // Step 1 is on as soon as it has its button.
   const showStep1 = !!link.landing?.introSections.length && !step2 && inApp;
+  // A visit is counted once (on the first page seen); every Step 2 shown counts as "Opened Step 2".
+  track(h, link.id, [...(step2 ? [] : (["hit"] as const)), ...(showStep1 ? [] : (["step2"] as const))]);
   // From Step 1, the button opens Step 2 in the phone's browser when "Open in phone browser" is on.
   const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${hostOf(h)}`;
   const deepLink = link.openInBrowser && inApp ? inAppDeepLink(ua, `${origin}${base}?step=2`) : null;
