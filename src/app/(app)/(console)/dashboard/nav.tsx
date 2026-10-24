@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Palette, Settings } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Settings, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -11,7 +11,7 @@ const items = [
   { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate, also: ["/dashboard/editor", "/edit/template/"] },
   // Template pages (deep links that open a designed page). Deep links are edited at /edit/<link>
   // (but /edit/template/ belongs to Templates).
-  { href: "/dashboard/links", label: "Customize template", icon: Palette, also: ["/edit/"] },
+  { href: "/dashboard/links", label: "Two-Steps", icon: Unlink, also: ["/edit/"] },
   // Classic deep links: short link, open in browser, optional 18+ page.
   { href: "/dashboard/deeplinks", label: "Deeplinks", icon: Link2 },
   { href: "/dashboard/domains", label: "Custom domains", icon: Globe },

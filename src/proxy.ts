@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
 import { apexOfWww, isAppHost } from "@/lib/domain-names";
 import { LINK_BASE_HEADER, LINK_ENTRY_HEADER } from "@/lib/link-paths";
+import { RESERVED_LINK_SLUGS } from "@/lib/validation";
 
 // 1. Custom domains: links.example.com/vip serves the creator's smart link "vip", and the
 //    domain's home page shows whatever they set as its Root (a deep link or a bio page), and
@@ -130,7 +131,21 @@ export async function proxy(request: NextRequest) {
   if (parts[0] === "go" && parts.length === 3 && parts[2] === "warning") {
     if (!(await exists(request, "block", parts[1], "warning"))) return notFound();
   }
-  return NextResponse.next();
+  // Deep links live at <app domain>/<name> (like custom domains): rendered at that clean address.
+  // Anything else at /<name> is a bio page. Old /l/<name> addresses keep working.
+  const name = parts[0]?.toLowerCase();
+  if (name && !RESERVED_LINK_SLUGS.has(name) && /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(name)) {
+    if (parts.length === 1 && (await exists(request, "smart", name, "route"))) return linkEntry(request, name, `/${name}`);
+    if (parts.length === 2 && ["warning", "open", "left"].includes(parts[1]) && (await exists(request, "smart", name, "route"))) {
+      const headers = cleanHeaders(request);
+      headers.set(LINK_BASE_HEADER, `/${name}`);
+      const url = request.nextUrl.clone();
+      url.pathname = `/l/${name}/${parts[1]}`;
+      return NextResponse.rewrite(url, { request: { headers } });
+    }
+  }
+  // Our internal headers are only ever set here, never by visitors.
+  return NextResponse.next({ request: { headers: cleanHeaders(request) } });
 }
 
 export const config = {

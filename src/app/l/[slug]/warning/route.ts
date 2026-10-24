@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { appHost } from "@/config/brand";
 import { leanNotFound } from "@/lib/lean-link-pages";
 import { isLinkEntry } from "@/lib/link-paths";
 import { warningStep } from "@/lib/smart-link-steps";
@@ -12,5 +11,5 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]/war
   const h = new Headers(request.headers);
   if (!link || !link.adultWarning) return leanNotFound(h.get("host") ?? "");
   // On a custom domain this page can be the first thing a visitor sees, so it counts the visit too.
-  return warningStep(h, link, slug, isLinkEntry(h, appHost));
+  return warningStep(h, link, slug, isLinkEntry(h));
 }

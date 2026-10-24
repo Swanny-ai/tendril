@@ -10,7 +10,7 @@ export function TemplateUpsell({ compact = false }: { compact?: boolean }) {
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
         <Lock className="size-4 text-primary" aria-hidden />
         <p className="min-w-0 flex-1">
-          Customize template is part of Pro. Visitors see this link without its page until you upgrade.
+          Two-Steps (Escape Meta Bot) is part of Pro. Visitors see this link without its page until you upgrade.
         </p>
         <Link href="/dashboard/billing" className={buttonVariants({ size: "sm" })}>
           Upgrade to Pro
@@ -23,7 +23,7 @@ export function TemplateUpsell({ compact = false }: { compact?: boolean }) {
         <span className="grid size-12 place-items-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="size-6" aria-hidden />
         </span>
-        <p className="text-lg font-semibold">Customize template is a Pro feature</p>
+        <p className="text-lg font-semibold">Two-Steps (Escape Meta Bot) is a Pro feature</p>
         <p className="max-w-md text-sm text-muted-foreground">
           Build your own link page: a big cover photo, verified badge, photo links, countdown, fonts and animations. Share one link anywhere.
         </p>

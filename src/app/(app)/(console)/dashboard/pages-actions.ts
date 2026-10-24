@@ -63,7 +63,9 @@ export async function createPageAction(input: { username: string; template?: str
   if (count >= PLAN_LIMITS[plan].maxPages) {
     return { ok: false, error: plan === "FREE" ? `Free accounts can have ${PLAN_LIMITS.FREE.maxPages} page${PLAN_LIMITS.FREE.maxPages === 1 ? "" : "s"}. Upgrade to Pro for more.` : "You've reached the page limit." };
   }
-  if (await db.page.findUnique({ where: { username }, select: { id: true } })) return { ok: false, field: "username", error: "That link is taken. Try another one." };
+  if ((await db.page.findUnique({ where: { username }, select: { id: true } })) || (await db.smartLink.findUnique({ where: { slug: username }, select: { id: true } }))) {
+    return { ok: false, field: "username", error: "That link is taken. Try another one." };
+  }
   const target = await checkLinkTarget(userId, { domainId: input.domainId, atRoot: input.atRoot }, username);
   if (!target.ok) return { ok: false, field: "domain", error: target.error };
 

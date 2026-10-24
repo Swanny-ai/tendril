@@ -38,6 +38,8 @@ export type LandingSection = {
   style?: "" | ButtonStyle;
   color?: string;
   textColor?: string;
+  /** Rendering only: the app link to try on tap (Step 1's button); a long press uses `url`. */
+  deep?: string;
   /** Photo framing inside the card: focus point (0-100 %) and zoom (1-3). */
   imgX?: number;
   imgY?: number;
@@ -336,6 +338,7 @@ function onColor(hex: string): string {
 
 // Filled icons for blocks (24x24, solid shapes), next to the network logos.
 const SIMPLE_ICONS: Record<string, string> = {
+  hand: "M10 2a2 2 0 0 1 2 2v6.4l1-.2a2 2 0 0 1 2.3 1.5l.1.2.8-.2a2 2 0 0 1 2.4 1.5l.1.3.5-.1a2 2 0 0 1 2.3 2V17a6 6 0 0 1-6 6h-2.3a6 6 0 0 1-4.8-2.4L4.3 16a1.8 1.8 0 0 1 2.7-2.4l1 1V4a2 2 0 0 1 2-2Z",
   heart: "M12 21s-7.5-4.6-9.5-9.2C1.2 8.7 3.2 4.5 7 4.5c2 0 3.3 1 5 2.8 1.7-1.8 3-2.8 5-2.8 3.8 0 5.8 4.2 4.5 7.3C19.5 16.4 12 21 12 21Z",
   star: "m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z",
   crown: "M3 7.5l4.6 4L12 4l4.4 7.5L21 7.5 19 19H5Z",
@@ -427,6 +430,7 @@ export const LANDING_CSS = `.lp{position:relative;min-height:100%;width:100%;dis
 .lp-nudge{position:absolute;z-index:3;right:.6rem;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:.35rem}.lp-nudge i{display:flex;width:2.1rem;height:2.1rem;align-items:center;justify-content:center;border-radius:9999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.3);color:#fff;font-style:normal;font-size:1rem;font-weight:700;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}.lp-nudge i:hover{background:rgba(0,0,0,.8)}
 .lp-tip{position:absolute;z-index:2;left:50%;top:.75rem;transform:translateX(-50%);padding:.3rem .7rem;border-radius:9999px;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;font-weight:600;white-space:nowrap;pointer-events:none;opacity:.85;transition:opacity .2s}.lp-card .lp-tip{top:auto;bottom:2.6rem;opacity:0}.lp-card:hover .lp-tip{opacity:.9}
 .lp-addc{position:absolute;z-index:2;left:50%;top:45%;transform:translate(-50%,-50%);padding:.6rem 1rem;border-radius:9999px;background:rgba(0,0,0,.55);color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.lp-link{-webkit-touch-callout:default}.lp-hint{margin-top:-.2rem!important;text-align:center;font-size:.8rem;color:var(--muted)}
 .lp-add1{grid-template-columns:1fr!important}.lp-add{margin-top:.25rem;display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;padding:.6rem;border:2px dashed var(--line);border-radius:var(--r2)}.lp-add p{grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--muted)}.lp-add span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;padding:.5rem .2rem;border-radius:12px;background:var(--chip);font-size:.72rem;font-weight:700;line-height:1.15;text-align:center;cursor:pointer}.lp-add span:hover{background:var(--line)}
 .lp.pv .lp-sel{position:relative;overflow:visible}.lp-tools{position:absolute;z-index:5;top:-1.1rem;right:.5rem;display:flex;gap:2px;padding:3px;border-radius:9999px;background:#111113;border:1px solid #49f264;box-shadow:0 6px 16px rgba(0,0,0,.4)}.lp-tools i{display:flex;width:1.9rem;height:1.9rem;align-items:center;justify-content:center;border-radius:9999px;color:#fff;font-style:normal;font-size:.9rem;font-weight:700;cursor:pointer}.lp-tools i:hover{background:rgba(255,255,255,.15)}
 .lp.pv [data-edit]{cursor:text;border-radius:6px;transition:box-shadow .15s}.lp.pv [data-edit]:hover{box-shadow:0 0 0 2px rgba(255,255,255,.75),0 0 0 4px rgba(0,0,0,.25)}.lp.pv [data-drag]{cursor:grab}.lp.pv [data-drag]:active{cursor:grabbing}.lp.pv .lp-sel{box-shadow:0 0 0 2px #49f264,0 0 0 4px rgba(0,0,0,.4)!important}
@@ -463,8 +467,10 @@ export type LandingRenderInput = {
   slug?: string;
   /** Which step to draw: 1 = the simple page (Step 1), 2 (default) = the full page. */
   step?: 1 | 2;
-  /** Where Step 1's button goes when it has no link of its own (Step 2). */
+  /** Where Step 1's button goes when it has no link of its own: Step 2's address (press and hold → Open Link). */
   step2Href?: string;
+  /** Inside a social app: the link that opens Step 2 in the phone's browser, tried when the button is tapped. */
+  step2Deep?: string;
 };
 
 export function landingHtml({
@@ -479,6 +485,7 @@ export function landingHtml({
   slug,
   step = 2,
   step2Href = "#",
+  step2Deep,
 }: LandingRenderInput): string {
   // Step 1: its own cover, name, username and bio (nothing is borrowed from Step 2), no social icons, and only its one
   // button (to Step 2 unless it has its own link). "{NAME}" in titles becomes the step's name.
@@ -494,7 +501,7 @@ export function landingHtml({
           handle: full.introHandle,
           bio: full.introBio,
           socials: [],
-          sections: full.introSections.map((s) => ({ ...s, url: s.url || step2Href })),
+          sections: full.introSections.map((s) => (s.url ? s : { ...s, url: step2Href, deep: step2Deep })),
         }
       : full;
   const viewName = view.name || fallbackName;
@@ -607,7 +614,7 @@ export function landingHtml({
         href,
         `lp-btn lp-link${zc(s)}${anim}${sel(s)}`,
         `${tools(s)}<span${edit(`sec:${s.id}:title`)}${ts(s)}>${blockIconHtml(s.icon, s.url)}${esc(s.title || "Link title")}</span>`,
-        `${ownVars}${secAttr(s)}`,
+        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}`,
       );
     }
     const net = networkOfUrl(href);
@@ -700,7 +707,7 @@ export function landingHtml({
     nameFontLink +
     `<div class="lp${preview ? " pv" : ""}" style="${style}">` +
     `<div class="lp-bd" style="${backdrop ? bgImage(backdrop) : `background:radial-gradient(circle at 30% 20%,${p.accent}66,${vars.bg} 70%)`}"></div>` +
-    `<div class="lp-col">${backdrop ? `<div class="lp-cbg" style="${bgImage(backdrop)}"></div>` : ""}<div class="lp-tint"></div>${hero}${head}<div class="lp-list">${blocks.map((b) => `<div class="lp-it">${b}</div>`).join("")}${preview ? (step === 1 ? (p.sections.length ? "" : ADD_BAR_STEP1) : ADD_BAR) : ""}</div>` +
+    `<div class="lp-col">${backdrop ? `<div class="lp-cbg" style="${bgImage(backdrop)}"></div>` : ""}<div class="lp-tint"></div>${hero}${head}<div class="lp-list">${blocks.map((b) => `<div class="lp-it">${b}</div>`).join("")}${preview ? (step === 1 ? (p.sections.length ? "" : ADD_BAR_STEP1) : ADD_BAR) : ""}${step === 1 && p.sections.length ? `<p class="lp-hint">Press and hold, then choose Open Link.</p>` : ""}</div>` +
     madeWith +
     footer +
     `</div>${popup}${sheets}</div>`
@@ -714,7 +721,9 @@ const ADD_BAR = `<div class="lp-add"><p>Add a section</p><span data-add="link"><
 export const NAME_TOKEN = "{NAME}";
 
 /** Step 1's default button. */
-export const defaultIntroSection = () => newSection("link", { title: `Continue to ${NAME_TOKEN}` });
+/** Step 1's default button: light, "Hold to open" (a long press in the app offers Open Link). */
+export const defaultIntroSection = () =>
+  newSection("link", { title: "Hold to open", style: "solid", color: "#e8e8ea", textColor: "#111113", icon: "hand" });
 
 export type Profile = Pick<LandingPage, "name" | "handle" | "bio" | "coverUrl" | "coverX" | "coverY" | "coverZoom">;
 
@@ -767,4 +776,4 @@ export const REPORT_REASONS = ["Content involving minors", "Scam or fraud", "Imp
 export const LANDING_SHEETS_JS = `(function(){var d=document;d.addEventListener("click",function(e){var o=e.target.closest&&e.target.closest("[data-pop]");if(o){var p=d.getElementById(o.getAttribute("data-pop"));if(p){p.hidden=false;p.classList.remove("lp-sent")}return}var c=e.target.closest&&e.target.closest("[data-close]");if(c||(e.target.classList&&e.target.classList.contains("lp-pop")&&e.target.id!=="lp-age")){var q=(c||e.target).closest(".lp-pop");if(q){q.hidden=true;var f=q.querySelector("form");if(f)f.reset()}}});d.addEventListener("submit",function(e){var f=e.target;if(!f.classList||!f.classList.contains("lp-form"))return;e.preventDefault();var b=f.querySelector("[type=submit]");b.disabled=true;var r=f.querySelector("input[name=reason]:checked");fetch("/api/link-report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({slug:f.getAttribute("data-slug"),reason:r?r.value:"",details:f.details.value})}).then(function(x){if(!x.ok)throw 0;b.disabled=false;f.closest(".lp-pop").classList.add("lp-sent")}).catch(function(){b.disabled=false;b.textContent="Couldn’t send. Try again"})})})();`;
 
 /** Live page only: countdowns tick, and 18+ links ask first. */
-export const LANDING_JS = `(function(){var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;
+export const LANDING_JS = `(function(){document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-deep]");if(a){e.preventDefault();location.href=a.getAttribute("data-deep")}});var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;

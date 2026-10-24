@@ -101,7 +101,8 @@ export const blockUpdateSchema = z.object({
     .optional(),
 });
 
-export const RESERVED_LINK_SLUGS = new Set(["admin", "api", "login", "signup", "dashboard", "warning", "left", "go"]);
+// Deep links live at <app domain>/<name>, next to app routes and bio pages, so app route names are reserved too.
+export const RESERVED_LINK_SLUGS = new Set([...RESERVED_USERNAMES, "warning", "left", "open", "forgot-password", "reset-password", "verify-email", "icon.svg"]);
 
 export const smartLinkSlugSchema = z
   .string()

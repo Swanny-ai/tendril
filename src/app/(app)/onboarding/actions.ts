@@ -19,7 +19,8 @@ export async function claimUsernameAction(_prev: ClaimState, form: FormData): Pr
   const existingPage = await db.page.findFirst({ where: { userId }, select: { id: true } });
   if (existingPage) redirect("/dashboard");
 
-  const taken = await db.page.findUnique({ where: { username: parsed.data } });
+  const taken =
+    (await db.page.findUnique({ where: { username: parsed.data } })) || (await db.smartLink.findUnique({ where: { slug: parsed.data }, select: { id: true } }));
   if (taken) return { error: "That name is taken. Try another one." };
 
   const user = await db.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });

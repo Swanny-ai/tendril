@@ -55,7 +55,7 @@ export async function getSources(userId: string): Promise<Source[]> {
   const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return [
     ...pages.map((p) => ({ id: p.id, kind: "page" as const, label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}`, url: bare(pageUrl(p, p.domain, appUrl)) })),
-    ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/l/${l.slug}`, url: bare(smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)) })),
+    ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/${l.slug}`, url: bare(smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)) })),
   ];
 }
 

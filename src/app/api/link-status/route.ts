@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { loadRedirectTarget } from "@/lib/pages";
-import { loadSmartLink } from "@/lib/smart-links";
+import { db } from "@/lib/db";
+import { getSmartLink, loadSmartLink } from "@/lib/smart-links";
 
 // Tells the proxy whether a warning/left page should exist, so it can send a real 404.
 // The proxy can't query the database itself: some hosts (Netlify) run it as an edge
@@ -19,6 +20,12 @@ export async function GET(request: NextRequest) {
   const id = q.get("id") ?? "";
   const page = q.get("page");
 
+  // <app domain>/<name>: is it a deep link? (cached lookup first: this runs for bio page visits too)
+  if (kind === "smart" && page === "route") {
+    if (!SLUG.test(id) || !(await getSmartLink(id))) return reply(false);
+    // A bio page with the same name (from before links moved here) keeps its address.
+    return reply(!(await db.page.findUnique({ where: { username: id }, select: { id: true } })));
+  }
   if (kind === "smart" && SLUG.test(id)) {
     const link = await loadSmartLink(id);
     if (!link) return reply(false);

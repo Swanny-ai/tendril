@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { DEFAULT_LANDING } from "@/lib/link-landing";
+import { DEFAULT_LANDING, defaultIntroSection } from "@/lib/link-landing";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requirePage } from "@/lib/session";
@@ -52,7 +52,7 @@ export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
             warningMessage: "",
             warningButton: "",
             warningColors: {},
-            landingPage: { ...DEFAULT_LANDING, enabled: mode === "template" },
+            landingPage: { ...DEFAULT_LANDING, enabled: mode === "template", introSections: mode === "template" ? [defaultIntroSection()] : [] },
             showBadge: true,
             enabled: true,
           }}

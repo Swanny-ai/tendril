@@ -297,7 +297,7 @@ export function LandingEditor({
                       <Input
                         aria-label={s.kind === "link" ? "Link title" : s.kind === "text" ? "Text title" : "Countdown title"}
                         maxLength={80}
-                        placeholder={s.kind === "link" ? "Title, e.g. OnlyFans" : s.kind === "text" ? "Heading" : "50% off ends in"}
+                        placeholder={s.kind === "link" ? "Title, e.g. My website" : s.kind === "text" ? "Heading" : "50% off ends in"}
                         value={s.title}
                         onChange={(e) => setSection(s.id, { title: e.target.value })}
                         className="h-8"
@@ -321,7 +321,7 @@ export function LandingEditor({
                         <Input
                           aria-label="Link URL"
                           inputMode="url"
-                          placeholder="https://onlyfans.com/you"
+                          placeholder="https://example.com"
                           value={s.url ?? ""}
                           onChange={(e) => setSection(s.id, { url: e.target.value })}
                           className="h-8"

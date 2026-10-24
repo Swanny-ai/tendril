@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { appHost } from "@/config/brand";
 import { leanNotFound } from "@/lib/lean-link-pages";
 import { isLinkEntry } from "@/lib/link-paths";
 import { openStep } from "@/lib/smart-link-steps";
@@ -12,5 +11,5 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]/ope
   const link = await getSmartLink(slug);
   const h = new Headers(request.headers);
   if (!link || !link.openInBrowser) return leanNotFound(h.get("host") ?? "");
-  return openStep(h, link, slug, isLinkEntry(h, appHost));
+  return openStep(h, link, slug, isLinkEntry(h));
 }

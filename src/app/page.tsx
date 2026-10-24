@@ -34,6 +34,7 @@ export const metadata: Metadata = {
   title: { absolute: `${brand.name}: ${brand.tagline}` },
   description:
     "Bio pages and smart deep links that open in the real browser, with 18+ warning pages, custom domains and live analytics. Free to start.",
+  alternates: { canonical: "/" },
 };
 
 // Apps your link is shared from (icons from simple-icons; Fanvue uses its own app icon).

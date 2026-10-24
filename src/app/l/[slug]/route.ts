@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
   // Profile page first (rendered here, at the link's own address), then the usual steps.
   if (link.landing && !confirmed && !escaped && !pastLanding) return landingStep(headers, link, slug, request.nextUrl.searchParams.get("step") === "2");
 
-  if (!confirmed && !escaped && isLinkEntry(headers, appHost)) {
+  if (!confirmed && !escaped && isLinkEntry(headers)) {
     if (link.adultWarning) return warningStep(headers, link, slug, !pastLanding);
     if (link.openInBrowser && detectInAppBrowser(headers.get("user-agent") ?? "")) return openStep(headers, link, slug, !pastLanding);
   }

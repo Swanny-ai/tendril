@@ -87,7 +87,7 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
   // From Step 1, the button opens Step 2 in the phone's browser when "Open in phone browser" is on.
   const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${hostOf(h)}`;
   const deepLink = link.openInBrowser && inApp ? inAppDeepLink(ua, `${origin}${base}?step=2`) : null;
-  const step2Href = deepLink || `${base}?step=2`;
+  const step2Href = `${origin}${base}?step=2`;
   const lang = pickLang(h.get("accept-language"));
   const copy = WARNING_COPY[lang];
   return htmlResponse(
@@ -101,6 +101,7 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
       slug,
       step: showStep1 ? 1 : 2,
       step2Href,
+      step2Deep: deepLink ?? undefined,
       // Inside Instagram, TikTok...: show Step 1, then straight away open Step 2 in the phone's browser.
       autoOpen: showStep1 && deepLink ? deepLink : undefined,
     }),

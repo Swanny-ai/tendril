@@ -134,7 +134,7 @@ export function SmartLinkForm({
       return "";
     }
   }, [v.destinationUrl]);
-  const address = v.atRoot && domain ? `${domain.hostname}/` : domain ? `${domain.hostname}/${v.slug || "…"}` : `${appHost}/l/${v.slug || "…"}`;
+  const address = v.atRoot && domain ? `${domain.hostname}/` : domain ? `${domain.hostname}/${v.slug || "…"}` : `${appHost}/${v.slug || "…"}`;
   const hasCard = template.layout === "card" || template.layout === "split";
   const customColors = Object.keys(v.warningColors).length > 0;
   const lp = v.landingPage;
@@ -145,7 +145,8 @@ export function SmartLinkForm({
   const [popupFor, setPopupFor] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState<string | null>(null);
-  const [step, setStep] = useState<1 | 2>(2);
+  // Customize template starts on Step 1 (what visitors from Instagram, TikTok... see first).
+  const [step, setStep] = useState<1 | 2>(mode === "template" ? 1 : 2);
   const [now, setNow] = useState(0);
   const hasCountdown = lp.enabled && lp.sections.some((s) => s.kind === "countdown");
   useEffect(() => {
@@ -235,7 +236,7 @@ export function SmartLinkForm({
           ) : (
             <div className="flex items-center overflow-hidden rounded-lg border bg-background focus-within:ring-3 focus-within:ring-ring/50">
               <span className="max-w-[45%] shrink-0 truncate border-r bg-muted px-3 py-2 text-sm text-muted-foreground select-none">
-                {domain ? `${domain.hostname}/` : `${appHost}/l/`}
+                {domain ? `${domain.hostname}/` : `${appHost}/`}
               </span>
               <Input
                 id="slug"

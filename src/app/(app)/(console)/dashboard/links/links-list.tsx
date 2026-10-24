@@ -19,7 +19,7 @@ export type LinkMode = "template" | "classic";
 
 const COPY = {
   template: {
-    title: "Customize template",
+    title: "Two-Steps (Escape Meta Bot)",
     intro: "Links that open your own page first: cover, photo links and countdown.",
     new: "New template page",
     newHref: "/dashboard/links/new",
@@ -116,7 +116,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                     <tr key={l.id} className="border-b align-top last:border-0">
                       <td className="max-w-[300px] py-3 pr-4">
                         <Link href={editLinkPath(l, l.domain)} className="font-medium hover:underline">
-                          {l.domain ? (l.atRoot ? `${l.domain.hostname}/` : `${l.domain.hostname}/${l.slug}`) : `/l/${l.slug}`}
+                          {smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot).replace(/^https?:\/\//, "")}
                         </Link>
                         <div className="truncate text-xs text-muted-foreground">{l.label || l.destinationUrl}</div>
                         {!l.enabled ? <div className="text-xs text-muted-foreground">Paused</div> : null}

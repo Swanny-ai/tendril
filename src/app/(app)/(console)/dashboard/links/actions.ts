@@ -34,11 +34,15 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   const limits = PLAN_LIMITS[await getPlan(userId)];
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
-  if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Customize template is part of Pro." } };
+  if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Two-Steps (Escape Meta Bot) is part of Pro." } };
   const warningColors = parseWarningColors(data.warningColors);
   if (warningColors && !limits.customWarningText) return { error: { ok: false as const, error: "Custom colors are part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
   // Domain + Root/Path: same rules as bio pages (one root per domain, no shared paths).
+  // Deep links share <app domain>/<name> with bio pages.
+  if (await db.page.findUnique({ where: { username: data.slug }, select: { id: true } })) {
+    return { error: { ok: false as const, error: "That link name is taken.", field: "slug" } };
+  }
   const target = await checkLinkTarget(userId, { domainId: data.domainId, atRoot: data.atRoot }, data.slug, { linkId });
   if (!target.ok) return { error: { ok: false as const, error: target.error, field: "domainId" } };
   const { atRoot } = target.target;
@@ -81,7 +85,12 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
     const link = await db.smartLink.create({ data: { userId, ...v.data } });
     invalidateSmartLinkFromAction(link.slug);
     return { ok: true, id: link.id };
-  } catch {
+  } catch (e) {
+    // Unique slug clash (P2002) is the expected case; anything else is logged so it can be fixed.
+    if ((e as { code?: string }).code !== "P2002") {
+      console.error("create smart link failed", e);
+      return { ok: false, error: "Couldn't save the link. Please try again." };
+    }
     return { ok: false, error: "That link name was just taken.", field: "slug" };
   }
 }

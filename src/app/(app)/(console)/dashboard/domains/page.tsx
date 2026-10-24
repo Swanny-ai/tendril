@@ -58,7 +58,7 @@ export default async function DomainsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Custom domains</h1>
         <p className="text-muted-foreground">
-          Share links on your own domain, like <span className="font-medium text-foreground">links.yourname.com/vip</span>, instead of {appHost}/l/vip. Pick
+          Share links on your own domain, like <span className="font-medium text-foreground">links.yourname.com/vip</span>, instead of {appHost}/vip. Pick
           the domain when you create a deep link.
         </p>
       </div>
