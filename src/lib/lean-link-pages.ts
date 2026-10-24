@@ -32,17 +32,25 @@ type DocOptions = {
   css: string;
   body: string;
   config?: Record<string, string>;
-  /** Navigate here as the very first thing, before the page draws (opening the phone's browser). */
+  /** Navigate here right after the page is drawn (opening the phone's browser). */
   goNow?: string;
 };
+
+// Runs once the page is on screen: after the cover image has loaded (1.2 s at the latest), so a social
+// app's "Open in Safari?" prompt appears over the visible Step 1, not over a blank page.
+const GO_NOW_JS = `(function(u){var done=0;function go(){if(done)return;done=1;location.href=u}function later(){setTimeout(go,150)}requestAnimationFrame(function(){requestAnimationFrame(function(){var el=document.querySelector(".lp-hi"),m=el&&/url\\(["']?(.*?)["']?\\)/.exec(getComputedStyle(el).backgroundImage);if(m){var im=new Image();im.onload=im.onerror=later;im.src=m[1]}else later();setTimeout(go,1200)})})})`;
+
+function goNowScript(url: string): string {
+  return `<script>${GO_NOW_JS}(${JSON.stringify(url).replace(/</g, "\\u003c")})</script>`;
+}
 
 /** A whole page. Link previews show only the domain; the tab shows only the brand. */
 function documentHtml({ lang = "en", host, css, body, config, goNow }: DocOptions): string {
   const script = config ? `<script>${ESCAPE_JS}(${JSON.stringify(config).replace(/</g, "\\u003c")})</script>` : "";
   return (
-    `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8">${goNow ? `<script>location.href=${JSON.stringify(goNow).replace(/</g, "\\u003c")}</script>` : ""}<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
+    `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
     `<title>${esc(brand.name)}</title><meta name="robots" content="noindex,nofollow"><meta property="og:title" content="${esc(host)}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${esc(host)}">` +
-    `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body>${body}${script}</body></html>`
+    `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body>${body}${script}${goNow ? goNowScript(goNow) : ""}</body></html>`
   );
 }
 
