@@ -1,6 +1,12 @@
 // Paddle's checkout, drawn inside our own popup (Paddle "inline" mode). Paddle.js loads on first use.
 
-export type PaddleClient = { token: string; sandbox: boolean; prices: { month: string; year: string }; email: string; userId: string };
+export type PaddleClient = {
+  token: string;
+  sandbox: boolean;
+  prices: Record<"PRO" | "BUSINESS", { month: string; year: string }>;
+  email: string;
+  userId: string;
+};
 
 type PaddleEvent = { name?: string };
 
@@ -72,16 +78,16 @@ async function frameReady(): Promise<void> {
 }
 
 /**
- * Draws the one-page checkout for Pro into the popup: card or PayPal, name, card details and
+ * Draws the one-page checkout for a plan into the popup: card or PayPal, name, card details and
  * country (the email is filled in from the account). After paying, Paddle sends the visitor to
- * the billing page, which then waits for the webhook to switch the account to Pro.
+ * the billing page, which then waits for the webhook to switch the account to the plan.
  */
-export async function openInlineCheckout(cfg: PaddleClient, interval: "month" | "year", onEvent: (e: PaddleEvent) => void) {
+export async function openInlineCheckout(cfg: PaddleClient, plan: "PRO" | "BUSINESS", interval: "month" | "year", onEvent: (e: PaddleEvent) => void) {
   const paddle = await loadPaddle(cfg);
   await frameReady();
   listener = onEvent;
   paddle.Checkout.open({
-    items: [{ priceId: interval === "year" ? cfg.prices.year : cfg.prices.month, quantity: 1 }],
+    items: [{ priceId: cfg.prices[plan][interval], quantity: 1 }],
     customer: cfg.email ? { email: cfg.email } : undefined,
     customData: { userId: cfg.userId },
     settings: {

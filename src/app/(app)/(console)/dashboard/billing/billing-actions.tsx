@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { PlanName } from "@/lib/plan-rules";
+import { PLAN_LABEL, type PlanName } from "@/lib/plan-rules";
 
 async function postForUrl(path: string, body?: object) {
   const res = await fetch(path, {
@@ -54,7 +54,7 @@ export function CheckoutStatus({
   const router = useRouter();
   const crypto = state === "crypto";
   const [waiting, setWaiting] = useState(
-    (state === "success" || crypto) && plan !== "PRO",
+    (state === "success" || crypto) && plan === "FREE",
   );
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function CheckoutStatus({
         const res = await fetch("/api/billing/status")
           .then((r) => r.json())
           .catch(() => null);
-        if (res?.plan === "PRO" || tries >= (crypto ? 180 : 10)) {
+        if ((res?.plan && res.plan !== "FREE") || tries >= (crypto ? 180 : 10)) {
           clearInterval(timer);
           setWaiting(false);
           router.replace("/dashboard/billing");
@@ -96,10 +96,10 @@ export function CheckoutStatus({
           : "Confirming your upgrade…"}
       </p>
     );
-  if ((state === "success" || crypto) && plan === "PRO")
+  if ((state === "success" || crypto) && plan !== "FREE")
     return (
       <p className="rounded-lg border border-[var(--sage)]/50 bg-[var(--sage)]/10 px-4 py-3 text-sm">
-        You&apos;re on Pro. Enjoy!
+        You&apos;re on {PLAN_LABEL[plan]}. Enjoy!
       </p>
     );
   return null;

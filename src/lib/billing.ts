@@ -5,7 +5,8 @@ import { invalidatePageFromRoute } from "@/lib/pages";
 import { invalidateUserSmartLinksFromRoute } from "@/lib/smart-links";
 import { isProPrice } from "@/lib/stripe";
 import { creditReferral } from "@/lib/affiliate";
-import { isPaddleProPrice } from "@/lib/paddle";
+import { planForPaddlePrice } from "@/lib/paddle";
+import type { PlanName } from "@/lib/plan-rules";
 
 /** Finds our user for a Stripe subscription: metadata first, then the customer id. */
 async function userIdFor(sub: Stripe.Subscription): Promise<string | null> {
@@ -17,7 +18,7 @@ async function userIdFor(sub: Stripe.Subscription): Promise<string | null> {
 }
 
 /** Mirrors a Stripe subscription into our Subscription row and refreshes the public page. */
-export async function syncSubscription(sub: Stripe.Subscription): Promise<{ userId: string; plan: "FREE" | "PRO" } | null> {
+export async function syncSubscription(sub: Stripe.Subscription): Promise<{ userId: string; plan: PlanName } | null> {
   const userId = await userIdFor(sub);
   if (!userId) {
     console.warn(`[billing] no user for subscription ${sub.id}`);
@@ -30,10 +31,10 @@ export async function syncSubscription(sub: Stripe.Subscription): Promise<{ user
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
 
   // Prepaid Pro (paid in crypto) still running: an inactive card subscription mustn't end it.
-  const current = await db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } });
+  const current = await db.subscription.findUnique({ where: { userId }, select: { plan: true, status: true, currentPeriodEnd: true } });
   if (plan === "FREE" && current?.status === "prepaid" && current.currentPeriodEnd && current.currentPeriodEnd > new Date()) {
     await db.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId } });
-    return { userId, plan: "PRO" };
+    return { userId, plan: current.plan };
   }
 
   await db.$transaction([
@@ -85,7 +86,7 @@ async function paddleUserId(customData: { userId?: string } | null | undefined, 
 }
 
 /** Mirrors a Paddle subscription into our Subscription row and refreshes the public pages. */
-export async function syncPaddleSubscription(sub: PaddleSubscription): Promise<{ userId: string; plan: "FREE" | "PRO" } | null> {
+export async function syncPaddleSubscription(sub: PaddleSubscription): Promise<{ userId: string; plan: PlanName } | null> {
   const userId = await paddleUserId(sub.custom_data, sub.customer_id);
   if (!userId) {
     console.warn(`[billing] no user for Paddle subscription ${sub.id}`);
@@ -93,12 +94,14 @@ export async function syncPaddleSubscription(sub: PaddleSubscription): Promise<{
   }
   const priceId = sub.items?.[0]?.price?.id ?? null;
   // Paddle's active/trialing/past_due mean the same as Stripe's, so planFromSubscription works as is.
-  const plan = isPaddleProPrice(priceId) && ["active", "trialing", "past_due"].includes(sub.status) ? "PRO" : "FREE";
+  const paid = planForPaddlePrice(priceId);
+  const plan: PlanName = paid && ["active", "trialing", "past_due"].includes(sub.status) ? paid : "FREE";
 
-  const current = await db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } });
+  // A prepaid plan (paid in crypto) still running: an inactive card subscription mustn't end it.
+  const current = await db.subscription.findUnique({ where: { userId }, select: { plan: true, status: true, currentPeriodEnd: true } });
   if (plan === "FREE" && current?.status === "prepaid" && current.currentPeriodEnd && current.currentPeriodEnd > new Date()) {
     await db.user.update({ where: { id: userId }, data: { paddleCustomerId: sub.customer_id } });
-    return { userId, plan: "PRO" };
+    return { userId, plan: current.plan };
   }
 
   const row = {

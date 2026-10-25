@@ -1,6 +1,7 @@
 import { Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
+import { PLAN_LABEL } from "@/lib/plan-rules";
 import { isAdmin } from "@/lib/admin";
 import { requireAccount } from "@/lib/session";
 import { DashboardNav } from "./dashboard/nav";
@@ -27,8 +28,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <DashboardNav />
         <div className="mt-auto flex items-end gap-2">
           <div className="min-w-0 flex-1 rounded-xl border bg-card p-3 text-sm">
-            <p className="font-medium">{plan === "PRO" ? "Pro plan" : "Free plan"}</p>
-            <p className="text-muted-foreground">{plan === "PRO" ? "Thanks for supporting us." : "Unlock themes, analytics and more."}</p>
+            <p className="font-medium">{PLAN_LABEL[plan]} plan</p>
+            <p className="text-muted-foreground">{plan !== "FREE" ? "Thanks for supporting us." : "Unlock themes, analytics and more."}</p>
           </div>
           <UserMenu label={page ? `@${page.username}` : user.email} admin={admin} />
         </div>

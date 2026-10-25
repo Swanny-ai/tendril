@@ -6,7 +6,7 @@ import { appUrl } from "@/config/brand";
 import { smartLinkUrl } from "@/lib/domains";
 import { editLinkPath } from "@/lib/edit-paths";
 import { db } from "@/lib/db";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { allowedLinkIds, linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
 import { getSmartLinkStats } from "@/lib/smart-links";
@@ -48,13 +48,18 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
   const plan = await getPlan(userId);
   const limits = PLAN_LIMITS[plan];
   const all = await db.smartLink.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { domain: { select: { hostname: true } } } });
-  // Plan limits count every deep link (both kinds), oldest first.
-  const limitIndex = new Map(all.map((l, i) => [l.id, i]));
+  // Plan limits: each kind has its own allowance and both share a total, oldest links first.
+  const allowed = allowedLinkIds(plan, all.map((l) => ({ id: l.id, twoSteps: isTemplateLink(l) })));
   const links = all.filter((l) => isTemplateLink(l) === (mode === "template"));
   const stats = await getSmartLinkStats(links.map((l) => l.id));
   const count = (id: string, kind: string) => stats.find((s) => s.linkId === id && s.kind === kind)?._count._all ?? 0;
-  const atLimit = all.length >= limits.maxSmartLinks;
+  const kindMax = Math.min(limits.maxLinksPerKind, limits.maxSmartLinks);
+  const atLimit = linkLimitError(plan, { twoSteps: all.filter(isTemplateLink).length, classic: all.filter((l) => !isTemplateLink(l)).length }, mode === "template") !== null;
   const locked = mode === "template" && !limits.templatePages;
+  const usage =
+    limits.maxSmartLinks > limits.maxLinksPerKind
+      ? `${links.length} / ${kindMax} ${mode === "template" ? "Two-Steps" : "Deeplinks"} used.`
+      : `${all.length} / ${limits.maxSmartLinks} link${limits.maxSmartLinks === 1 ? "" : "s"} used (Two-Steps and Deeplinks together).`;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -62,7 +67,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
         <div>
           <h1 className="text-2xl font-semibold">{c.title}</h1>
           <p className="text-sm text-muted-foreground">
-            {c.intro} {all.length} / {limits.maxSmartLinks} deep links used.
+            {c.intro} {usage}
           </p>
         </div>
         {locked ? null : atLimit ? (
@@ -121,7 +126,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                   const views = count(l.id, "view");
                   const confirms = count(l.id, "confirm");
                   const visits = count(l.id, "redirect");
-                  const overLimit = (limitIndex.get(l.id) ?? 0) >= limits.maxSmartLinks;
+                  const overLimit = !allowed.has(l.id);
                   return (
                     <tr key={l.id} className="border-b align-top last:border-0">
                       <td className="max-w-[300px] py-3 pr-4">

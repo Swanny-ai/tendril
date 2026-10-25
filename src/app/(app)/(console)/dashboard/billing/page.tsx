@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { PLAN_LABEL, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
 import { cryptoConfigured } from "@/lib/crypto-pay";
 import { stripeConfigured } from "@/lib/stripe";
-import { paddleClientConfig } from "@/lib/paddle";
+import { paddleClientConfig, planForPaddlePrice } from "@/lib/paddle";
 import { CheckoutStatus, ManageButton } from "./billing-actions";
 import { PlanCards } from "./plan-cards";
 
@@ -15,12 +15,13 @@ export const metadata: Metadata = { title: "Billing" };
 
 export default async function BillingPage(props: PageProps<"/dashboard/billing">) {
   const { userId } = await requireAccount();
-  const [plan, sub, user, pages, links] = await Promise.all([
+  const [plan, sub, user, pages, links, domains] = await Promise.all([
     getPlan(userId),
     db.subscription.findUnique({ where: { userId } }),
     db.user.findUnique({ where: { id: userId }, select: { email: true, stripeCustomerId: true, paddleCustomerId: true } }),
     db.page.count({ where: { userId } }),
     db.smartLink.count({ where: { userId } }),
+    db.domain.count({ where: { userId } }),
   ]);
   const { checkout } = await props.searchParams;
   // Card payments: Paddle when it's set up, else Stripe.
@@ -31,18 +32,22 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   const prepaid = sub?.status === "prepaid";
   const limits = PLAN_LIMITS[plan];
   const date = (d: Date) => d.toLocaleDateString("en-US", { dateStyle: "long" });
+  // A running Paddle card plan can switch between Pro and Business, monthly and yearly.
+  const cardPlan = sub?.paddleSubscriptionId && ["active", "trialing", "past_due"].includes(sub.status) ? planForPaddlePrice(sub.paddlePriceId) : null;
+  const cardSub = cardPlan && paddle ? { plan: cardPlan, interval: paddle.prices[cardPlan].year === sub?.paddlePriceId ? ("year" as const) : ("month" as const) } : null;
 
+  const label = PLAN_LABEL[plan];
   const status =
-    plan === "PRO" && prepaid && sub?.currentPeriodEnd
-      ? `Pro until ${date(sub.currentPeriodEnd)}, paid with crypto.`
-      : plan === "PRO" && sub?.currentPeriodEnd
+    plan !== "FREE" && prepaid && sub?.currentPeriodEnd
+      ? `${label} until ${date(sub.currentPeriodEnd)}, paid with crypto.`
+      : plan !== "FREE" && sub?.currentPeriodEnd
         ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${date(sub.currentPeriodEnd)}.`
-        : plan === "PRO"
+        : plan !== "FREE"
           ? "Thanks for supporting ViewLink."
           : "You're on the free plan.";
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="text-center">
         <h1 className="text-3xl font-semibold">Pick your plan</h1>
         <p className="mt-1 text-muted-foreground">Start free. Upgrade when you need more. Cancel anytime.</p>
@@ -60,21 +65,29 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border bg-card px-5 py-4">
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium">
-            Current plan <Badge variant={plan === "PRO" ? "default" : "secondary"}>{plan === "PRO" ? "Pro" : "Free"}</Badge>
+            Current plan <Badge variant={plan !== "FREE" ? "default" : "secondary"}>{label}</Badge>
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {status}
-            {sub?.status === "past_due" ? " Your last payment failed. Update your card to keep Pro." : ""}
+            {sub?.status === "past_due" ? ` Your last payment failed. Update your card to keep ${label}.` : ""}
           </p>
         </div>
         <div className="flex gap-5 text-sm">
           <Usage label="Bio pages" used={pages} max={limits.maxPages} />
-          <Usage label="Deep links" used={links} max={limits.maxSmartLinks} />
+          <Usage label="Links" used={links} max={limits.maxSmartLinks} />
+          <Usage label="Domains" used={domains} max={limits.customDomains} />
         </div>
         {(user?.paddleCustomerId && paddle) || (user?.stripeCustomerId && stripeOn) ? <ManageButton /> : null}
       </div>
 
-      <PlanCards plan={plan} cardPay={configured} cryptoPay={cryptoOn} prepaid={prepaid} paddle={paddle ? { ...paddle, email: user?.email ?? "", userId } : null} />
+      <PlanCards
+        plan={plan}
+        cardPay={configured}
+        cryptoPay={cryptoOn}
+        prepaid={prepaid}
+        paddle={paddle ? { ...paddle, email: user?.email ?? "", userId } : null}
+        cardSub={cardSub}
+      />
     </div>
   );
 }

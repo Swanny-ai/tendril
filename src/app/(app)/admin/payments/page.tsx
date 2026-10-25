@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { planFromSubscription } from "@/lib/plan-rules";
+import { PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
+import { paddlePriceIds } from "@/lib/paddle";
 import { FilterTabs, Header, Pager, Pill, Stat, Table, day, fmt, listParams, money } from "../ui";
 
 export const instant = false;
@@ -13,7 +14,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
   const { page, skip, one } = await listParams(props.searchParams);
   const tab = one("tab") || "plans";
   const [subs, cryptoTotal, cryptoCount, crypto, finished] = await Promise.all([
-    db.subscription.findMany({ where: { OR: [{ plan: "PRO" }, { stripeSubscriptionId: { not: null } }, { paddleSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
+    db.subscription.findMany({ where: { OR: [{ plan: { in: ["PRO", "BUSINESS"] } }, { stripeSubscriptionId: { not: null } }, { paddleSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
     db.cryptoPayment.count(),
     db.cryptoPayment.count({ where: { status: "finished" } }),
     tab === "crypto"
@@ -21,12 +22,13 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
       : Promise.resolve([]),
     db.cryptoPayment.aggregate({ where: { status: "finished" }, _sum: { amountCents: true } }),
   ]);
-  const active = subs.filter((s) => planFromSubscription(s) === "PRO");
+  const active = subs.filter((s) => planFromSubscription(s) !== "FREE");
   const yearly = process.env.STRIPE_PRICE_PRO_YEARLY;
-  const paddleYearly = process.env.PADDLE_PRICE_PRO_YEARLY;
+  const paddlePrices = paddlePriceIds();
+  const yearlyPaddle = new Set([paddlePrices.PRO.year, paddlePrices.BUSINESS.year]);
   const how = (s: (typeof subs)[number]) =>
     s.paddleSubscriptionId
-      ? `Card (Paddle) · ${s.paddlePriceId && s.paddlePriceId === paddleYearly ? "yearly" : "monthly"}`
+      ? `Card (Paddle) · ${s.paddlePriceId && yearlyPaddle.has(s.paddlePriceId) ? "yearly" : "monthly"}`
       : s.stripeSubscriptionId
         ? `Card (Stripe) · ${s.stripePriceId && s.stripePriceId === yearly ? "yearly" : "monthly"}`
         : s.status === "prepaid"
@@ -35,19 +37,19 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <Header title="Payments" intro="Pro plans and crypto payments. Card payments themselves live in Paddle (or Stripe)." />
+      <Header title="Payments" intro="Pro and Business plans and crypto payments. Card payments themselves live in Paddle (or Stripe)." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Pro right now" value={fmt(active.length)} tone="good" />
+        <Stat label="Paying right now" value={fmt(active.length)} hint={`${active.filter((s) => s.plan === "BUSINESS").length} Business`} tone="good" />
         <Stat label="Paying by card" value={fmt(active.filter((s) => s.stripeSubscriptionId || s.paddleSubscriptionId).length)} hint="Paddle or Stripe" />
         <Stat label="Crypto received" value={money(finished._sum.amountCents ?? 0)} hint={`${cryptoCount} finished payments`} />
-        <Stat label="Pro ended or canceled" value={fmt(subs.length - active.length)} />
+        <Stat label="Ended or canceled" value={fmt(subs.length - active.length)} />
       </div>
       <FilterTabs
         path="/admin/payments"
         name="tab"
         value={tab === "plans" ? "" : tab}
         options={[
-          { value: "", label: "Pro plans", count: subs.length },
+          { value: "", label: "Paid plans", count: subs.length },
           { value: "crypto", label: "Crypto payments", count: cryptoTotal },
         ]}
       />
@@ -62,7 +64,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
                   </Link>
                 </td>
                 <td className="font-medium tabular-nums">{money(p.amountCents)}</td>
-                <td className="text-xs">1 {p.interval}</td>
+                <td className="text-xs">{PLAN_LABEL[p.plan]} · 1 {p.interval}</td>
                 <td className="text-xs uppercase">{p.payCurrency ?? "—"}</td>
                 <td>
                   <Pill tone={p.status === "finished" ? "good" : ["failed", "expired", "refunded"].includes(p.status) ? "warn" : "muted"}>{p.status}</Pill>
@@ -77,7 +79,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
       ) : (
         <Table head={["Account", "How", "Status", "Until / renews", ""]} empty={!subs.length}>
           {subs.map((s) => {
-            const on = planFromSubscription(s) === "PRO";
+            const on = planFromSubscription(s) !== "FREE";
             return (
               <tr key={s.id}>
                 <td className="max-w-64 truncate">
@@ -87,7 +89,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
                 </td>
                 <td className="text-xs">{how(s)}</td>
                 <td>
-                  {on ? <Pill tone="good">Pro</Pill> : <Pill>Ended</Pill>} <span className="text-xs text-muted-foreground">{s.status}</span>
+                  {on ? <Pill tone="good">{PLAN_LABEL[s.plan]}</Pill> : <Pill>Ended</Pill>} <span className="text-xs text-muted-foreground">{s.status}</span>
                   {s.cancelAtPeriodEnd ? <span className="text-xs text-[var(--persimmon)]"> · cancels</span> : null}
                 </td>
                 <td className="text-xs text-muted-foreground">{s.currentPeriodEnd ? day(s.currentPeriodEnd) : on ? "No end date" : "—"}</td>

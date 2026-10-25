@@ -4,10 +4,10 @@ import { appHost } from "@/config/brand";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { checkLinkTarget } from "@/lib/link-targets";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
-import { invalidateSmartLinkFromAction } from "@/lib/smart-links";
+import { invalidateSmartLinkFromAction, isTwoSteps, linkKindCounts } from "@/lib/smart-links";
 import { normalizeDestinationUrl, smartLinkSchema, type SmartLinkInput } from "@/lib/validation";
 import { copySlug } from "@/lib/copy-names";
 import { checkImage, saveImage } from "@/lib/media";
@@ -32,7 +32,8 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   if (!dest.ok) return { error: { ok: false as const, error: dest.error, field: "destinationUrl" } };
   if (!isWarningTemplateKey(data.warningTemplate)) return { error: { ok: false as const, error: "Pick a warning design.", field: "warningTemplate" } };
 
-  const limits = PLAN_LIMITS[await getPlan(userId)];
+  const plan = await getPlan(userId);
+  const limits = PLAN_LIMITS[plan];
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
   if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Two-Steps (Escape Meta Bot) is part of Pro." } };
@@ -67,6 +68,7 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
       atRoot,
       enabled: data.enabled,
     },
+    plan,
     limits,
   };
 }
@@ -75,10 +77,8 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
   const userId = await requireUserId();
   const v = await validate(userId, input);
   if ("error" in v) return v.error!;
-  const count = await db.smartLink.count({ where: { userId } });
-  if (count >= v.limits.maxSmartLinks) {
-    return { ok: false, error: `Your plan includes ${v.limits.maxSmartLinks} deep link${v.limits.maxSmartLinks === 1 ? "" : "s"}. Upgrade to Pro for more.` };
-  }
+  const limitError = linkLimitError(v.plan, await linkKindCounts(userId), isTwoSteps(v.data));
+  if (limitError) return { ok: false, error: limitError };
   if (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } })) {
     return { ok: false, error: "That link name is taken.", field: "slug" };
   }
@@ -98,10 +98,15 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
 
 export async function updateSmartLinkAction(id: string, input: SmartLinkInput): Promise<LinkActionResult> {
   const userId = await requireUserId();
-  const existing = await db.smartLink.findFirst({ where: { id, userId }, select: { slug: true } });
+  const existing = await db.smartLink.findFirst({ where: { id, userId }, select: { slug: true, landingPage: true } });
   if (!existing) return { ok: false, error: "That link no longer exists." };
   const v = await validate(userId, input, id);
   if ("error" in v) return v.error!;
+  // Turning a Deeplink into Two-Steps (or back) counts against the other kind's allowance.
+  if (isTwoSteps(existing) !== isTwoSteps(v.data)) {
+    const limitError = linkLimitError(v.plan, await linkKindCounts(userId, id), isTwoSteps(v.data));
+    if (limitError) return { ok: false, error: limitError };
+  }
   if (v.data.slug !== existing.slug && (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } }))) {
     return { ok: false, error: "That link name is taken.", field: "slug" };
   }
@@ -143,10 +148,8 @@ export async function duplicateSmartLinkAction(id: string): Promise<LinkActionRe
   const userId = await requireUserId();
   const link = await db.smartLink.findFirst({ where: { id, userId } });
   if (!link) return { ok: false, error: "That link no longer exists." };
-  const limits = PLAN_LIMITS[await getPlan(userId)];
-  if ((await db.smartLink.count({ where: { userId } })) >= limits.maxSmartLinks) {
-    return { ok: false, error: `Your plan includes ${limits.maxSmartLinks} deep link${limits.maxSmartLinks === 1 ? "" : "s"}. Upgrade to Pro for more.` };
-  }
+  const limitError = linkLimitError(await getPlan(userId), await linkKindCounts(userId), isTwoSteps(link));
+  if (limitError) return { ok: false, error: limitError };
   const slug = await copySlug(link.slug);
   if (!slug) return { ok: false, error: "Couldn't find a free name for the copy." };
   const json = (v: unknown) => (v === null ? Prisma.DbNull : (v as Prisma.InputJsonValue));

@@ -1,15 +1,15 @@
 import "server-only";
+import { PAID_PLANS, type PaidPlan } from "@/lib/plan-rules";
 
-// Card payments through Paddle, the merchant of record: Paddle sells the Pro plan, handles tax and
+// Card payments through Paddle, the merchant of record: Paddle sells the Pro and Business plans, handles tax and
 // pays out. Checkout opens with Paddle.js on the billing page; the webhook (/api/paddle/webhook)
 // keeps our Subscription row in sync. Sandbox or live follows the client token ("test_..." = sandbox).
 
 export type PaddleInterval = "month" | "year";
+export type PaddlePrices = Record<PaidPlan, Record<PaddleInterval, string>>;
 
 export function paddleConfigured(): boolean {
-  return Boolean(
-    process.env.PADDLE_API_KEY && process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN && process.env.PADDLE_PRICE_PRO_MONTHLY && process.env.PADDLE_PRICE_PRO_YEARLY,
-  );
+  return Boolean(process.env.PADDLE_API_KEY && process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN && paddlePriceIds().PRO.month);
 }
 
 export function paddleSandbox(): boolean {
@@ -17,19 +17,50 @@ export function paddleSandbox(): boolean {
   return (process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "").startsWith("test_");
 }
 
-export function paddlePriceIds() {
-  return { month: process.env.PADDLE_PRICE_PRO_MONTHLY ?? "", year: process.env.PADDLE_PRICE_PRO_YEARLY ?? "" };
+// Live price IDs (Catalog → Products in Paddle). They aren't secret; the env variables override
+// them, e.g. with sandbox prices for testing.
+const LIVE_PRICES: PaddlePrices = {
+  PRO: { month: "pri_01m5rdbr99wemrnq6eczct1c27", year: "pri_01m5rdcjes0edkk3m3yhtn7g0a" },
+  BUSINESS: { month: "pri_01m5rg86ryhad396r3hj7t5tcb", year: "pri_01m5rg90nedane1cjmgevk5mtd" },
+};
+
+export function paddlePriceIds(): PaddlePrices {
+  const env = process.env;
+  const live = !paddleSandbox();
+  return {
+    PRO: {
+      month: env.PADDLE_PRICE_PRO_MONTHLY || (live ? LIVE_PRICES.PRO.month : ""),
+      year: env.PADDLE_PRICE_PRO_YEARLY || (live ? LIVE_PRICES.PRO.year : ""),
+    },
+    BUSINESS: {
+      month: env.PADDLE_PRICE_BUSINESS_MONTHLY || (live ? LIVE_PRICES.BUSINESS.month : ""),
+      year: env.PADDLE_PRICE_BUSINESS_YEARLY || (live ? LIVE_PRICES.BUSINESS.year : ""),
+    },
+  };
 }
 
-export function isPaddleProPrice(priceId: string | null | undefined): boolean {
-  const { month, year } = paddlePriceIds();
-  return !!priceId && (priceId === month || priceId === year);
+/** Which plan a Paddle price buys (null = not one of ours). */
+export function planForPaddlePrice(priceId: string | null | undefined): PaidPlan | null {
+  if (!priceId) return null;
+  const prices = paddlePriceIds();
+  return PAID_PLANS.find((p) => prices[p].month === priceId || prices[p].year === priceId) ?? null;
 }
 
 /** What the billing page needs to open the checkout in the browser (no secrets). */
 export function paddleClientConfig() {
   if (!paddleConfigured()) return null;
   return { token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!, sandbox: paddleSandbox(), prices: paddlePriceIds() };
+}
+
+/**
+ * Moves a card subscription to another plan or billing period right away. Paddle charges or credits
+ * the difference for the rest of the period; the webhook then updates our Subscription row.
+ */
+export async function changePaddlePlan(subscriptionId: string, priceId: string): Promise<void> {
+  await paddleApi(`/subscriptions/${subscriptionId}`, {
+    method: "PATCH",
+    body: { items: [{ price_id: priceId, quantity: 1 }], proration_billing_mode: "prorated_immediately" },
+  });
 }
 
 /** Calls the Paddle API; throws with Paddle's error message on failure. */

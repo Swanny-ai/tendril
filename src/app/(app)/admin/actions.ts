@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { wwwOf } from "@/lib/domain-names";
 import { removeHostedDomain } from "@/lib/domains";
 import { expireUsername, invalidatePageFromAction, invalidatePageFromRoute } from "@/lib/pages";
-import { extendPrepaid } from "@/lib/plan-rules";
+import { extendPrepaid, PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
@@ -24,29 +24,34 @@ async function done(message: string): Promise<AdminResult> {
 
 // ---------- Users ----------
 
-/** Pro for a month or a year (added on top of any time left), Pro with no end, or back to Free. */
+/**
+ * Pro or Business for a month or a year (added on top of time left on the same plan), with no end,
+ * or back to Free.
+ */
 export async function setPlanAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
   const userId = id(form);
   const mode = id(form, "mode");
+  const plan: PaidPlan = id(form, "plan") === "BUSINESS" ? "BUSINESS" : "PRO";
+  const label = PLAN_LABEL[plan];
   const sub = await db.subscription.findUnique({ where: { userId } });
   if ((sub?.stripeSubscriptionId || sub?.paddleSubscriptionId) && ["active", "trialing", "past_due"].includes(sub.status)) {
     const where = sub.paddleSubscriptionId ? "Paddle" : "Stripe";
     return { error: `This account pays by card through ${where}. Change or cancel it in the ${where} dashboard.` };
   }
-  if ((mode === "month" || mode === "year") && sub?.plan === "PRO" && sub.status === "active") {
-    return { error: "This account already has Pro with no end date." };
+  if ((mode === "month" || mode === "year") && sub?.plan === plan && sub.status === "active") {
+    return { error: `This account already has ${label} with no end date.` };
   }
   const data =
     mode === "free"
       ? { plan: "FREE" as const, status: "canceled", currentPeriodEnd: null }
       : mode === "forever"
-        ? { plan: "PRO" as const, status: "active", currentPeriodEnd: null }
+        ? { plan, status: "active", currentPeriodEnd: null }
         : mode === "month" || mode === "year"
           ? {
-              plan: "PRO" as const,
+              plan,
               status: "prepaid",
-              currentPeriodEnd: extendPrepaid(sub?.plan === "PRO" && sub.status === "prepaid" ? sub.currentPeriodEnd : null, mode),
+              currentPeriodEnd: extendPrepaid(sub?.plan === plan && sub.status === "prepaid" ? sub.currentPeriodEnd : null, mode),
             }
           : null;
   if (!data) return { error: "Unknown plan." };
@@ -54,7 +59,7 @@ export async function setPlanAction(form: FormData): Promise<AdminResult> {
   // What the public pages and links may show depends on the plan.
   await invalidatePageFromRoute({ userId });
   await invalidateUserSmartLinksFromRoute(userId);
-  return done(mode === "free" ? "Moved to Free." : mode === "forever" ? "Pro with no end date." : `Pro for one more ${mode}.`);
+  return done(mode === "free" ? "Moved to Free." : mode === "forever" ? `${label} with no end date.` : `${label} for one more ${mode}.`);
 }
 
 export async function verifyEmailAction(form: FormData): Promise<AdminResult> {

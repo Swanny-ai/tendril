@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
 import { brand } from "@/config/brand";
-import { PRICES_USD } from "@/lib/plan-rules";
+import { PLAN_PRICES_USD } from "@/lib/plan-rules";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: `The rules for using ${brand.name}: accounts, acceptable use, the Pro plan, payments through Paddle, and our responsibilities.`,
+  description: `The rules for using ${brand.name}: accounts, acceptable use, the Pro and Business plans, payments through Paddle, and our responsibilities.`,
   alternates: { canonical: "/terms" },
 };
 
@@ -54,27 +54,28 @@ export default function TermsPage() {
         suspend or close the account, with or without notice depending on how serious it is.
       </p>
 
-      <h2>5. Free and Pro plans</h2>
+      <h2>5. Free, Pro and Business plans</h2>
       <p>
-        {brand.name} has a free plan and a paid Pro plan (currently US${PRICES_USD.monthly} per month or US${PRICES_USD.yearly} per year, plus any tax shown at
-        checkout). What each plan includes is shown on the <Link href="/#pricing">pricing</Link> and billing pages. We may change features or prices in the future; a
+        {brand.name} has a free plan and two paid plans: Pro (currently US${PLAN_PRICES_USD.PRO.monthly} per month or US${PLAN_PRICES_USD.PRO.yearly} per year) and
+        Business (US${PLAN_PRICES_USD.BUSINESS.monthly} per month or US${PLAN_PRICES_USD.BUSINESS.yearly} per year). Depending on your country, sales tax or VAT
+        is included in or added to the price, as shown at checkout. What each plan includes is shown on the <Link href="/#pricing">pricing</Link> and billing pages. We may change features or prices in the future; a
         price change for an existing subscription applies from your next renewal, and we tell you before it does.
       </p>
 
       <h2>6. Payments through Paddle</h2>
       <p>
         Card payments are handled by our online reseller <strong>Paddle.com</strong>. Paddle.com is the Merchant of Record for all our orders. Paddle provides all
-        customer service inquiries and handles returns. When you buy Pro by card, you are buying from Paddle, and Paddle’s{" "}
+        customer service inquiries and handles returns. When you buy a paid plan by card, you are buying from Paddle, and Paddle’s{" "}
         <a href="https://www.paddle.com/legal/checkout-buyer-terms" target="_blank" rel="noreferrer">
           Buyer Terms
         </a>{" "}
         also apply to the purchase.
       </p>
       <ul>
-        <li>Monthly and yearly card plans renew automatically until you cancel. You can cancel any time from Billing → Manage subscription; Pro then stays on until the end of the period you paid for.</li>
-        <li>If a renewal payment fails, Pro may stop until the payment goes through.</li>
+        <li>Monthly and yearly card plans renew automatically until you cancel. You can cancel any time from Billing → Manage subscription; the plan then stays on until the end of the period you paid for.</li>
+        <li>If a renewal payment fails, the paid plan may stop until the payment goes through.</li>
         <li>
-          You can also pay in cryptocurrency through NOWPayments. Crypto payments are prepaid: each payment adds one month or one year of Pro and never renews by
+          You can also pay in cryptocurrency through NOWPayments. Crypto payments are prepaid: each payment adds one month or one year of the plan and never renews by
           itself.
         </li>
         <li>

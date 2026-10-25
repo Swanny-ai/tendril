@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/admin";
 import { smartLinkUrl } from "@/lib/domains";
 import { pageUrl } from "@/lib/link-targets";
 import { parseLanding } from "@/lib/link-landing";
-import { planFromSubscription } from "@/lib/plan-rules";
+import { PAID_PLANS, PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { ActionButton } from "../../action-button";
 import { deleteUserAction, setPlanAction, signOutUserAction, suspendUserAction, verifyEmailAction } from "../../actions";
 import { LinkRowActions, PageRowActions } from "../../row-actions";
@@ -47,9 +47,10 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
   const hitsOf = (linkId: string) => hits.find((h) => h.linkId === linkId)?._count._all ?? 0;
 
   const sub = user.subscription;
-  const isPro = planFromSubscription(sub) === "PRO";
+  const current = planFromSubscription(sub);
+  const isPaid = current !== "FREE";
   const card = !!(sub?.stripeSubscriptionId || sub?.paddleSubscriptionId) && ["active", "trialing", "past_due"].includes(sub.status);
-  const forever = isPro && !card && sub?.status !== "prepaid";
+  const forever = isPaid && !card && sub?.status !== "prepaid";
   const self = user.id === me;
   const f = { id: user.id };
 
@@ -63,7 +64,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold">{user.email}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {isPro ? <Pill tone="good">Pro</Pill> : <Pill>Free</Pill>}
+            {isPaid ? <Pill tone="good">{PLAN_LABEL[current]}</Pill> : <Pill>Free</Pill>}
             {user.emailVerified ? <Pill tone="info">Email confirmed</Pill> : <Pill tone="warn">Email not confirmed</Pill>}
             {self ? <Pill tone="info">You</Pill> : null}
             <span>Joined {day(user.createdAt)} ({ago(user.createdAt)})</span>
@@ -83,7 +84,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
               {sub?.cancelAtPeriodEnd ? " · cancels at period end" : ""}
             </dd>
             <dt className="text-muted-foreground">Until</dt>
-            <dd>{sub?.currentPeriodEnd ? day(sub.currentPeriodEnd) : isPro ? "No end date" : "—"}</dd>
+            <dd>{sub?.currentPeriodEnd ? day(sub.currentPeriodEnd) : isPaid ? "No end date" : "—"}</dd>
             {user.stripeCustomerId ? (
               <>
                 <dt className="text-muted-foreground">Stripe</dt>
@@ -98,22 +99,29 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
           {card ? (
             <p className="text-xs text-muted-foreground">Pays by card: change or cancel the plan in {sub?.paddleSubscriptionId ? `Paddle (subscription ${sub.paddleSubscriptionId})` : "Stripe"}.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {/* Adding time to Pro-with-no-end would shorten it, so only Free or prepaid accounts get these. */}
-              {!forever ? (
-                <>
-                  <ActionButton action={setPlanAction} fields={{ ...f, mode: "month" }}>
-                    <CalendarPlus /> +1 month Pro
-                  </ActionButton>
-                  <ActionButton action={setPlanAction} fields={{ ...f, mode: "year" }}>
-                    <CalendarPlus /> +1 year Pro
-                  </ActionButton>
-                  <ActionButton action={setPlanAction} fields={{ ...f, mode: "forever" }} confirm="Give Pro with no end date?">
-                    <Crown /> Pro forever
-                  </ActionButton>
-                </>
-              ) : null}
-              {isPro ? (
+            <div className="space-y-2">
+              {PAID_PLANS.map((p) => (
+                <div key={p} className="flex flex-wrap items-center gap-2">
+                  <span className="w-16 text-xs font-medium text-muted-foreground">{PLAN_LABEL[p]}</span>
+                  {/* Adding time to the same plan with no end would shorten it. */}
+                  {!(forever && current === p) ? (
+                    <>
+                      <ActionButton action={setPlanAction} fields={{ ...f, plan: p, mode: "month" }}>
+                        <CalendarPlus /> +1 month
+                      </ActionButton>
+                      <ActionButton action={setPlanAction} fields={{ ...f, plan: p, mode: "year" }}>
+                        <CalendarPlus /> +1 year
+                      </ActionButton>
+                      <ActionButton action={setPlanAction} fields={{ ...f, plan: p, mode: "forever" }} confirm={`Give ${PLAN_LABEL[p]} with no end date?`}>
+                        <Crown /> Forever
+                      </ActionButton>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Has {PLAN_LABEL[p]} with no end date.</span>
+                  )}
+                </div>
+              ))}
+              {isPaid ? (
                 <ActionButton action={setPlanAction} fields={{ ...f, mode: "free" }} confirm="Move this account to Free now?">
                   <UserMinus /> Move to Free
                 </ActionButton>

@@ -28,7 +28,7 @@ import {
 import { SocialGlyph } from "@/components/public-page/social";
 import { buttonVariants } from "@/components/ui/button";
 import { appHost, brand } from "@/config/brand";
-import { PRICES_USD } from "@/lib/plan-rules";
+import { PLAN_PRICES_USD, PRICES_USD } from "@/lib/plan-rules";
 import { WARNING_TEMPLATES } from "@/warning-templates/templates";
 
 export const metadata: Metadata = {
@@ -76,7 +76,7 @@ const STEPS = [
 const FAQ = [
   [
     "Is it really free?",
-    "Yes. The free plan covers one bio page and one deep link, with 18+ warning pages and 30 days of analytics. Pro adds up to 25 pages, 100 deep links, custom domains and longer history.",
+    "Yes. The free plan covers one bio page and one deep link, with 18+ warning pages and 30 days of analytics. Pro ($8/month) adds 3 links, 3 pages, a custom domain and a year of history; Business ($25/month) goes up to 10 Two-Steps, 10 Deeplinks, 10 pages and 10 domains.",
   ],
   [
     'What does "opens in the real browser" mean?',
@@ -713,14 +713,14 @@ export default function LandingPage() {
         </section>
 
         <section id="pricing" className="scroll-mt-24 border-t">
-          <div className="mx-auto max-w-4xl px-4 py-20">
+          <div className="mx-auto max-w-6xl px-4 py-20">
             <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-5xl">
               Simple pricing
             </h2>
             <p className="mt-2 text-center text-muted-foreground">
               Start free. Upgrade when your page grows.
             </p>
-            <Reveal className="mt-10 grid gap-5 md:grid-cols-2">
+            <Reveal className="mt-10 grid gap-5 md:grid-cols-3">
               <PlanCard
                 name="Free"
                 price="$0"
@@ -736,18 +736,31 @@ export default function LandingPage() {
               <PlanCard
                 highlight
                 name="Pro"
-                price={`$${PRICES_USD.monthly}`}
-                note={`per month, or $${PRICES_USD.yearly}/year`}
+                price={`$${PLAN_PRICES_USD.PRO.monthly}`}
+                note={`per month, or $${PLAN_PRICES_USD.PRO.yearly}/year`}
                 cta="Go Pro"
                 features={[
+                  "3 links: Two-Steps or Deeplinks",
+                  "3 bio pages and 1 custom domain",
+                  "Two-Steps pages (Escape Meta Bot)",
                   "Verified badge",
-                  "Unlimited blocks, 25 pages and 100 deep links",
                   "All templates plus custom colors and fonts",
                   'Remove the "Made with" badge',
                   "Custom warning text",
-                  "Custom domains",
-                  "Referrers, countries, devices",
-                  "A year of analytics",
+                  "A year of analytics: referrers, countries, devices",
+                ]}
+              />
+              <PlanCard
+                name="Business"
+                price={`$${PLAN_PRICES_USD.BUSINESS.monthly}`}
+                note={`per month, or $${PLAN_PRICES_USD.BUSINESS.yearly}/year`}
+                cta="Go Business"
+                features={[
+                  "10 Two-Steps pages",
+                  "10 Deeplinks",
+                  "10 bio pages",
+                  "10 custom domains",
+                  "Everything in Pro",
                 ]}
               />
             </Reveal>

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type Stripe from "stripe";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { planFromSubscription } from "@/lib/plan-rules";
+import { PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { availableAt, commissionCents, levelFor, normalizeCode, REF_COOKIE } from "@/lib/affiliate-rules";
 
 // Affiliate program data (rules in affiliate-rules.ts).
@@ -120,7 +120,7 @@ export async function getAffiliateOverview(userId: string) {
       id: r.id,
       email: r.email,
       joined: r.referredAt ?? r.createdAt,
-      plan: planFromSubscription(r.subscription) === "PRO" ? "Pro" : "Free",
+      plan: PLAN_LABEL[planFromSubscription(r.subscription)],
       paidCents: perReferral.get(r.id)?.paid ?? 0,
       earnedCents: perReferral.get(r.id)?.earned ?? 0,
     })),

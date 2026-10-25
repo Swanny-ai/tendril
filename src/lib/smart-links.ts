@@ -2,7 +2,7 @@ import "server-only";
 import { cacheLife, cacheTag, revalidateTag, updateTag } from "next/cache";
 import { isbot } from "isbot";
 import { db } from "@/lib/db";
-import { PLAN_LIMITS, planFromSubscription } from "@/lib/plan-rules";
+import { allowedLinkIds, PLAN_LIMITS, planFromSubscription } from "@/lib/plan-rules";
 import { parseUserAgent } from "@/lib/ua";
 import { clientIp, countryFromHeaders, visitorHash } from "@/lib/analytics/visitor";
 import { parseLanding, type LandingPage } from "@/lib/link-landing";
@@ -33,6 +33,16 @@ export type SmartLinkTarget = {
   owner: { name: string; username: string; avatarUrl: string | null } | null;
 };
 
+/** A Two-Steps link: a deep link that shows its own page (template) first. */
+export const isTwoSteps = (l: { landingPage: unknown }) => !!parseLanding(l.landingPage)?.enabled;
+
+/** How many links of each kind the account has (optionally leaving one out, e.g. the one being edited). */
+export async function linkKindCounts(userId: string, exceptId?: string): Promise<{ twoSteps: number; classic: number }> {
+  const links = await db.smartLink.findMany({ where: { userId, ...(exceptId ? { NOT: { id: exceptId } } : {}) }, select: { landingPage: true } });
+  const twoSteps = links.filter(isTwoSteps).length;
+  return { twoSteps, classic: links.length - twoSteps };
+}
+
 /** Uncached loader (used by the proxy, where "use cache" is not available). */
 export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | null> {
   const link = await db.smartLink.findUnique({
@@ -51,13 +61,8 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
   const plan = planFromSubscription(link.user.subscription);
   const limits = PLAN_LIMITS[plan];
   // Links beyond the plan's allowance (e.g. after a downgrade) stop resolving instead of being deleted.
-  const allowed = await db.smartLink.findMany({
-    where: { userId: link.userId },
-    orderBy: { createdAt: "asc" },
-    take: limits.maxSmartLinks,
-    select: { id: true },
-  });
-  if (!allowed.some((l) => l.id === link.id)) return null;
+  const all = await db.smartLink.findMany({ where: { userId: link.userId }, orderBy: { createdAt: "asc" }, select: { id: true, landingPage: true } });
+  if (!allowedLinkIds(plan, all.map((l) => ({ id: l.id, twoSteps: isTwoSteps(l) }))).has(link.id)) return null;
   return {
     id: link.id,
     slug: link.slug,

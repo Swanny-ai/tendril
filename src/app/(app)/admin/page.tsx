@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { PRICES_USD, planFromSubscription } from "@/lib/plan-rules";
+import { PLAN_PRICES_USD, planFromSubscription } from "@/lib/plan-rules";
+import { paddlePriceIds } from "@/lib/paddle";
 import { DayBars, Header, Pill, Stat, ago, daysAgo, fillDays, fmt, money } from "./ui";
 
 export const instant = false;
@@ -40,7 +41,7 @@ export default async function AdminOverview() {
     db.user.count({ where: { createdAt: { gte: since(7) } } }),
     db.user.count({ where: { createdAt: { gte: since(30) } } }),
     db.user.count({ where: { emailVerified: null } }),
-    db.subscription.findMany({ where: { plan: "PRO" }, select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, stripePriceId: true, paddleSubscriptionId: true, paddlePriceId: true } }),
+    db.subscription.findMany({ where: { plan: { in: ["PRO", "BUSINESS"] } }, select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, stripePriceId: true, paddleSubscriptionId: true, paddlePriceId: true } }),
     db.cryptoPayment.aggregate({ where: { status: "finished" }, _sum: { amountCents: true }, _count: true }),
     db.cryptoPayment.aggregate({ where: { status: "finished", paidAt: { gte: since(30) } }, _sum: { amountCents: true } }),
     db.page.count(),
@@ -65,12 +66,16 @@ export default async function AdminOverview() {
     db.cryptoPayment.findMany({ where: { status: "finished" }, orderBy: { paidAt: "desc" }, take: 6, include: { user: { select: { id: true, email: true } } } }),
   ]);
 
-  const pro = subs.filter((s) => planFromSubscription(s) === "PRO");
+  const pro = subs.filter((s) => planFromSubscription(s) !== "FREE");
+  const business = pro.filter((s) => s.plan === "BUSINESS").length;
   const card = pro.filter((s) => s.stripeSubscriptionId || s.paddleSubscriptionId);
-  const yearlyPrice = process.env.STRIPE_PRICE_PRO_YEARLY;
-  const paddleYearly = process.env.PADDLE_PRICE_PRO_YEARLY;
-  const cardYearly = card.filter((s) => (yearlyPrice && s.stripePriceId === yearlyPrice) || (paddleYearly && s.paddlePriceId === paddleYearly)).length;
-  const mrr = (card.length - cardYearly) * PRICES_USD.monthly + (cardYearly * PRICES_USD.yearly) / 12;
+  // Monthly revenue from card plans: yearly plans count as a twelfth of their price.
+  const paddlePrices = paddlePriceIds();
+  const yearlyIds = new Set([process.env.STRIPE_PRICE_PRO_YEARLY, paddlePrices.PRO.year, paddlePrices.BUSINESS.year].filter(Boolean));
+  const mrr = card.reduce((sum, s) => {
+    const prices = PLAN_PRICES_USD[s.plan === "BUSINESS" ? "BUSINESS" : "PRO"];
+    return sum + (yearlyIds.has(s.paddlePriceId ?? s.stripePriceId ?? "") ? prices.yearly / 12 : prices.monthly);
+  }, 0);
   const crypto = pro.filter((s) => s.status === "prepaid").length;
   const gifted = pro.length - card.length - crypto;
 
@@ -82,7 +87,7 @@ export default async function AdminOverview() {
         <h2 className="text-sm font-semibold text-muted-foreground">People & money</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Accounts" value={fmt(users)} hint={`+${fmt(users1)} today · +${fmt(users7)} this week`} href="/admin/users" />
-          <Stat label="Pro accounts" value={fmt(pro.length)} hint={`${card.length} card · ${crypto} crypto · ${gifted} given`} href="/admin/payments" tone="good" />
+          <Stat label="Paid accounts" value={fmt(pro.length)} hint={`${pro.length - business} Pro · ${business} Business · ${card.length} card · ${crypto} crypto · ${gifted} given`} href="/admin/payments" tone="good" />
           <Stat label="Card revenue / month" value={`$${fmt(Math.round(mrr))}`} hint="Estimated from active card plans" href="/admin/payments" />
           <Stat label="Crypto revenue" value={money(cryptoAll._sum.amountCents ?? 0)} hint={`${money(crypto30._sum.amountCents ?? 0)} in 30 days · ${cryptoAll._count} payments`} href="/admin/payments" />
         </div>

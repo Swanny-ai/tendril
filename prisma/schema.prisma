@@ -247,6 +247,7 @@ model DailySalt {
 enum Plan {
   FREE
   PRO
+  BUSINESS
 }
 
 model Subscription {
@@ -427,6 +428,8 @@ model CryptoPayment {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   // "month" | "year"
   interval    String
+  // Which plan this payment buys
+  plan        Plan      @default(PRO)
   amountCents Int
   invoiceId   String?   @unique
   // NOWPayments payment_status: waiting, confirming, confirmed, sending, partially_paid, finished, failed, refunded, expired

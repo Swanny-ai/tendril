@@ -5,7 +5,7 @@ import { appHost } from "@/config/brand";
 import { db } from "@/lib/db";
 import { isClaimable, normalizeHostname, wwwOf } from "@/lib/domain-names";
 import { addHostedDomain, refreshDomain, removeHostedDomain } from "@/lib/domains";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { countLimitError } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { invalidatePageFromAction } from "@/lib/pages";
@@ -16,9 +16,8 @@ export type DomainResult = { ok: true; message?: string } | { ok: false; error: 
 export async function addDomainAction(input: string): Promise<DomainResult> {
   const userId = await requireUserId();
   const plan = await getPlan(userId);
-  const max = PLAN_LIMITS[plan].customDomains;
-  if (max === 0) return { ok: false, error: "Custom domains are part of Pro." };
-  if ((await db.domain.count({ where: { userId } })) >= max) return { ok: false, error: `You can connect up to ${max} domains.` };
+  const domainLimit = countLimitError(plan, "customDomains", await db.domain.count({ where: { userId } }));
+  if (domainLimit) return { ok: false, error: domainLimit };
 
   const hostname = normalizeHostname(input);
   if (!hostname) return { ok: false, error: "Enter a domain like links.yourname.com." };

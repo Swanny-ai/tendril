@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const userId = (await auth())?.user?.id;
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!stripeConfigured()) return NextResponse.json({ error: "Billing isn't set up yet. Add Stripe test keys to .env." }, { status: 503 });
-  if ((await getPlan(userId)) === "PRO") return NextResponse.json({ error: "You're already on Pro." }, { status: 409 });
+  if ((await getPlan(userId)) !== "FREE") return NextResponse.json({ error: "You already have a paid plan." }, { status: 409 });
 
   const body = (await request.json().catch(() => ({}))) as { interval?: string };
   const interval: Interval = body.interval === "year" ? "year" : "month";

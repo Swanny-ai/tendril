@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { DEFAULT_LANDING, defaultIntroSection } from "@/lib/link-landing";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
+import { linkKindCounts } from "@/lib/smart-links";
 import { DEFAULT_WARNING_TEMPLATE } from "@/warning-templates/templates";
 import type { LinkMode } from "./links-list";
 import { SmartLinkForm } from "./smart-link-form";
@@ -13,9 +14,10 @@ import { TemplateUpsell } from "./template-upsell";
 export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
   const listHref = mode === "template" ? "/dashboard/links" : "/dashboard/deeplinks";
   const { userId } = await requireAccount();
-  const limits = PLAN_LIMITS[await getPlan(userId)];
+  const plan = await getPlan(userId);
+  const limits = PLAN_LIMITS[plan];
   const domains = await db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } });
-  const count = await db.smartLink.count({ where: { userId } });
+  const limitError = linkLimitError(plan, await linkKindCounts(userId), mode === "template");
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div>
@@ -26,13 +28,12 @@ export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
       </div>
       {mode === "template" && !limits.templatePages ? (
         <TemplateUpsell />
-      ) : count >= limits.maxSmartLinks ? (
+      ) : limitError ? (
         <p className="rounded-lg border px-4 py-3 text-sm">
-          You&apos;ve used {limits.maxSmartLinks === 1 ? "the 1 deep link" : `all ${limits.maxSmartLinks} deep links`} on your plan.{" "}
+          {limitError}{" "}
           <Link href="/dashboard/billing" className="font-medium text-primary underline-offset-4 hover:underline">
-            Upgrade to Pro
-          </Link>{" "}
-          for up to {PLAN_LIMITS.PRO.maxSmartLinks}.
+            See plans
+          </Link>
         </p>
       ) : (
         <SmartLinkForm

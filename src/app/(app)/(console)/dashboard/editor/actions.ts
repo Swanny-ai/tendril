@@ -179,7 +179,7 @@ export async function setThemeAction(input: { themeKey: string; overrides?: unkn
     const preset = THEME_PRESETS.find((t) => t.key === input.themeKey);
     if (!preset) return { ok: false, error: "Unknown theme." };
     const plan = await getPlan(userId);
-    if (preset.pro && plan !== "PRO") throw new PlanError(`${preset.name} is a Pro theme. Upgrade to use it.`);
+    if (preset.pro && plan === "FREE") throw new PlanError(`${preset.name} is a Pro theme. Upgrade to use it.`);
     const overrides = sanitizeOverrides(input.overrides);
     if (Object.keys(overrides).length) await assertCan(userId, "customTheme");
     if (input.showBadge === false) await assertCan(userId, "removeBadge");

@@ -4,15 +4,20 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Check, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
 import { closeInlineCheckout, openInlineCheckout, PADDLE_FRAME_CLASS, type PaddleClient } from "./paddle-checkout";
 
-const HIGHLIGHTS = ["Two-Steps pages (Escape Meta Bot)", "25 bio pages and 100 deep links", "Custom domains and verified badge", "All themes, colors and fonts"];
+const HIGHLIGHTS: Record<PaidPlan, string[]> = {
+  PRO: ["3 links: Two-Steps or Deeplinks", "3 bio pages and 1 custom domain", "Verified badge, all themes and colors", "A year of analytics"],
+  BUSINESS: ["10 Two-Steps + 10 Deeplinks", "10 bio pages and 10 custom domains", "Verified badge, all themes and colors", "A year of analytics"],
+};
 
 /** ViewLink's own popup around Paddle's card form: plan summary on the left, payment on the right. */
 export function PaddlePopup({
   open,
   onOpenChange,
   paddle,
+  plan,
   interval,
   price,
   perMonth,
@@ -20,6 +25,7 @@ export function PaddlePopup({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   paddle: PaddleClient;
+  plan: PaidPlan;
   interval: "month" | "year";
   price: number;
   perMonth: string;
@@ -39,7 +45,7 @@ export function PaddlePopup({
       setPaid(false);
     });
     let loaded = false;
-    openInlineCheckout(paddle, interval, (e) => {
+    openInlineCheckout(paddle, plan, interval, (e) => {
       if (!alive) return;
       if (e.name === "checkout.loaded") {
         loaded = true;
@@ -53,7 +59,7 @@ export function PaddlePopup({
       alive = false;
       closeInlineCheckout();
     };
-  }, [open, paddle, interval]);
+  }, [open, paddle, plan, interval]);
 
   const yearly = interval === "year";
   return (
@@ -65,7 +71,7 @@ export function PaddlePopup({
           <div className="relative">
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-white">
               <Image src="/apple-icon.png" alt="" width={32} height={32} className="size-8 rounded-lg" />
-              ViewLink Pro
+              ViewLink {PLAN_LABEL[plan]}
             </DialogTitle>
             <DialogDescription className="mt-1 text-sm text-white/60">{yearly ? "Yearly plan · 2 months free" : "Monthly plan · cancel anytime"}</DialogDescription>
             <p className="mt-6 flex items-baseline gap-1.5">
@@ -74,7 +80,7 @@ export function PaddlePopup({
             </p>
             <p className="text-sm text-white/60">{yearly ? `$${price} billed once a year` : `$${price} billed every month`}</p>
             <ul className="mt-6 hidden space-y-2.5 text-sm md:block">
-              {HIGHLIGHTS.map((h) => (
+              {HIGHLIGHTS[plan].map((h) => (
                 <li key={h} className="flex items-start gap-2">
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden /> {h}
                 </li>
@@ -97,7 +103,7 @@ export function PaddlePopup({
             <div className="grid h-full min-h-[420px] place-items-center text-center" role="status">
               <div>
                 <Loader2 className="mx-auto size-6 animate-spin text-primary" />
-                <p className="mt-3 font-medium">Payment received. Turning on Pro…</p>
+                <p className="mt-3 font-medium">Payment received. Turning on {PLAN_LABEL[plan]}…</p>
               </div>
             </div>
           ) : null}

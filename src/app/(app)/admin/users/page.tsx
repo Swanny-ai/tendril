@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { planFromSubscription } from "@/lib/plan-rules";
+import { PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { FilterTabs, Header, Pager, Pill, SearchBox, Table, ago, fmt, listParams } from "../ui";
 
 export const instant = false;
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Users" };
 /** Accounts on Pro right now (same rules as planFromSubscription). */
 const proWhere = (): Prisma.UserWhereInput => ({
   subscription: {
-    plan: "PRO",
+    plan: { in: ["PRO", "BUSINESS"] },
     OR: [{ status: { in: ["active", "trialing", "past_due"] } }, { status: "prepaid", currentPeriodEnd: { gt: new Date() } }],
   },
 });
@@ -76,7 +76,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
           params={{ q }}
           options={[
             { value: "", label: "All", count: all },
-            { value: "pro", label: "Pro", count: pros },
+            { value: "pro", label: "Paid", count: pros },
             { value: "free", label: "Free", count: all - pros },
             { value: "unconfirmed", label: "Email not confirmed", count: unconfirmed },
           ]}
@@ -84,7 +84,8 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
       </div>
       <Table head={["Account", "Plan", "Pages", "Links", "Domains", "Sign-in", "Referred by", "Joined"]} empty={!users.length}>
         {users.map((u) => {
-          const isPro = planFromSubscription(u.subscription) === "PRO";
+          const current = planFromSubscription(u.subscription);
+          const isPro = current !== "FREE";
           return (
             <tr key={u.id} className="hover:bg-muted/40">
               <td className="max-w-72">
@@ -98,7 +99,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
               </td>
               <td>
                 {isPro ? (
-                  <Pill tone="good">{u.subscription?.stripeSubscriptionId || u.subscription?.paddleSubscriptionId ? "Pro · card" : u.subscription?.status === "prepaid" ? "Pro · crypto" : "Pro · given"}</Pill>
+                  <Pill tone="good">{PLAN_LABEL[current]} · {u.subscription?.stripeSubscriptionId || u.subscription?.paddleSubscriptionId ? "card" : u.subscription?.status === "prepaid" ? "crypto" : "given"}</Pill>
                 ) : (
                   <Pill>Free</Pill>
                 )}

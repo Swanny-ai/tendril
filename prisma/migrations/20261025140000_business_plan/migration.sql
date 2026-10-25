@@ -1,0 +1,3 @@
+-- Business plan ($25)
+ALTER TYPE "Plan" ADD VALUE IF NOT EXISTS 'BUSINESS';
+ALTER TABLE "CryptoPayment" ADD COLUMN "plan" "Plan" NOT NULL DEFAULT 'PRO';

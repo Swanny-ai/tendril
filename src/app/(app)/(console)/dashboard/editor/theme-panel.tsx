@@ -96,7 +96,7 @@ export function ThemePanel({ plan, limits }: { plan: PlanName; limits: Limits })
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {THEME_PRESETS.map((p) => {
-              const locked = p.pro && plan !== "PRO";
+              const locked = p.pro && plan === "FREE";
               const active = theme.themeKey === p.key;
               return (
                 <button

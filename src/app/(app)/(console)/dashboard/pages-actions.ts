@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { editPagePath } from "@/lib/edit-paths";
 import { checkLinkTarget } from "@/lib/link-targets";
 import { expireUsername, invalidatePageFromAction } from "@/lib/pages";
-import { PLAN_LIMITS } from "@/lib/plan-rules";
+import { countLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { STARTER_BLOCKS } from "@/lib/starter-blocks";
@@ -60,10 +60,8 @@ export async function createPageAction(input: { username: string; template?: str
   const username = parsed.data;
 
   const plan = await getPlan(userId);
-  const count = await db.page.count({ where: { userId } });
-  if (count >= PLAN_LIMITS[plan].maxPages) {
-    return { ok: false, error: plan === "FREE" ? `Free accounts can have ${PLAN_LIMITS.FREE.maxPages} page${PLAN_LIMITS.FREE.maxPages === 1 ? "" : "s"}. Upgrade to Pro for more.` : "You've reached the page limit." };
-  }
+  const pageLimit = countLimitError(plan, "maxPages", await db.page.count({ where: { userId } }));
+  if (pageLimit) return { ok: false, error: pageLimit };
   if ((await db.page.findUnique({ where: { username }, select: { id: true } })) || (await db.smartLink.findUnique({ where: { slug: username }, select: { id: true } }))) {
     return { ok: false, field: "username", error: "That link is taken. Try another one." };
   }
@@ -157,9 +155,8 @@ export async function duplicatePageAction(pageId: string): Promise<PageActionRes
   const page = await db.page.findFirst({ where: { id: pageId, userId }, include: { blocks: { orderBy: { position: "asc" } } } });
   if (!page) return { ok: false, error: "That page no longer exists." };
   const plan = await getPlan(userId);
-  if ((await db.page.count({ where: { userId } })) >= PLAN_LIMITS[plan].maxPages) {
-    return { ok: false, error: plan === "FREE" ? `Free accounts can have ${PLAN_LIMITS.FREE.maxPages} page${PLAN_LIMITS.FREE.maxPages === 1 ? "" : "s"}. Upgrade to Pro for more.` : "You've reached the page limit." };
-  }
+  const pageLimit = countLimitError(plan, "maxPages", await db.page.count({ where: { userId } }));
+  if (pageLimit) return { ok: false, error: pageLimit };
   const username = await copyUsername(page.username);
   if (!username) return { ok: false, error: "Couldn't find a free name for the copy." };
   const copy = await db.page.create({
