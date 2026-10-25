@@ -10,7 +10,14 @@ type PaddleJs = {
       items: { priceId: string; quantity: number }[];
       customer?: { email: string };
       customData?: Record<string, string>;
-      settings?: { displayMode?: "overlay"; theme?: "light" | "dark"; successUrl?: string; allowLogout?: boolean };
+      settings?: {
+        displayMode?: "overlay";
+        theme?: "light" | "dark";
+        variant?: "one-page" | "multi-page";
+        showAddTaxId?: boolean;
+        successUrl?: string;
+        allowLogout?: boolean;
+      };
     }): void;
   };
 };
@@ -51,6 +58,14 @@ export async function openPaddleCheckout(cfg: PaddleClient, interval: "month" | 
     items: [{ priceId: interval === "year" ? cfg.prices.year : cfg.prices.month, quantity: 1 }],
     customer: cfg.email ? { email: cfg.email } : undefined,
     customData: { userId: cfg.userId },
-    settings: { displayMode: "overlay", theme: "dark", allowLogout: false, successUrl: `${location.origin}/dashboard/billing?checkout=success` },
+    // One page (payment method, email, card, country together), light, without the business VAT number field.
+    settings: {
+      displayMode: "overlay",
+      theme: "light",
+      variant: "one-page",
+      showAddTaxId: false,
+      allowLogout: false,
+      successUrl: `${location.origin}/dashboard/billing?checkout=success`,
+    },
   });
 }
