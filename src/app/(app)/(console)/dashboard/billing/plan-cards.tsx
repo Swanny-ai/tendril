@@ -40,6 +40,7 @@ const TAGLINE: Record<PlanName, string> = {
 };
 
 type Interval = "month" | "year";
+const RANK: Record<PlanName, number> = { FREE: 0, PRO: 1, BUSINESS: 2 };
 
 async function post(path: string, body: object) {
   const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -162,8 +163,9 @@ export function PlanCards({
           const onThisCard = cardSub?.plan === p && cardSub.interval === interval;
           // Prepaid (crypto) plans can add time or move to the other plan with crypto.
           const canCrypto = cryptoPay && !cardSub && (plan === "FREE" || prepaid);
-          // Stripe (the fallback when Paddle isn't set up) only has Pro prices.
-          const canCard = cardPay && plan === "FREE" && (p === "PRO" || !!paddle);
+          // Upgrades only (Free → Pro or Business, Pro → Business) for accounts without a card plan;
+          // card plans switch instead. Stripe (the fallback when Paddle isn't set up) only has Pro prices.
+          const canCard = cardPay && !cardSub && RANK[p] > RANK[plan] && (p === "PRO" || !!paddle);
           const canSwitch = !!cardSub && !onThisCard && !!paddle;
           return (
             <div
