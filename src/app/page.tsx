@@ -756,11 +756,15 @@ export default function LandingPage() {
                 note={`per month, or $${PLAN_PRICES_USD.BUSINESS.yearly}/year`}
                 cta="Go Business"
                 features={[
-                  "10 Two-Steps pages",
+                  "10 Two-Steps pages (Escape Meta Bot)",
                   "10 Deeplinks",
                   "10 bio pages",
                   "10 custom domains",
-                  "Everything in Pro",
+                  "Verified badge",
+                  "All templates plus custom colors and fonts",
+                  'Remove the "Made with" badge',
+                  "Custom warning text",
+                  "A year of analytics: referrers, countries, devices",
                 ]}
               />
             </Reveal>

@@ -26,11 +26,15 @@ const FEATURES: Record<PlanName, string[]> = {
     "A year of analytics: countries, devices, platforms",
   ],
   BUSINESS: [
-    "10 Two-Steps pages",
+    "10 Two-Steps pages (Escape Meta Bot)",
     "10 Deeplinks",
     "10 bio pages",
     "10 custom domains",
-    "Everything in Pro: badge, themes, colors, a year of analytics",
+    "Verified blue badge",
+    "All themes, custom colors and fonts",
+    "Remove the “Made with” badge",
+    "Custom 18+ wording and colors",
+    "A year of analytics: countries, devices, platforms",
   ],
 };
 const TAGLINE: Record<PlanName, string> = {
