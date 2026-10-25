@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PRICES_USD, type PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
-import { openPaddleCheckout, type PaddleClient } from "./paddle-checkout";
+import type { PaddleClient } from "./paddle-checkout";
+import { PaddlePopup } from "./paddle-popup";
 
 const FREE_FEATURES = ["1 bio page with 12 blocks", "1 deep link with an 18+ page", "Opens in the phone's browser from Instagram & TikTok", "30 days of analytics"];
 const PRO_FEATURES = [
@@ -48,13 +49,15 @@ export function PlanCards({
 }) {
   const [interval, setPeriod] = useState<Interval>("year");
   const [busy, setBusy] = useState<"card" | "crypto" | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const pay = async (how: "card" | "crypto") => {
+    // Card through Paddle: our popup with Paddle's form inside.
+    if (how === "card" && paddle) {
+      setCheckoutOpen(true);
+      return;
+    }
     setBusy(how);
     try {
-      if (how === "card" && paddle) {
-        await openPaddleCheckout(paddle, interval, () => setBusy(null));
-        return;
-      }
       await goTo(how === "card" ? "/api/billing/checkout" : "/api/billing/crypto", interval);
     } catch (e) {
       toast.error((e as Error).message);
@@ -69,6 +72,7 @@ export function PlanCards({
 
   return (
     <div className="space-y-5">
+      {paddle ? <PaddlePopup open={checkoutOpen} onOpenChange={setCheckoutOpen} paddle={paddle} interval={interval} price={price} perMonth={perMonth} /> : null}
       <div className="flex justify-center">
         <div className="flex rounded-full border bg-muted p-1 text-sm" role="radiogroup" aria-label="Billing period">
           {(["month", "year"] as const).map((i) => (
