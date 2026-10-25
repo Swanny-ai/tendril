@@ -9,6 +9,7 @@ import { expireUsername, invalidatePageFromAction, invalidatePageFromRoute } fro
 import { extendPrepaid } from "@/lib/plan-rules";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
 
 // Every admin action checks the admin again (actions are public endpoints) and refreshes /admin.
 
@@ -29,8 +30,9 @@ export async function setPlanAction(form: FormData): Promise<AdminResult> {
   const userId = id(form);
   const mode = id(form, "mode");
   const sub = await db.subscription.findUnique({ where: { userId } });
-  if (sub?.stripeSubscriptionId && ["active", "trialing", "past_due"].includes(sub.status)) {
-    return { error: "This account pays by card through Stripe. Change or cancel it in the Stripe dashboard." };
+  if ((sub?.stripeSubscriptionId || sub?.paddleSubscriptionId) && ["active", "trialing", "past_due"].includes(sub.status)) {
+    const where = sub.paddleSubscriptionId ? "Paddle" : "Stripe";
+    return { error: `This account pays by card through ${where}. Change or cancel it in the ${where} dashboard.` };
   }
   if ((mode === "month" || mode === "year") && sub?.plan === "PRO" && sub.status === "active") {
     return { error: "This account already has Pro with no end date." };
@@ -102,6 +104,16 @@ export async function deleteUserAction(form: FormData): Promise<AdminResult> {
     } catch (e) {
       console.error("[admin] subscription cancel failed", e);
       return { error: "Stripe couldn't cancel the subscription. Nothing was deleted." };
+    }
+  }
+  const paddleSubId = user.subscription?.paddleSubscriptionId;
+  if (paddleSubId && user.subscription?.status !== "canceled") {
+    if (!paddleConfigured()) return { error: "Paddle isn't configured here, so the card subscription can't be canceled first." };
+    try {
+      await cancelPaddleSubscription(paddleSubId);
+    } catch (e) {
+      console.error("[admin] Paddle cancel failed", e);
+      return { error: "Paddle couldn't cancel the subscription. Nothing was deleted." };
     }
   }
   const pageIds = user.pages.map((p) => p.id);

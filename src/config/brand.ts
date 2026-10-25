@@ -3,6 +3,8 @@ export const brand = {
   name: "ViewLink",
   tagline: "One link for everything you make.",
   domain: "viewlink.me",
+  /** Where people reach us (legal pages, refunds). */
+  supportEmail: "support@viewlink.me",
 } as const;
 
 // The live site is always https://<brand.domain>; previews and local dev use NEXT_PUBLIC_APP_URL.

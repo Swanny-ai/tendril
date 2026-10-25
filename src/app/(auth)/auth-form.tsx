@@ -77,6 +77,19 @@ export function AuthForm({ mode, googleEnabled, username }: { mode: "login" | "s
           </>
         )}
       </p>
+      {mode === "signup" ? (
+        <p className="text-center text-xs text-muted-foreground">
+          By creating an account you agree to our{" "}
+          <Link className="underline underline-offset-4 hover:text-foreground" href="/terms">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link className="underline underline-offset-4 hover:text-foreground" href="/privacy">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
   const { page, skip, one } = await listParams(props.searchParams);
   const tab = one("tab") || "plans";
   const [subs, cryptoTotal, cryptoCount, crypto, finished] = await Promise.all([
-    db.subscription.findMany({ where: { OR: [{ plan: "PRO" }, { stripeSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
+    db.subscription.findMany({ where: { OR: [{ plan: "PRO" }, { stripeSubscriptionId: { not: null } }, { paddleSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
     db.cryptoPayment.count(),
     db.cryptoPayment.count({ where: { status: "finished" } }),
     tab === "crypto"
@@ -23,14 +23,22 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
   ]);
   const active = subs.filter((s) => planFromSubscription(s) === "PRO");
   const yearly = process.env.STRIPE_PRICE_PRO_YEARLY;
-  const how = (s: (typeof subs)[number]) => (s.stripeSubscriptionId ? `Card · ${s.stripePriceId && s.stripePriceId === yearly ? "yearly" : "monthly"}` : s.status === "prepaid" ? "Crypto (prepaid)" : "Given by you");
+  const paddleYearly = process.env.PADDLE_PRICE_PRO_YEARLY;
+  const how = (s: (typeof subs)[number]) =>
+    s.paddleSubscriptionId
+      ? `Card (Paddle) · ${s.paddlePriceId && s.paddlePriceId === paddleYearly ? "yearly" : "monthly"}`
+      : s.stripeSubscriptionId
+        ? `Card (Stripe) · ${s.stripePriceId && s.stripePriceId === yearly ? "yearly" : "monthly"}`
+        : s.status === "prepaid"
+          ? "Crypto (prepaid)"
+          : "Given by you";
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <Header title="Payments" intro="Pro plans and crypto payments. Card payments themselves live in Stripe." />
+      <Header title="Payments" intro="Pro plans and crypto payments. Card payments themselves live in Paddle (or Stripe)." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Pro right now" value={fmt(active.length)} tone="good" />
-        <Stat label="Paying by card" value={fmt(active.filter((s) => s.stripeSubscriptionId).length)} hint={<a href="https://dashboard.stripe.com/subscriptions" target="_blank" rel="noreferrer" className="text-primary hover:underline">Open Stripe</a>} />
+        <Stat label="Paying by card" value={fmt(active.filter((s) => s.stripeSubscriptionId || s.paddleSubscriptionId).length)} hint="Paddle or Stripe" />
         <Stat label="Crypto received" value={money(finished._sum.amountCents ?? 0)} hint={`${cryptoCount} finished payments`} />
         <Stat label="Pro ended or canceled" value={fmt(subs.length - active.length)} />
       </div>

@@ -18,6 +18,8 @@ model User {
   passwordHash     String?
   sessionVersion   Int                   @default(0)
   stripeCustomerId String?               @unique
+  // Card payments through Paddle (merchant of record): the Paddle customer (ctm_...)
+  paddleCustomerId String?               @unique
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   accounts         Account[]
@@ -255,6 +257,9 @@ model Subscription {
   status               String
   stripeSubscriptionId String?   @unique
   stripePriceId        String?
+  // Paddle subscription (sub_...) and price (pri_...) when the card plan is paid through Paddle
+  paddleSubscriptionId String?   @unique
+  paddlePriceId        String?
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
   updatedAt            DateTime  @updatedAt

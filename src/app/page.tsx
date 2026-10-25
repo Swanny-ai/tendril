@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { SiteFooter } from "@/components/legal/legal-page";
 import { LiveDemo } from "@/components/marketing/live-demo";
 import { LoopVideo } from "@/components/marketing/loop-video";
 import {
@@ -810,12 +811,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground">
-          <Logo className="text-base" />
-          <p>© {brand.name}. Made for people who make things.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

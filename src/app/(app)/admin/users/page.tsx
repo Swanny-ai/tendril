@@ -52,7 +52,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
         emailVerified: true,
         createdAt: true,
         passwordHash: true,
-        subscription: { select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true } },
+        subscription: { select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, paddleSubscriptionId: true } },
         referredBy: { select: { email: true } },
         pages: { select: { username: true }, orderBy: { createdAt: "asc" }, take: 1 },
         _count: { select: { pages: true, smartLinks: true, domains: true, accounts: true } },
@@ -98,7 +98,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
               </td>
               <td>
                 {isPro ? (
-                  <Pill tone="good">{u.subscription?.stripeSubscriptionId ? "Pro · card" : u.subscription?.status === "prepaid" ? "Pro · crypto" : "Pro · given"}</Pill>
+                  <Pill tone="good">{u.subscription?.stripeSubscriptionId || u.subscription?.paddleSubscriptionId ? "Pro · card" : u.subscription?.status === "prepaid" ? "Pro · crypto" : "Pro · given"}</Pill>
                 ) : (
                   <Pill>Free</Pill>
                 )}

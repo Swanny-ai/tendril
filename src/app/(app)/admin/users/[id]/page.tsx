@@ -48,7 +48,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
 
   const sub = user.subscription;
   const isPro = planFromSubscription(sub) === "PRO";
-  const card = !!sub?.stripeSubscriptionId && ["active", "trialing", "past_due"].includes(sub.status);
+  const card = !!(sub?.stripeSubscriptionId || sub?.paddleSubscriptionId) && ["active", "trialing", "past_due"].includes(sub.status);
   const forever = isPro && !card && sub?.status !== "prepaid";
   const self = user.id === me;
   const f = { id: user.id };
@@ -96,7 +96,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
             ) : null}
           </dl>
           {card ? (
-            <p className="text-xs text-muted-foreground">Pays by card: change or cancel the plan in Stripe.</p>
+            <p className="text-xs text-muted-foreground">Pays by card: change or cancel the plan in {sub?.paddleSubscriptionId ? `Paddle (subscription ${sub.paddleSubscriptionId})` : "Stripe"}.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {/* Adding time to Pro-with-no-end would shorten it, so only Free or prepaid accounts get these. */}

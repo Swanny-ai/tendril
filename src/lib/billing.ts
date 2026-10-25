@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { invalidatePageFromRoute } from "@/lib/pages";
 import { invalidateUserSmartLinksFromRoute } from "@/lib/smart-links";
 import { isProPrice } from "@/lib/stripe";
+import { creditReferral } from "@/lib/affiliate";
+import { isPaddleProPrice } from "@/lib/paddle";
 
 /** Finds our user for a Stripe subscription: metadata first, then the customer id. */
 async function userIdFor(sub: Stripe.Subscription): Promise<string | null> {
@@ -60,4 +62,81 @@ export async function syncSubscription(sub: Stripe.Subscription): Promise<{ user
   await invalidatePageFromRoute({ userId });
   await invalidateUserSmartLinksFromRoute(userId);
   return { userId, plan };
+}
+
+// ---------- Paddle ----------
+
+/** The parts of a Paddle subscription (webhook `data`) we use. */
+export type PaddleSubscription = {
+  id: string;
+  status: string; // active | trialing | past_due | paused | canceled
+  customer_id: string;
+  custom_data?: { userId?: string } | null;
+  items?: { price?: { id?: string } | null }[];
+  current_billing_period?: { ends_at?: string } | null;
+  scheduled_change?: { action?: string } | null;
+};
+
+async function paddleUserId(customData: { userId?: string } | null | undefined, customerId: string | null | undefined): Promise<string | null> {
+  const fromData = customData?.userId;
+  if (fromData && (await db.user.findUnique({ where: { id: fromData }, select: { id: true } }))) return fromData;
+  if (!customerId) return null;
+  return (await db.user.findUnique({ where: { paddleCustomerId: customerId }, select: { id: true } }))?.id ?? null;
+}
+
+/** Mirrors a Paddle subscription into our Subscription row and refreshes the public pages. */
+export async function syncPaddleSubscription(sub: PaddleSubscription): Promise<{ userId: string; plan: "FREE" | "PRO" } | null> {
+  const userId = await paddleUserId(sub.custom_data, sub.customer_id);
+  if (!userId) {
+    console.warn(`[billing] no user for Paddle subscription ${sub.id}`);
+    return null;
+  }
+  const priceId = sub.items?.[0]?.price?.id ?? null;
+  // Paddle's active/trialing/past_due mean the same as Stripe's, so planFromSubscription works as is.
+  const plan = isPaddleProPrice(priceId) && ["active", "trialing", "past_due"].includes(sub.status) ? "PRO" : "FREE";
+
+  const current = await db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } });
+  if (plan === "FREE" && current?.status === "prepaid" && current.currentPeriodEnd && current.currentPeriodEnd > new Date()) {
+    await db.user.update({ where: { id: userId }, data: { paddleCustomerId: sub.customer_id } });
+    return { userId, plan: "PRO" };
+  }
+
+  const row = {
+    plan,
+    status: sub.status,
+    paddleSubscriptionId: sub.id,
+    paddlePriceId: priceId,
+    currentPeriodEnd: sub.current_billing_period?.ends_at ? new Date(sub.current_billing_period.ends_at) : null,
+    cancelAtPeriodEnd: sub.scheduled_change?.action === "cancel",
+  } as const;
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { paddleCustomerId: sub.customer_id } }),
+    db.subscription.upsert({ where: { userId }, create: { userId, ...row }, update: row }),
+  ]);
+  await invalidatePageFromRoute({ userId });
+  await invalidateUserSmartLinksFromRoute(userId);
+  return { userId, plan };
+}
+
+/** The parts of a Paddle transaction (transaction.completed) we use. */
+export type PaddleTransaction = {
+  id: string;
+  customer_id?: string | null;
+  currency_code?: string;
+  custom_data?: { userId?: string } | null;
+  billed_at?: string | null;
+  details?: { totals?: { grand_total?: string } | null; payout_totals?: { grand_total?: string; currency_code?: string } | null } | null;
+};
+
+/** A completed Paddle payment earns the referrer a commission (affiliate program), in US cents. */
+export async function creditPaddleTransaction(tx: PaddleTransaction) {
+  const userId = await paddleUserId(tx.custom_data, tx.customer_id);
+  if (!userId) return;
+  const cents =
+    tx.currency_code === "USD"
+      ? Number(tx.details?.totals?.grand_total ?? 0)
+      : tx.details?.payout_totals?.currency_code === "USD"
+        ? Number(tx.details.payout_totals.grand_total ?? 0)
+        : 0;
+  if (cents > 0) await creditReferral(userId, Math.round(cents), tx.id, tx.billed_at ? new Date(tx.billed_at) : new Date());
 }

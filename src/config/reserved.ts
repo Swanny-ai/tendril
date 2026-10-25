@@ -5,5 +5,5 @@ export const RESERVED_USERNAMES = new Set([
   "onboarding", "pricing", "privacy", "robots.txt", "root", "settings", "signin",
   "signup", "sitemap.xml", "static", "status", "support", "terms", "tendril", "viewlink", "uploads",
   "media", "templates", "flags", "videos",
-  "www", "_next", "join", "edit", "affiliate",
+  "www", "_next", "join", "edit", "affiliate", "refund", "refunds", "legal", "contact",
 ]);

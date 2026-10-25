@@ -40,7 +40,7 @@ export default async function AdminOverview() {
     db.user.count({ where: { createdAt: { gte: since(7) } } }),
     db.user.count({ where: { createdAt: { gte: since(30) } } }),
     db.user.count({ where: { emailVerified: null } }),
-    db.subscription.findMany({ where: { plan: "PRO" }, select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, stripePriceId: true } }),
+    db.subscription.findMany({ where: { plan: "PRO" }, select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, stripePriceId: true, paddleSubscriptionId: true, paddlePriceId: true } }),
     db.cryptoPayment.aggregate({ where: { status: "finished" }, _sum: { amountCents: true }, _count: true }),
     db.cryptoPayment.aggregate({ where: { status: "finished", paidAt: { gte: since(30) } }, _sum: { amountCents: true } }),
     db.page.count(),
@@ -66,9 +66,10 @@ export default async function AdminOverview() {
   ]);
 
   const pro = subs.filter((s) => planFromSubscription(s) === "PRO");
-  const card = pro.filter((s) => s.stripeSubscriptionId);
+  const card = pro.filter((s) => s.stripeSubscriptionId || s.paddleSubscriptionId);
   const yearlyPrice = process.env.STRIPE_PRICE_PRO_YEARLY;
-  const cardYearly = card.filter((s) => yearlyPrice && s.stripePriceId === yearlyPrice).length;
+  const paddleYearly = process.env.PADDLE_PRICE_PRO_YEARLY;
+  const cardYearly = card.filter((s) => (yearlyPrice && s.stripePriceId === yearlyPrice) || (paddleYearly && s.paddlePriceId === paddleYearly)).length;
   const mrr = (card.length - cardYearly) * PRICES_USD.monthly + (cardYearly * PRICES_USD.yearly) / 12;
   const crypto = pro.filter((s) => s.status === "prepaid").length;
   const gifted = pro.length - card.length - crypto;

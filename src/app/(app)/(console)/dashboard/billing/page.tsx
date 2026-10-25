@@ -6,6 +6,7 @@ import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
 import { cryptoConfigured } from "@/lib/crypto-pay";
 import { stripeConfigured } from "@/lib/stripe";
+import { paddleClientConfig } from "@/lib/paddle";
 import { CheckoutStatus, ManageButton } from "./billing-actions";
 import { PlanCards } from "./plan-cards";
 
@@ -17,12 +18,15 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   const [plan, sub, user, pages, links] = await Promise.all([
     getPlan(userId),
     db.subscription.findUnique({ where: { userId } }),
-    db.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true } }),
+    db.user.findUnique({ where: { id: userId }, select: { email: true, stripeCustomerId: true, paddleCustomerId: true } }),
     db.page.count({ where: { userId } }),
     db.smartLink.count({ where: { userId } }),
   ]);
   const { checkout } = await props.searchParams;
-  const configured = stripeConfigured();
+  // Card payments: Paddle when it's set up, else Stripe.
+  const paddle = paddleClientConfig();
+  const stripeOn = stripeConfigured();
+  const configured = !!paddle || stripeOn;
   const cryptoOn = cryptoConfigured();
   const prepaid = sub?.status === "prepaid";
   const limits = PLAN_LIMITS[plan];
@@ -48,7 +52,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
 
       {!configured && !cryptoOn ? (
         <p role="note" className="rounded-lg border border-[var(--persimmon)]/40 bg-[var(--persimmon)]/10 px-4 py-3 text-sm">
-          Payments aren&apos;t configured on this server. Add Stripe keys or NOWPayments keys to <code>.env</code> (see README) to enable upgrades.
+          Payments aren&apos;t configured on this server. Add Paddle, Stripe or NOWPayments keys to <code>.env</code> (see README) to enable upgrades.
         </p>
       ) : null}
 
@@ -67,10 +71,10 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
           <Usage label="Bio pages" used={pages} max={limits.maxPages} />
           <Usage label="Deep links" used={links} max={limits.maxSmartLinks} />
         </div>
-        {user?.stripeCustomerId && configured ? <ManageButton /> : null}
+        {(user?.paddleCustomerId && paddle) || (user?.stripeCustomerId && stripeOn) ? <ManageButton /> : null}
       </div>
 
-      <PlanCards plan={plan} cardPay={configured} cryptoPay={cryptoOn} prepaid={prepaid} />
+      <PlanCards plan={plan} cardPay={configured} cryptoPay={cryptoOn} prepaid={prepaid} paddle={paddle ? { ...paddle, email: user?.email ?? "", userId } : null} />
     </div>
   );
 }

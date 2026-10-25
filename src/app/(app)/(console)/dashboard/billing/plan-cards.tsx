@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bitcoin, Check, CreditCard, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PRICES_USD, type PlanName } from "@/lib/plan-rules";
 import { cn } from "@/lib/utils";
+import { openPaddleCheckout, type PaddleClient } from "./paddle-checkout";
 
 const FREE_FEATURES = ["1 bio page with 12 blocks", "1 deep link with an 18+ page", "Opens in the phone's browser from Instagram & TikTok", "30 days of analytics"];
 const PRO_FEATURES = [
@@ -30,12 +32,29 @@ async function goTo(path: string, interval: Interval) {
 }
 
 /** Free and Pro side by side, with a Monthly / Yearly switch and the ways to pay. */
-export function PlanCards({ plan, cardPay, cryptoPay, prepaid }: { plan: PlanName; cardPay: boolean; cryptoPay: boolean; prepaid: boolean }) {
+export function PlanCards({
+  plan,
+  cardPay,
+  cryptoPay,
+  prepaid,
+  paddle,
+}: {
+  plan: PlanName;
+  cardPay: boolean;
+  cryptoPay: boolean;
+  prepaid: boolean;
+  /** Card payments through Paddle (overlay checkout); null = Stripe Checkout. */
+  paddle: PaddleClient | null;
+}) {
   const [interval, setPeriod] = useState<Interval>("year");
   const [busy, setBusy] = useState<"card" | "crypto" | null>(null);
   const pay = async (how: "card" | "crypto") => {
     setBusy(how);
     try {
+      if (how === "card" && paddle) {
+        await openPaddleCheckout(paddle, interval, () => setBusy(null));
+        return;
+      }
       await goTo(how === "card" ? "/api/billing/checkout" : "/api/billing/crypto", interval);
     } catch (e) {
       toast.error((e as Error).message);
@@ -133,8 +152,19 @@ export function PlanCards({ plan, cardPay, cryptoPay, prepaid }: { plan: PlanNam
                 </Button>
               ) : null}
               <p className="pt-1 text-center text-xs text-muted-foreground">
-                {cardPay ? "Secure card payment with Stripe. " : ""}
+                {cardPay ? `Secure card payment with ${paddle ? "Paddle" : "Stripe"}. ` : ""}
                 {cryptoPay ? "Crypto (USDT, USDC, BTC, ETH, SOL…) is prepaid: nothing renews by itself." : ""}
+              </p>
+              <p className="text-center text-xs text-muted-foreground">
+                14-day money-back guarantee. By paying you agree to our{" "}
+                <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/refund" className="underline underline-offset-4 hover:text-foreground">
+                  Refund Policy
+                </Link>
+                .
               </p>
             </div>
           ) : (
