@@ -128,6 +128,7 @@ export const smartLinkSchema = z.object({
     .optional()
     .nullable(),
   landingPage: z.unknown().optional(),
+  access: z.unknown().optional(),
   showBadge: z.boolean().default(true),
   openInBrowser: z.boolean().default(true),
   domainId: z.string().max(40).nullable().optional(),

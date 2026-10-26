@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { DEFAULT_LANDING, parseLanding } from "@/lib/link-landing";
+import { parseAccess } from "@/lib/link-access";
 import { parseWarningColors } from "@/warning-templates/colors";
 import { SmartLinkForm } from "./smart-link-form";
 import { TemplateUpsell } from "./template-upsell";
@@ -38,6 +39,7 @@ export async function LinkEditScreen({ userId, link }: { userId: string; link: S
           label: link.label,
           adultWarning: link.adultWarning,
           openInBrowser: link.openInBrowser,
+          access: parseAccess(link.access),
           domainId: link.domainId,
           atRoot: link.atRoot,
           warningTemplate: link.warningTemplate,

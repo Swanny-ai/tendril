@@ -6,6 +6,7 @@ import { allowedLinkIds, PLAN_LIMITS, planFromSubscription } from "@/lib/plan-ru
 import { parseUserAgent } from "@/lib/ua";
 import { clientIp, countryFromHeaders, visitorHash } from "@/lib/analytics/visitor";
 import { parseLanding, type LandingPage } from "@/lib/link-landing";
+import { parseAccess, type LinkAccess } from "@/lib/link-access";
 import { parseWarningColors, type WarningColors } from "@/warning-templates/colors";
 import { DEFAULT_WARNING_TEMPLATE } from "@/warning-templates/templates";
 
@@ -25,6 +26,8 @@ export type SmartLinkTarget = {
   landing: LandingPage | null;
   showBadge: boolean;
   openInBrowser: boolean;
+  /** Advanced rules: blocked countries, devices, active dates. */
+  access: LinkAccess;
   label: string;
   userId: string;
   /** Custom domain the link is shared on, if any. */
@@ -80,6 +83,7 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
     })(),
     showBadge: limits.removeBadge ? link.showBadge : true,
     openInBrowser: link.openInBrowser,
+    access: parseAccess(link.access),
     label: link.label,
     userId: link.userId,
     domainHost: link.domain?.hostname ?? null,

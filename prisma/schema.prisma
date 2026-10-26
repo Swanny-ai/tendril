@@ -295,6 +295,8 @@ model SmartLink {
   landingPage     Json?
   // Inside Instagram/TikTok/etc., show a page that opens the link in the default browser
   openInBrowser   Boolean          @default(true)
+  // Advanced access rules: blocked countries, devices, active dates (see lib/link-access.ts)
+  access          Json?
   // Custom domain the link is shared on (null = the ViewLink domain)
   domainId        String?
   domain          Domain?          @relation(fields: [domainId], references: [id], onDelete: SetNull)

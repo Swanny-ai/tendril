@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { DEFAULT_LANDING, defaultIntroSection } from "@/lib/link-landing";
+import { DEFAULT_ACCESS } from "@/lib/link-access";
 import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
@@ -46,6 +47,7 @@ export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
             label: "",
             adultWarning: mode === "classic",
             openInBrowser: true,
+            access: { ...DEFAULT_ACCESS },
             domainId: null,
             atRoot: false,
             warningTemplate: DEFAULT_WARNING_TEMPLATE,

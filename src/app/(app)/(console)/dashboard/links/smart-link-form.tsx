@@ -21,7 +21,9 @@ import { templateCopy, WARNING_COPY } from "@/warning-templates/copy";
 import { getWarningTemplate, WARNING_TEMPLATES, type WarningTemplate } from "@/warning-templates/templates";
 import { WarningScreen } from "@/warning-templates/warning-screen";
 import { createSmartLinkAction, updateSmartLinkAction, type LinkActionResult } from "./actions";
+import { AdvancedAccess } from "./advanced-access";
 import { LandingEditor } from "./landing-editor";
+import type { LinkAccess } from "@/lib/link-access";
 import { LandingPhone } from "./landing-phone";
 
 export type SmartLinkFormValues = {
@@ -37,6 +39,7 @@ export type SmartLinkFormValues = {
   landingPage: LandingPage;
   showBadge: boolean;
   openInBrowser: boolean;
+  access: LinkAccess;
   domainId: string | null;
   atRoot: boolean;
   enabled: boolean;
@@ -480,6 +483,9 @@ export function SmartLinkForm({
             ) : null}
           </ToggleSection>
         )}
+
+        {/* Advanced (collapsed): blocked countries, devices, schedule */}
+        <AdvancedAccess value={v.access} onChange={(access) => set({ access })} />
 
         {/* 5. Note, status, save */}
         <Card size="sm">

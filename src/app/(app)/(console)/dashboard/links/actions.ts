@@ -12,6 +12,7 @@ import { normalizeDestinationUrl, smartLinkSchema, type SmartLinkInput } from "@
 import { copySlug } from "@/lib/copy-names";
 import { checkImage, saveImage } from "@/lib/media";
 import { parseLanding } from "@/lib/link-landing";
+import { accessError, isDefaultAccess, parseAccess } from "@/lib/link-access";
 import { parseWarningColors } from "@/warning-templates/colors";
 import { isWarningTemplateKey } from "@/warning-templates/templates";
 
@@ -37,6 +38,9 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
   if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Two-Steps (Escape Meta Bot) is part of Pro." } };
+  const access = parseAccess(data.access);
+  const accessProblem = accessError(access);
+  if (accessProblem) return { error: { ok: false as const, error: accessProblem } };
   const warningColors = parseWarningColors(data.warningColors);
   if (warningColors && !limits.customWarningText) return { error: { ok: false as const, error: "Custom colors are part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
@@ -62,6 +66,7 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
       warningButton: data.warningButton || null,
       warningColors: warningColors ?? Prisma.DbNull,
       landingPage: landing ? (landing as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
+      access: isDefaultAccess(access) ? Prisma.DbNull : (access as unknown as Prisma.InputJsonValue),
       showBadge: data.showBadge,
       openInBrowser: data.openInBrowser,
       domainId: data.domainId || null,
@@ -167,6 +172,7 @@ export async function duplicateSmartLinkAction(id: string): Promise<LinkActionRe
       warningButton: link.warningButton,
       warningColors: json(link.warningColors),
       landingPage: json(link.landingPage),
+      access: json(link.access),
       showBadge: link.showBadge,
       openInBrowser: link.openInBrowser,
       // Same domain, but always at a path: a domain has only one Root.

@@ -4,7 +4,10 @@ import { appHost, appUrl } from "@/config/brand";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { isAppHost } from "@/lib/domain-names";
 import { detectInAppBrowser } from "@/lib/in-app";
-import { htmlResponse, leanLandingPage, leanLeftPage, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
+import { htmlResponse, leanLandingPage, leanLeftPage, leanNotFound, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
+import { ACCESS_MESSAGES, accessBlock, isDefaultAccess } from "@/lib/link-access";
+import { countryFromHeaders } from "@/lib/analytics/visitor";
+import { parseUserAgent } from "@/lib/ua";
 import { publicLinkBase } from "@/lib/link-paths";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
 import { pickLang, templateCopy, WARNING_COPY } from "@/warning-templates/copy";
@@ -27,6 +30,16 @@ function track(h: Headers, linkId: string, kinds: SmartLinkEventKind[]) {
       /* analytics never breaks the page */
     }
   });
+}
+
+/**
+ * The link's Advanced rules (blocked countries, devices, active dates) for this request: a
+ * "This link isn't available" page when it's blocked, or null to carry on. Not counted as a visit.
+ */
+export function accessDenied(h: Headers, link: SmartLink): Response | null {
+  if (isDefaultAccess(link.access)) return null;
+  const why = accessBlock(link.access, { country: countryFromHeaders(h), device: parseUserAgent(h.get("user-agent") ?? "").device, now: new Date() });
+  return why ? leanNotFound(hostOf(h), ACCESS_MESSAGES[why]) : null;
 }
 
 /** The 18+ page. `entry`: this page is the visit itself (counts a hit too). */

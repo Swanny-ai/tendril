@@ -6,7 +6,7 @@ import { getVerifiedDomain } from "@/lib/domains";
 import { detectInAppBrowser } from "@/lib/in-app";
 import { isLinkEntry } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
-import { landingStep, openStep, warningStep } from "@/lib/smart-link-steps";
+import { accessDenied, landingStep, openStep, warningStep } from "@/lib/smart-link-steps";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
 
 const NO_STORE = { "Cache-Control": "no-store", "Referrer-Policy": "strict-origin-when-cross-origin" };
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
   }
 
   const headers = new Headers(request.headers);
+  const denied = accessDenied(headers, link);
+  if (denied) return denied;
   const confirmed = request.nextUrl.searchParams.get("ok") === "1";
   // ib=1: the visitor already went through the "open in browser" step (now in the real
   // browser, or chose to stay in the app), so don't show it again or count a second visit.
