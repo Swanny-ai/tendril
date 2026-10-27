@@ -545,7 +545,12 @@ export function landingHtml({
   const style = `--bg:${vars.bg};--text:${vars.text};--muted:${vars.muted};--card:${vars.card};--line:${vars.line};--chip:${vars.chip};--glass:${vars.glass};--tint:${p.bgColor || vars.tint};--lb:${btn.bg};--lt:${btn.text};--lbd:${btn.border};--accent:${p.accent};--on:${onColor(p.accent)};--r:${r};--r2:${r2};color:${vars.text};font-family:${FONTS[p.font]}`;
   const name = p.name || fallbackName;
   const link = (href: string, cls: string, inner: string, extra = "") =>
-    preview ? `<span class="${cls}"${extra}>${inner}</span>` : `<a href="${esc(href)}" rel="nofollow noopener" class="${cls}"${extra}>${inner}</a>`;
+    preview
+      ? `<span class="${cls}"${extra}>${inner}</span>`
+      : `<a href="${esc(href)}" rel="noreferrer noopener nofollow" referrerpolicy="no-referrer" class="${cls}"${extra}>${inner}</a>`;
+  // Live content links don't carry the destination in the HTML: they go through /api/link-out,
+  // which counts the tap and redirects (and sends the destination no referrer).
+  const outHref = (s: LandingSection) => (!preview && slug ? `/api/link-out?s=${encodeURIComponent(slug)}&i=${encodeURIComponent(s.id)}` : s.url ?? "");
   const bgImage = (url: string) => `background-image:url('${esc(url)}')`;
   const backdrop = p.coverUrl;
   // Preview only: hooks for editing straight on the phone (click text, drag photos).
@@ -610,11 +615,13 @@ export function landingHtml({
           ? look(s.style || p.btnStyle, s.color || (s.style ? "" : p.btnColor), s.textColor || (s.style ? "" : p.btnText))
           : null;
       const ownVars = own ? ` style="--lb:${own.bg};--lt:${own.text};--lbd:${own.border}"` : "";
+      // Step 1's button keeps its own href (it opens Step 2, via data-deep inside social apps);
+      // normal content links go through /api/link-out, which records the tap, so no data-tap here.
       return link(
-        href,
+        s.deep ? href : outHref(s),
         `lp-btn lp-link${zc(s)}${anim}${sel(s)}`,
         `${tools(s)}<span${edit(`sec:${s.id}:title`)}${ts(s)}>${blockIconHtml(s.icon, s.url)}${esc(s.title || "Link title")}</span>`,
-        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}${!s.deep && !preview ? ` data-tap=""` : ""}`,
+        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}${!s.deep && !preview && !slug ? ` data-tap=""` : ""}`,
       );
     }
     const net = networkOfUrl(href);
@@ -628,10 +635,10 @@ export function landingHtml({
         : "");
     const cardStyle = s.color ? ` style="--accent:${s.color}"` : "";
     return link(
-      href,
+      outHref(s),
       `lp-card${zc(s)}${s.size === "small" ? " sm" : ""}${s.highlight || s.color ? " hl" : ""}${anim}${sel(s)}`,
       inner,
-      `${cardStyle}${secAttr(s)}${preview ? "" : ` data-tap=""`}`,
+      `${cardStyle}${secAttr(s)}${!preview && !slug ? ` data-tap=""` : ""}`,
     );
   };
   const boxStyle = (s: LandingSection) =>

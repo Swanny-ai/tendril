@@ -104,6 +104,11 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
   const step2Href = `${origin}${base}?step=2`;
   const lang = pickLang(h.get("accept-language"));
   const copy = WARNING_COPY[lang];
+  // Tab title and share previews: "Name (@handle)" with the cover photo (the Step 2 identity).
+  const lp = link.landing!;
+  const metaName = (lp.name || link.owner?.name || link.label || "").trim();
+  const metaHandle = (lp.handle || link.owner?.username || "").trim();
+  const meta = { name: metaName || null, handle: metaHandle || null, description: lp.bio?.trim() || null, image: lp.coverUrl || null };
   return htmlResponse(
     leanLandingPage({
       host: hostOf(h),
@@ -116,6 +121,7 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
       step: showStep1 ? 1 : 2,
       step2Href,
       step2Deep: deepLink ?? undefined,
+      meta,
       // Inside Instagram, TikTok...: show Step 1, then straight away open Step 2 in the phone's browser.
       autoOpen: showStep1 && deepLink ? deepLink : undefined,
     }),

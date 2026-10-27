@@ -34,6 +34,8 @@ type DocOptions = {
   config?: Record<string, string>;
   /** Navigate here right after the page is drawn (opening the phone's browser). */
   goNow?: string;
+  /** Creator identity for the tab title and share previews (Two-Steps pages). */
+  meta?: { name?: string | null; handle?: string | null; description?: string | null; image?: string | null };
 };
 
 // Runs once the page is on screen: after the cover image has loaded (1.2 s at the latest), so a social
@@ -44,18 +46,36 @@ function goNowScript(url: string): string {
   return `<script>${GO_NOW_JS}(${JSON.stringify(url).replace(/</g, "\\u003c")})</script>`;
 }
 
-/** A whole page. Link previews show only the domain; the tab shows only the brand. */
-function documentHtml({ lang = "en", host, css, body, config, goNow }: DocOptions): string {
+/**
+ * A whole page. These pages are never indexed and send no referrer. When a Two-Steps page passes a
+ * creator (`meta`), the tab title and share previews read "Name (@handle)" with their cover photo;
+ * otherwise they show only the domain and never ViewLink's own branding.
+ */
+function documentHtml({ lang = "en", host, css, body, config, goNow, meta }: DocOptions): string {
   const script = config ? `<script>${ESCAPE_JS}(${JSON.stringify(config).replace(/</g, "\\u003c")})</script>` : "";
+  const name = meta?.name?.trim();
+  const handle = meta?.handle?.trim().replace(/^@+/, "");
+  const title = name ? (handle ? `${name} (@${handle})` : name) : brand.name;
+  const ogTitle = name ? title : host;
+  const desc = meta?.description?.trim() || (name ? `See what ${name} is sharing.` : "");
+  const image = meta?.image && meta.image.startsWith("/") ? `https://${host}${meta.image}` : meta?.image || "";
+  const head =
+    `<title>${esc(title)}</title><meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">` +
+    `<meta property="og:title" content="${esc(ogTitle)}"><meta name="twitter:title" content="${esc(ogTitle)}">` +
+    (name ? `<meta property="og:type" content="profile">${handle ? `<meta property="profile:username" content="${esc(handle)}">` : ""}` : "") +
+    (desc ? `<meta name="description" content="${esc(desc)}"><meta property="og:description" content="${esc(desc)}"><meta name="twitter:description" content="${esc(desc)}">` : "") +
+    (image
+      ? `<meta property="og:image" content="${esc(image)}"><meta name="twitter:image" content="${esc(image)}"><meta name="twitter:card" content="summary_large_image">`
+      : `<meta name="twitter:card" content="summary">`);
   return (
     `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
-    `<title>${esc(brand.name)}</title><meta name="robots" content="noindex,nofollow"><meta property="og:title" content="${esc(host)}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="${esc(host)}">` +
+    head +
     `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body>${body}${script}${goNow ? goNowScript(goNow) : ""}</body></html>`
   );
 }
 
 export const htmlResponse = (html: string, status = 200) =>
-  new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "strict-origin-when-cross-origin" } });
+  new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
 
 function stepsText(android: boolean) {
   return `Tap ${android ? ICON_MORE_V : ICON_MORE_H} in the top corner, then &ldquo;Open in ${android ? "Chrome" : "external browser"}&rdquo;.`;
@@ -146,8 +166,10 @@ export function leanNotFound(host: string, message = "It may have been removed o
 }
 
 /** The creator's profile page (a deep link's "Template"). */
-export function leanLandingPage(p: Omit<LandingRenderInput, "preview" | "now" | "popupFor"> & { host: string; lang?: string; autoOpen?: string }): string {
+export function leanLandingPage(
+  p: Omit<LandingRenderInput, "preview" | "now" | "popupFor"> & { host: string; lang?: string; autoOpen?: string; meta?: DocOptions["meta"] },
+): string {
   // autoOpen: inside a social app, open Step 2 in the phone's browser immediately, before Step 1 even draws
   // (Step 1 and its button stay as the fallback if the app refuses).
-  return documentHtml({ lang: p.lang, host: p.host, css: LANDING_CSS, body: landingHtml(p) + `<script>${LANDING_JS}${LANDING_SHEETS_JS}</script>`, goNow: p.autoOpen });
+  return documentHtml({ lang: p.lang, host: p.host, css: LANDING_CSS, body: landingHtml(p) + `<script>${LANDING_JS}${LANDING_SHEETS_JS}</script>`, goNow: p.autoOpen, meta: p.meta });
 }
