@@ -76,8 +76,8 @@ export function planFromSubscription(
   now: Date = new Date(),
 ): PlanName {
   if (!sub || sub.plan === "FREE") return "FREE";
-  // Paid in crypto: the plan lasts until the prepaid period ends (nothing renews it).
-  if (sub.status === "prepaid") return sub.currentPeriodEnd && sub.currentPeriodEnd > now ? sub.plan : "FREE";
+  // Prepaid (crypto) and the free trial both last until their end date, then fall back to Free.
+  if (sub.status === "prepaid" || sub.status === "trial") return sub.currentPeriodEnd && sub.currentPeriodEnd > now ? sub.plan : "FREE";
   const activeStatuses = new Set(["active", "trialing", "past_due"]);
   return activeStatuses.has(sub.status) ? sub.plan : "FREE";
 }

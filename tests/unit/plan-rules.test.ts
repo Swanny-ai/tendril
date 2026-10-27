@@ -12,6 +12,12 @@ describe("planFromSubscription", () => {
     expect(planFromSubscription({ plan: "BUSINESS", status: "prepaid", currentPeriodEnd: new Date("2026-11-25T00:00:00Z") }, now)).toBe("BUSINESS");
     expect(planFromSubscription({ plan: "BUSINESS", status: "canceled" }, now)).toBe("FREE");
   });
+  it("gives Pro during a trial, then Free once it ends", () => {
+    const now = new Date("2026-10-25T00:00:00Z");
+    expect(planFromSubscription({ plan: "PRO", status: "trial", currentPeriodEnd: new Date("2026-10-30T00:00:00Z") }, now)).toBe("PRO");
+    expect(planFromSubscription({ plan: "PRO", status: "trial", currentPeriodEnd: new Date("2026-10-24T00:00:00Z") }, now)).toBe("FREE");
+    expect(planFromSubscription({ plan: "PRO", status: "trial", currentPeriodEnd: null }, now)).toBe("FREE");
+  });
   it.each(["canceled", "unpaid", "incomplete_expired", "incomplete"])("is FREE when status is %s", (status) => {
     expect(planFromSubscription({ plan: "PRO", status })).toBe("FREE");
   });

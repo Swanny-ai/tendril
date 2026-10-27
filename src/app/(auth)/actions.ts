@@ -12,6 +12,7 @@ import { isRateLimited, rateLimit, recordAttempt } from "@/lib/rate-limit";
 import { requireUserId } from "@/lib/session";
 import { consumeToken, issueToken } from "@/lib/tokens";
 import { attributeReferral } from "@/lib/affiliate";
+import { startTrial } from "@/lib/trial";
 import { emailSchema, passwordSchema } from "@/lib/validation";
 
 export type AuthFormState = { error?: string; fieldErrors?: Record<string, string>; email?: string; sent?: boolean } | undefined;
@@ -48,6 +49,7 @@ export async function signupAction(_prev: AuthFormState, form: FormData): Promis
   const passwordHash = await bcrypt.hash(password.data, 12);
   const user = await db.user.create({ data: { email: email.data, passwordHash } });
   await attributeReferral(user.id); // arrived through someone's /join/<code> link
+  await startTrial(user.id); // every new account gets a 5-day Pro trial
   await sendVerification(user.id, user.email);
 
   await signIn("credentials", { email: email.data, password: password.data, redirectTo: "/dashboard?welcome=1" });

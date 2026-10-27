@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { startTrial } from "@/lib/trial";
 import { emailSchema } from "@/lib/validation";
 
 export const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
@@ -64,6 +65,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "google" && profile?.email_verified && user.id) {
         await db.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } }).catch(() => {});
       }
+    },
+    // A brand-new account (here: Google sign-up; credentials sign-up grants it in the action) gets the Pro trial.
+    async createUser({ user }) {
+      if (user.id) await startTrial(user.id).catch(() => {});
     },
   },
 });

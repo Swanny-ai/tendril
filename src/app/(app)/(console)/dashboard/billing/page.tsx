@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { PLAN_LABEL, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
+import { trialInfo } from "@/lib/trial";
 import { cryptoConfigured } from "@/lib/crypto-pay";
 import { stripeConfigured } from "@/lib/stripe";
 import { paddleClientConfig, planForPaddlePrice } from "@/lib/paddle";
@@ -37,14 +38,19 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   const cardSub = cardPlan && paddle ? { plan: cardPlan, interval: paddle.prices[cardPlan].year === sub?.paddlePriceId ? ("year" as const) : ("month" as const) } : null;
 
   const label = PLAN_LABEL[plan];
+  const trial = trialInfo(sub);
   const status =
-    plan !== "FREE" && prepaid && sub?.currentPeriodEnd
-      ? `${label} until ${date(sub.currentPeriodEnd)}, paid with crypto.`
-      : plan !== "FREE" && sub?.currentPeriodEnd
-        ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${date(sub.currentPeriodEnd)}.`
-        : plan !== "FREE"
-          ? "Thanks for supporting ViewLink."
-          : "You're on the free plan.";
+    trial.onTrial && sub?.currentPeriodEnd
+      ? `Free Pro trial — ${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left (until ${date(sub.currentPeriodEnd)}). Upgrade to keep Pro.`
+      : trial.expired
+        ? "Your free Pro trial has ended. Pick a plan to turn Pro back on."
+        : plan !== "FREE" && prepaid && sub?.currentPeriodEnd
+          ? `${label} until ${date(sub.currentPeriodEnd)}, paid with crypto.`
+          : plan !== "FREE" && sub?.currentPeriodEnd
+            ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${date(sub.currentPeriodEnd)}.`
+            : plan !== "FREE"
+              ? "Thanks for supporting ViewLink."
+              : "You're on the free plan.";
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

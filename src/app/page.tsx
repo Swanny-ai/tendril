@@ -13,6 +13,7 @@ import {
   MousePointerClick,
   Radio,
   ShieldCheck,
+  Sparkles,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -204,9 +205,9 @@ export default function LandingPage() {
               </form>
               <ul className="mt-4 flex max-w-md flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border bg-card/60 px-4 py-2.5 text-xs text-muted-foreground">
                 {[
-                  "Free forever plan",
+                  "5 days of Pro, free",
                   "No card needed",
-                  "Your own domain on Pro",
+                  "Free forever after",
                 ].map((t) => (
                   <li key={t} className="flex items-center gap-1.5">
                     <Check
@@ -720,6 +721,9 @@ export default function LandingPage() {
             <p className="mt-2 text-center text-muted-foreground">
               Start free. Upgrade when your page grows.
             </p>
+            <p className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-[var(--plum)]/30 bg-[var(--plum)]/10 px-4 py-1.5 text-sm font-medium text-[var(--plum)]">
+              <Sparkles className="size-4" aria-hidden /> Every new account starts with 5 days of Pro, free — no card needed.
+            </p>
             <Reveal className="mt-10 grid gap-5 md:grid-cols-3">
               <PlanCard
                 name="Free"
@@ -813,7 +817,7 @@ export default function LandingPage() {
               Your link, everywhere. Ready in minutes.
             </h2>
             <p className="relative mx-auto mt-3 max-w-xl text-muted-foreground">
-              Claim your page now and share it today. It&apos;s free to start.
+              Claim your page now and share it today. Start with 5 days of Pro, free — no card needed.
             </p>
             <Link
               href="/signup"
