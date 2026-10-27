@@ -4,9 +4,10 @@ import { appHost, appUrl } from "@/config/brand";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { isAppHost } from "@/lib/domain-names";
 import { detectInAppBrowser } from "@/lib/in-app";
-import { htmlResponse, leanLandingPage, leanLeftPage, leanNotFound, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
+import { htmlResponse, leanLandingPage, leanLeftPage, leanNotFound, leanOpenPage, leanTurnstilePage, leanWarningPage } from "@/lib/lean-link-pages";
 import { ACCESS_MESSAGES, accessBlock, isDefaultAccess } from "@/lib/link-access";
 import { countryFromHeaders } from "@/lib/analytics/visitor";
+import { hasHumanPass, turnstileConfigured, turnstileSiteKey } from "@/lib/turnstile";
 import { parseUserAgent } from "@/lib/ua";
 import { publicLinkBase } from "@/lib/link-paths";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
@@ -40,6 +41,19 @@ export function accessDenied(h: Headers, link: SmartLink): Response | null {
   if (isDefaultAccess(link.access)) return null;
   const why = accessBlock(link.access, { country: countryFromHeaders(h), device: parseUserAgent(h.get("user-agent") ?? "").device, now: new Date() });
   return why ? leanNotFound(hostOf(h), ACCESS_MESSAGES[why]) : null;
+}
+
+/**
+ * Cloudflare Turnstile gate: when the link has bot protection on (and Turnstile is configured), a
+ * visitor without a valid pass cookie first sees an "are you human?" page. `returnPath` is where
+ * they come back to after passing. Returns null to let the visit continue.
+ */
+export function turnstileGate(h: Headers, link: SmartLink): Response | null {
+  if (!link.access.botProtection || !turnstileConfigured()) return null;
+  const m = (h.get("cookie") ?? "").match(/(?:^|;\s*)vl_human=([^;]+)/);
+  if (m && hasHumanPass(decodeURIComponent(m[1]))) return null;
+  const to = publicLinkBase(h, link.slug, appHost);
+  return htmlResponse(leanTurnstilePage({ host: hostOf(h), siteKey: turnstileSiteKey(), slug: link.slug, to }));
 }
 
 /** The 18+ page. `entry`: this page is the visit itself (counts a hit too). */

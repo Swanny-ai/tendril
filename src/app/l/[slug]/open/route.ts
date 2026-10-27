@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { leanNotFound } from "@/lib/lean-link-pages";
 import { isLinkEntry } from "@/lib/link-paths";
-import { accessDenied, openStep } from "@/lib/smart-link-steps";
+import { accessDenied, openStep, turnstileGate } from "@/lib/smart-link-steps";
 import { getSmartLink } from "@/lib/smart-links";
 
 // Step 2 of the deep link flow: visitors inside a social app's browser tap through to their
@@ -13,5 +13,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]/ope
   if (!link || !link.openInBrowser) return leanNotFound(h.get("host") ?? "");
   const denied = accessDenied(h, link);
   if (denied) return denied;
+  const gate = turnstileGate(h, link);
+  if (gate) return gate;
   return openStep(h, link, slug, isLinkEntry(h));
 }

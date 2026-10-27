@@ -10,8 +10,14 @@ describe("parseAccess", () => {
   });
   it("cleans country codes and dates", () => {
     const a = parseAccess({ blockedCountries: ["us", "US", "fr", "xxx", 3], devices: "mobile", startsAt: "2026-10-01T00:00:00Z", endsAt: "nope" });
-    expect(a).toEqual({ blockedCountries: ["US", "FR"], devices: "mobile", startsAt: "2026-10-01T00:00:00.000Z", endsAt: null });
+    expect(a).toEqual({ blockedCountries: ["US", "FR"], devices: "mobile", startsAt: "2026-10-01T00:00:00.000Z", endsAt: null, botProtection: false });
     expect(isDefaultAccess(a)).toBe(false);
+  });
+  it("keeps bot protection and counts it as non-default", () => {
+    const a = parseAccess({ botProtection: true });
+    expect(a.botProtection).toBe(true);
+    expect(isDefaultAccess(a)).toBe(false);
+    expect(parseAccess({ botProtection: "yes" }).botProtection).toBe(false);
   });
 });
 

@@ -7,6 +7,7 @@ import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { DEFAULT_LANDING, parseLanding } from "@/lib/link-landing";
 import { parseAccess } from "@/lib/link-access";
+import { turnstileConfigured } from "@/lib/turnstile";
 import { parseWarningColors } from "@/warning-templates/colors";
 import { SmartLinkForm } from "./smart-link-form";
 import { TemplateUpsell } from "./template-upsell";
@@ -33,6 +34,7 @@ export async function LinkEditScreen({ userId, link }: { userId: string; link: S
         mode={mode}
         publicUrl={url}
         limits={limits}
+        turnstileReady={turnstileConfigured()}
         initial={{
           slug: link.slug,
           destinationUrl: link.destinationUrl,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { DEFAULT_LANDING, defaultIntroSection } from "@/lib/link-landing";
 import { DEFAULT_ACCESS } from "@/lib/link-access";
+import { turnstileConfigured } from "@/lib/turnstile";
 import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
@@ -41,6 +42,7 @@ export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
           mode={mode}
           limits={limits}
           domains={domains}
+          turnstileReady={turnstileConfigured()}
           initial={{
             slug: "",
             destinationUrl: "",
