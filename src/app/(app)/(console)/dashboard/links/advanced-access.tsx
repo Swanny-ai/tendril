@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, ChevronDown, Globe2, MonitorSmartphone, Search, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { CalendarClock, ChevronDown, Globe2, MonitorSmartphone, Search, SlidersHorizontal, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { CountryFlag } from "@/components/country-flag";
 import { isDefaultAccess, type LinkAccess, type LinkDevices } from "@/lib/link-access";
 import { cn } from "@/lib/utils";
@@ -31,8 +30,8 @@ function toLocalInput(iso: string | null): string {
 }
 const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
 
-/** "Advanced": who can open the link (bot check, countries, devices) and when. Collapsed by default. */
-export function AdvancedAccess({ value, onChange, turnstileReady = true }: { value: LinkAccess; onChange: (v: LinkAccess) => void; turnstileReady?: boolean }) {
+/** "Advanced": who can open the link (countries, devices) and when. Collapsed by default. */
+export function AdvancedAccess({ value, onChange }: { value: LinkAccess; onChange: (v: LinkAccess) => void }) {
   const [open, setOpen] = useState(!isDefaultAccess(value));
   const [query, setQuery] = useState("");
   const names = useMemo(() => {
@@ -52,7 +51,6 @@ export function AdvancedAccess({ value, onChange, turnstileReady = true }: { val
     setQuery("");
   };
   const active = [
-    value.botProtection ? "Bot protection" : null,
     value.blockedCountries.length ? `${value.blockedCountries.length} blocked ${value.blockedCountries.length === 1 ? "country" : "countries"}` : null,
     value.devices !== "all" ? DEVICES.find((d) => d.value === value.devices)?.label : null,
     value.startsAt || value.endsAt ? "Scheduled" : null,
@@ -74,21 +72,6 @@ export function AdvancedAccess({ value, onChange, turnstileReady = true }: { val
 
         {open ? (
           <div className="space-y-5 border-t pt-4">
-            {/* Bot protection (Cloudflare Turnstile) */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-sm font-medium">
-                  <ShieldCheck className="size-4 text-muted-foreground" aria-hidden /> Cloudflare Bot Protection
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">Turnstile</span>
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Verify visitors are real people before they reach your link.</p>
-                {value.botProtection && !turnstileReady ? (
-                  <p className="mt-1 text-xs text-[var(--persimmon)]">Add Cloudflare Turnstile keys on the server to turn this on (TURNSTILE_SECRET_KEY, NEXT_PUBLIC_TURNSTILE_SITE_KEY).</p>
-                ) : null}
-              </div>
-              <Switch checked={value.botProtection} onCheckedChange={(botProtection) => set({ botProtection })} aria-label="Cloudflare bot protection" />
-            </div>
-
             {/* Countries */}
             <div className="space-y-2">
               <Label htmlFor="block-country" className="flex items-center gap-1.5">

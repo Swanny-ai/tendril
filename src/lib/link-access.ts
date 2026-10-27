@@ -12,11 +12,9 @@ export type LinkAccess = {
   /** ISO dates; null = no limit. */
   startsAt: string | null;
   endsAt: string | null;
-  /** Show a Cloudflare Turnstile "are you human?" check before the link (blocks bots). */
-  botProtection: boolean;
 };
 
-export const DEFAULT_ACCESS: LinkAccess = { blockedCountries: [], devices: "all", startsAt: null, endsAt: null, botProtection: false };
+export const DEFAULT_ACCESS: LinkAccess = { blockedCountries: [], devices: "all", startsAt: null, endsAt: null };
 
 const isoDate = (v: unknown): string | null => {
   if (typeof v !== "string" || !v) return null;
@@ -36,12 +34,10 @@ export function parseAccess(v: unknown): LinkAccess {
     devices: o.devices === "mobile" || o.devices === "desktop" ? o.devices : "all",
     startsAt: isoDate(o.startsAt),
     endsAt: isoDate(o.endsAt),
-    botProtection: o.botProtection === true,
   };
 }
 
-export const isDefaultAccess = (a: LinkAccess) =>
-  !a.blockedCountries.length && a.devices === "all" && !a.startsAt && !a.endsAt && !a.botProtection;
+export const isDefaultAccess = (a: LinkAccess) => !a.blockedCountries.length && a.devices === "all" && !a.startsAt && !a.endsAt;
 
 /** Why the rules may be refused when saving (end before start), or null. */
 export function accessError(a: LinkAccess): string | null {

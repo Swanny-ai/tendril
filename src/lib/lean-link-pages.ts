@@ -165,25 +165,6 @@ export function leanNotFound(host: string, message = "It may have been removed o
   return htmlResponse(documentHtml({ host, css: NOT_FOUND_CSS, body: `<main><h1>This link isn&apos;t available</h1><p>${esc(message)}</p></main>` }), 404);
 }
 
-const TURNSTILE_CSS = `body{align-items:center;justify-content:center;background:#0b0b0f;color:#fff;text-align:center}main{max-width:22rem;padding:1.5rem}
-.ts-i{width:56px;height:56px;margin:0 auto 1rem;border-radius:16px;display:grid;place-items:center;background:rgba(73,242,100,.12);color:#49f264}
-.ts-h{font-size:1.25rem;font-weight:700;margin:0}.ts-p{margin:.5rem 0 1.25rem!important;font-size:.9rem;color:rgba(255,255,255,.65);line-height:1.5}
-.cf-turnstile{display:flex;justify-content:center;min-height:65px}.ts-ns{margin-top:1rem;font-size:.8rem;color:rgba(255,255,255,.6)}`;
-
-/** The "are you human?" page (Cloudflare Turnstile). On success it auto-submits to /api/verify-human. */
-export function leanTurnstilePage(p: { host: string; siteKey: string; slug: string; to: string }): string {
-  const body =
-    `<main><div class="ts-i"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>` +
-    `<h1 class="ts-h">Quick check</h1><p class="ts-p">Confirm you&apos;re a real person to continue to this link.</p>` +
-    `<form id="vlf" method="POST" action="/api/verify-human">` +
-    `<input type="hidden" name="slug" value="${esc(p.slug)}"><input type="hidden" name="to" value="${esc(p.to)}">` +
-    `<div class="cf-turnstile" data-sitekey="${esc(p.siteKey)}" data-callback="vlok" data-theme="dark"></div>` +
-    `<noscript><p class="ts-ns">Please turn on JavaScript to continue.</p></noscript></form>` +
-    `<script>function vlok(){document.getElementById("vlf").submit()}</script>` +
-    `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></main>`;
-  return documentHtml({ host: p.host, css: TURNSTILE_CSS, body });
-}
-
 /** The creator's profile page (a deep link's "Template"). */
 export function leanLandingPage(
   p: Omit<LandingRenderInput, "preview" | "now" | "popupFor"> & { host: string; lang?: string; autoOpen?: string; meta?: DocOptions["meta"] },

@@ -78,7 +78,6 @@ export function SmartLinkForm({
   domains = [],
   publicUrl,
   mode = "template",
-  turnstileReady = true,
 }: {
   id?: string;
   initial: SmartLinkFormValues;
@@ -86,8 +85,6 @@ export function SmartLinkForm({
   domains?: { id: string; hostname: string }[];
   /** The saved link's address (edit only): copy + QR. */
   publicUrl?: string;
-  /** Whether Cloudflare Turnstile keys are set up on the server (for the bot-protection note). */
-  turnstileReady?: boolean;
   /** "template": Customize template (with the Template page); "classic": Deeplinks (no Template). */
   mode?: "template" | "classic";
 }) {
@@ -487,8 +484,8 @@ export function SmartLinkForm({
           </ToggleSection>
         )}
 
-        {/* Advanced (collapsed): bot protection, blocked countries, devices, schedule */}
-        <AdvancedAccess value={v.access} onChange={(access) => set({ access })} turnstileReady={turnstileReady} />
+        {/* Advanced (collapsed): blocked countries, devices, schedule */}
+        <AdvancedAccess value={v.access} onChange={(access) => set({ access })} />
 
         {/* 5. Note, status, save */}
         <Card size="sm">
