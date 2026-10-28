@@ -40,6 +40,7 @@ model User {
   commissions      AffiliateCommission[]
   payoutRequests   PayoutRequest[]
   cryptoPayments   CryptoPayment[]
+  supportMessages  SupportMessage[]
 
   @@index([referredById])
 }
@@ -439,6 +440,21 @@ model CryptoPayment {
   payCurrency String?
   paidAt      DateTime?
   createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// A message in the help/support chat between a creator and the site owner. A conversation is all
+// the rows for one userId. The owner reads and replies in the admin dashboard (/admin/support).
+model SupportMessage {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body        String
+  fromAdmin   Boolean  @default(false)
+  readByUser  Boolean  @default(true)
+  readByAdmin Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
 }

@@ -10,6 +10,7 @@ import { extendPrepaid, PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
+import { adminReply, markReadByAdmin } from "@/lib/support";
 
 // Every admin action checks the admin again (actions are public endpoints) and refreshes /admin.
 
@@ -236,4 +237,26 @@ export async function markPayoutPaidAction(form: FormData): Promise<AdminResult>
   await requireAdmin();
   const { count } = await db.payoutRequest.updateMany({ where: { id: id(form), status: "requested" }, data: { status: "paid", paidAt: new Date() } });
   return count ? done("Payout marked as paid.") : { error: "That payout isn't open anymore." };
+}
+
+// ---------- Support ----------
+
+/** Reply to a creator in the help chat (shows up in their support widget). */
+export async function replySupportAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const userId = id(form, "userId");
+  const body = String(form.get("body") ?? "");
+  if (!userId) return { error: "Missing the recipient." };
+  const saved = await adminReply(userId, body);
+  if (!saved) return { error: "Please type a reply." };
+  return done("Reply sent.");
+}
+
+/** Mark a creator's messages as read (clears the badge for that thread). */
+export async function markSupportReadAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const userId = id(form, "userId");
+  if (!userId) return { error: "Missing the thread." };
+  await markReadByAdmin(userId);
+  return done("Marked as read.");
 }

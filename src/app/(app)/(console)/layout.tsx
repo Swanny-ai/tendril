@@ -8,7 +8,9 @@ import { DashboardNav } from "./dashboard/nav";
 import { UserMenu } from "./dashboard/user-menu";
 import { VerifyBanner } from "./dashboard/verify-banner";
 import { TrialBanner, TrialPopup } from "./dashboard/trial-notices";
+import { SupportWidget } from "./dashboard/support-widget";
 import { trialInfo } from "@/lib/trial";
+import { userUnreadCount } from "@/lib/support";
 import { canSendEmail } from "@/lib/mailer";
 
 // Shared by /dashboard/... and the editing screens at /edit/..., so moving between them keeps
@@ -17,11 +19,12 @@ export const instant = false;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, page } = await requireAccount();
-  const [plan, user, admin, sub] = await Promise.all([
+  const [plan, user, admin, sub, supportUnread] = await Promise.all([
     getPlan(userId),
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true } }),
     isAdmin(userId),
     db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } }),
+    userUnreadCount(userId),
   ]);
   const trial = { ...trialInfo(sub), userId };
 
@@ -61,6 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
+      <SupportWidget initialUnread={supportUnread} />
     </div>
   );
 }

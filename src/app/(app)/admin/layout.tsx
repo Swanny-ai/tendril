@@ -4,6 +4,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
+import { adminUnreadThreads } from "@/lib/support";
 import { AdminNav } from "./nav";
 
 export const instant = false;
@@ -12,12 +13,13 @@ export const metadata: Metadata = { title: { default: "Admin", template: "%s · 
 // The site owner's dashboard: its own sidebar, separate from the creators' dashboard.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await requireAdmin();
-  const [me, openReports, openPayouts] = await Promise.all([
+  const [me, openReports, openPayouts, openSupport] = await Promise.all([
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } }),
     db.linkReport.count(),
     db.payoutRequest.count({ where: { status: "requested" } }),
+    adminUnreadThreads(),
   ]);
-  const badges = { "/admin/reports": openReports, "/admin/affiliates": openPayouts };
+  const badges = { "/admin/reports": openReports, "/admin/affiliates": openPayouts, "/admin/support": openSupport };
 
   return (
     <div className="flex min-h-svh flex-1">
