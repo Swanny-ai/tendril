@@ -6,7 +6,12 @@ import { BOT_TOPICS } from "@/lib/support-bot";
 
 type Role = "user" | "ai" | "agent";
 type Message = { id: string; body: string; role: Role; createdAt: string };
-type View = { messages: Message[]; mode: "ai" | "agent"; agentSeenAt: string | null };
+type View = { messages: Message[]; mode: "ai" | "agent"; agentSeenAt: string | null; agentTyping: boolean };
+
+// Live updates by polling: fast while the panel is open, a light unread check while it's closed.
+const OPEN_POLL_MS = 3000;
+const CLOSED_POLL_MS = 15_000;
+const TYPING_PING_MS = 3000;
 
 // A floating "Need help?" button (bottom-right of every dashboard page). A scripted assistant answers
 // common questions (topic buttons or typed); when it can't help — or the creator asks — it hands off
@@ -16,6 +21,7 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [mode, setMode] = useState<"ai" | "agent">("ai");
   const [agentSeenAt, setAgentSeenAt] = useState<string | null>(null);
+  const [agentTyping, setAgentTyping] = useState(false);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -25,11 +31,13 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
   const [loaded, setLoaded] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
+  const lastPingRef = useRef(0);
 
   const apply = useCallback((v: View) => {
     setMessages(v.messages);
     setMode(v.mode);
     setAgentSeenAt(v.agentSeenAt);
+    setAgentTyping(v.agentTyping);
   }, []);
 
   // Load the conversation the first time the panel is opened (also marks replies as seen).
@@ -58,25 +66,39 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
     };
   }, [open, loaded, apply]);
 
-  // While a real person is handling it, quietly poll for their replies.
+  // Live: new replies and "typing…" while open; the unread badge while closed. Paused in a hidden tab.
   useEffect(() => {
-    if (!open || !loaded || mode !== "agent") return;
+    if (open && !loaded) return;
     const id = setInterval(async () => {
-      if (busyRef.current) return;
+      if (busyRef.current || document.hidden) return;
       try {
-        const r = await fetch("/api/support");
-        if (r.ok) apply((await r.json()) as View);
+        if (open) {
+          const r = await fetch("/api/support");
+          if (r.ok) {
+            apply((await r.json()) as View);
+            setUnread(0);
+          }
+        } else {
+          const r = await fetch("/api/support?peek=1");
+          if (r.ok) setUnread(((await r.json()) as { unread: number }).unread);
+        }
       } catch {
         /* ignore a dropped poll */
       }
-    }, 12_000);
+    }, open ? OPEN_POLL_MS : CLOSED_POLL_MS);
     return () => clearInterval(id);
-  }, [open, loaded, mode, apply]);
+  }, [open, loaded, apply]);
+
+  // Tell the owner we're typing (at most every few seconds), only once a person is on the chat.
+  function pingTyping() {
+    if (mode !== "agent" || !due(lastPingRef, TYPING_PING_MS)) return;
+    void fetch("/api/support", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "typing" }) }).catch(() => {});
+  }
 
   // Keep the newest message in view.
   useEffect(() => {
     if (open && listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, typing, open, loading]);
+  }, [messages, typing, agentTyping, open, loading]);
 
   async function post(payload: { body: string } | { action: "escalate" }, withTyping: boolean) {
     busyRef.current = true;
@@ -187,15 +209,16 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
               ))
             )}
 
-            {typing ? (
-              <div className="flex items-start">
-                <div className="flex items-center gap-1 rounded-2xl bg-muted px-3 py-2.5" aria-label="Assistant is typing">
+            {typing || agentTyping ? (
+              <div className="flex flex-col items-start gap-0.5">
+                <div className="flex items-center gap-1 rounded-2xl bg-muted px-3 py-2.5" aria-label={typing ? "Assistant is typing" : "Support is typing"}>
                   <Dot /> <Dot delay="150ms" /> <Dot delay="300ms" />
                 </div>
+                {agentTyping && !typing ? <p className="pl-1 text-[11px] text-muted-foreground">Support is typing…</p> : null}
               </div>
             ) : null}
 
-            {!typing && lastIsUser ? <p className="self-end pt-0.5 pr-1 text-[11px] text-muted-foreground">{seen ? "Seen" : "Delivered"}</p> : null}
+            {!typing && !agentTyping && lastIsUser ? <p className="self-end pt-0.5 pr-1 text-[11px] text-muted-foreground">{seen ? "Seen" : "Delivered"}</p> : null}
           </div>
 
           {error ? <p className="px-4 pb-1 text-xs text-[var(--persimmon-text)]">{error}</p> : null}
@@ -230,7 +253,10 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
           <form onSubmit={send} className="flex items-end gap-2 border-t p-3">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                pingTyping();
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -255,6 +281,14 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
       ) : null}
     </>
   );
+}
+
+/** True (and restarts the clock) when at least `ms` passed since the last time it returned true. */
+function due(ref: { current: number }, ms: number): boolean {
+  const now = Date.now();
+  if (now - ref.current < ms) return false;
+  ref.current = now;
+  return true;
 }
 
 /** The creator's message shown before the server confirms it. */

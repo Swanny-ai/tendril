@@ -25,7 +25,13 @@ export type ThreadView = {
   mode: "ai" | "agent";
   /** When an agent last read the creator's messages (powers the creator-side "Seen"). */
   agentSeenAt: Date | null;
+  /** A real person is typing a reply right now. */
+  agentTyping: boolean;
 };
+
+/** How long a keystroke keeps the other side's "typing…" dots on. */
+const TYPING_WINDOW_MS = 6000;
+const isTyping = (at: Date | null | undefined) => !!at && Date.now() - at.getTime() < TYPING_WINDOW_MS;
 
 const asRole = (r: string): SupportRole => (r === "ai" || r === "agent" ? r : "user");
 
@@ -47,9 +53,36 @@ export async function getThread(userId: string): Promise<SupportMessage[]> {
 export async function getThreadView(userId: string): Promise<ThreadView> {
   const [messages, thread] = await Promise.all([
     getThread(userId),
-    db.supportThread.findUnique({ where: { userId }, select: { mode: true, agentSeenAt: true } }),
+    db.supportThread.findUnique({ where: { userId }, select: { mode: true, agentSeenAt: true, agentTypingAt: true } }),
   ]);
-  return { messages, mode: thread?.mode === "agent" ? "agent" : "ai", agentSeenAt: thread?.agentSeenAt ?? null };
+  return {
+    messages,
+    mode: thread?.mode === "agent" ? "agent" : "ai",
+    agentSeenAt: thread?.agentSeenAt ?? null,
+    agentTyping: isTyping(thread?.agentTypingAt),
+  };
+}
+
+export type AdminThreadView = {
+  messages: SupportMessage[];
+  /** The creator is typing right now. */
+  userTyping: boolean;
+  /** When the creator last viewed the chat (powers the owner-side "Seen"). */
+  userSeenAt: Date | null;
+};
+
+/** The conversation as the owner sees it, for the live admin thread. */
+export async function getAdminThreadView(userId: string): Promise<AdminThreadView> {
+  const [messages, thread] = await Promise.all([
+    getThread(userId),
+    db.supportThread.findUnique({ where: { userId }, select: { userSeenAt: true, userTypingAt: true } }),
+  ]);
+  return { messages, userTyping: isTyping(thread?.userTypingAt), userSeenAt: thread?.userSeenAt ?? null };
+}
+
+/** Records a keystroke so the other side sees "typing…". */
+export async function markTyping(userId: string, side: "user" | "agent"): Promise<void> {
+  await db.supportThread.updateMany({ where: { userId }, data: side === "user" ? { userTypingAt: new Date() } : { agentTypingAt: new Date() } });
 }
 
 /** How many replies from support the creator hasn't seen yet (the widget's dot). */
@@ -88,6 +121,7 @@ export async function handleUserMessage(userId: string, body: string): Promise<T
   if (!text) return null;
   const thread = await ensureThread(userId);
   await addMessage(userId, text, "user");
+  await db.supportThread.update({ where: { userId }, data: { userTypingAt: null } });
 
   if (thread.mode !== "agent") {
     // How many "didn't get that" replies came right before this message (two in a row → a person).
@@ -121,7 +155,7 @@ export async function adminReply(userId: string, body: string): Promise<SupportM
   if (!text) return null;
   await ensureThread(userId);
   // The owner is now handling it directly.
-  await db.supportThread.update({ where: { userId }, data: { mode: "agent" } });
+  await db.supportThread.update({ where: { userId }, data: { mode: "agent", agentTypingAt: null } });
   return addMessage(userId, text, "agent");
 }
 

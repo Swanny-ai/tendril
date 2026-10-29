@@ -475,6 +475,9 @@ model SupportThread {
   userSeenAt  DateTime?
   // When an agent last viewed the creator's messages (drives the creator's "Seen" in agent mode).
   agentSeenAt DateTime?
+  // Last keystroke on each side, for the live "typing…" indicator (shown for a few seconds).
+  userTypingAt  DateTime?
+  agentTypingAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { supportThreads } from "@/lib/support";
 import { Header, Pill, Table, ago } from "../ui";
+import { AutoRefresh } from "./auto-refresh";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Support" };
@@ -14,6 +15,7 @@ export default async function AdminSupport() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      <AutoRefresh />
       <Header
         title="Support"
         intro="Chats from the help button on creators' dashboards. The scripted assistant answers common questions first and hands off to you when it can't — those show as waiting on you."

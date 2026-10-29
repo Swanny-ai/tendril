@@ -17,11 +17,10 @@ export function MarkRead({ userId }: { userId: string }) {
   return null;
 }
 
-/** The owner's reply box under a conversation. */
-export function ReplyForm({ userId }: { userId: string }) {
+/** The owner's reply box under a conversation. `onTyping` fires on keystrokes, `onSent` after a reply. */
+export function ReplyForm({ userId, onTyping, onSent }: { userId: string; onTyping?: () => void; onSent?: () => void }) {
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
-  const router = useRouter();
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const send = () => {
@@ -36,9 +35,8 @@ export function ReplyForm({ userId }: { userId: string }) {
         toast.error(res.error);
         return;
       }
-      toast.success(res.ok ?? "Reply sent.");
       setText("");
-      router.refresh();
+      onSent?.();
       ref.current?.focus();
     });
   };
@@ -48,7 +46,10 @@ export function ReplyForm({ userId }: { userId: string }) {
       <textarea
         ref={ref}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          onTyping?.();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
