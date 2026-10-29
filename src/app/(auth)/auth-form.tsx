@@ -130,11 +130,8 @@ function GoogleIcon() {
   );
 }
 
-/** A plain "F" badge for the Fanvue button (we don't ship Fanvue's logo artwork). */
+/** Fanvue's app icon (their green tile), for the "Continue with Fanvue" button. */
 function FanvueIcon() {
-  return (
-    <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-foreground text-[10px] font-black leading-none text-background">
-      F
-    </span>
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/brands/fanvue-icon.png" alt="" aria-hidden width={18} height={18} className="size-[18px] rounded-[5px]" />;
 }
