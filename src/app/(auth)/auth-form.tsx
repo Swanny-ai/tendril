@@ -5,9 +5,19 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { googleSignInAction, loginAction, signupAction, type AuthFormState } from "./actions";
+import { fanvueSignInAction, googleSignInAction, loginAction, signupAction, type AuthFormState } from "./actions";
 
-export function AuthForm({ mode, googleEnabled, username }: { mode: "login" | "signup"; googleEnabled: boolean; username?: string }) {
+export function AuthForm({
+  mode,
+  googleEnabled,
+  fanvueEnabled = false,
+  username,
+}: {
+  mode: "login" | "signup";
+  googleEnabled: boolean;
+  fanvueEnabled?: boolean;
+  username?: string;
+}) {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(mode === "login" ? loginAction : signupAction, undefined);
 
   return (
@@ -52,17 +62,26 @@ export function AuthForm({ mode, googleEnabled, username }: { mode: "login" | "s
         </Button>
       </form>
 
-      {googleEnabled ? (
-        <>
+      {googleEnabled || fanvueEnabled ? (
+        <div className="space-y-2.5">
           <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
             <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
           </div>
-          <form action={googleSignInAction}>
-            <Button type="submit" variant="outline" className="h-10 w-full gap-2">
-              <GoogleIcon /> {mode === "login" ? "Continue with Google" : "Sign up with Google"}
-            </Button>
-          </form>
-        </>
+          {googleEnabled ? (
+            <form action={googleSignInAction}>
+              <Button type="submit" variant="outline" className="h-10 w-full gap-2">
+                <GoogleIcon /> {mode === "login" ? "Continue with Google" : "Sign up with Google"}
+              </Button>
+            </form>
+          ) : null}
+          {fanvueEnabled ? (
+            <form action={fanvueSignInAction}>
+              <Button type="submit" variant="outline" className="h-10 w-full gap-2">
+                <FanvueIcon /> {mode === "login" ? "Continue with Fanvue" : "Sign up with Fanvue"}
+              </Button>
+            </form>
+          ) : null}
+        </div>
       ) : null}
 
       <p className="text-center text-sm text-muted-foreground">
@@ -108,5 +127,14 @@ function GoogleIcon() {
       <path fill="#FBBC05" d="M5.28 14.29a7.2 7.2 0 0 1 0-4.58V6.6H1.27a12 12 0 0 0 0 10.8l4.01-3.11Z" />
       <path fill="#EA4335" d="M12 4.75c1.76 0 3.34.61 4.59 1.8l3.44-3.44A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.27 6.6l4.01 3.11C6.22 6.86 8.87 4.75 12 4.75Z" />
     </svg>
+  );
+}
+
+/** A plain "F" badge for the Fanvue button (we don't ship Fanvue's logo artwork). */
+function FanvueIcon() {
+  return (
+    <span aria-hidden className="grid size-4 place-items-center rounded-[4px] bg-foreground text-[10px] font-black leading-none text-background">
+      F
+    </span>
   );
 }

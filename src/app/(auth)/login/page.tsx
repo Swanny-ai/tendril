@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { currentUserId, googleEnabled } from "@/lib/auth";
+import { currentUserId, fanvueEnabled, googleEnabled } from "@/lib/auth";
 import { AuthForm } from "../auth-form";
 
 export const instant = false;
 
 export const metadata: Metadata = { title: "Sign in" };
 
-// Messages for the errors Auth.js sends back here (?error=...) after a Google sign-in fails.
+// Messages for the errors Auth.js sends back here (?error=...) after a Google or Fanvue sign-in fails.
 const AUTH_ERRORS: Record<string, string> = {
-  OAuthAccountNotLinked: "This email already has a ViewLink account with a password. Sign in with your email and password instead.",
-  AccessDenied: "Google sign-in was cancelled or not allowed.",
-  Configuration: "Google sign-in isn't available right now. Please use your email and password.",
+  OAuthAccountNotLinked: "This email already has a ViewLink account. Sign in the way you first signed up (email and password, or the other button).",
+  AccessDenied: "Sign-in was cancelled or not allowed.",
+  Configuration: "That sign-in option isn't available right now. Please use your email and password.",
+  FanvueNoEmail: "Your Fanvue account didn't share an email address, so we can't create a ViewLink account from it. Please sign up with your email instead.",
 };
 
 export default async function LoginPage(props: PageProps<"/login">) {
@@ -32,7 +33,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
           {authError}
         </p>
       ) : null}
-      <AuthForm mode="login" googleEnabled={googleEnabled} />
+      <AuthForm mode="login" googleEnabled={googleEnabled} fanvueEnabled={fanvueEnabled} />
     </>
   );
 }

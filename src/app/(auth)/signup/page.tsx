@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { currentUserId, googleEnabled } from "@/lib/auth";
+import { currentUserId, fanvueEnabled, googleEnabled } from "@/lib/auth";
 import { AuthForm } from "../auth-form";
 
 export const instant = false;
@@ -17,7 +17,7 @@ export default async function SignupPage(props: PageProps<"/signup">) {
       <p className="mb-6 text-sm text-muted-foreground">
         {username ? <>Grab <span className="font-medium text-foreground">/{username}</span> before someone else does.</> : "It's free, and takes about a minute."}
       </p>
-      <AuthForm mode="signup" googleEnabled={googleEnabled} username={username} />
+      <AuthForm mode="signup" googleEnabled={googleEnabled} fanvueEnabled={fanvueEnabled} username={username} />
     </>
   );
 }

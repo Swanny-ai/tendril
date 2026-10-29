@@ -79,6 +79,10 @@ export async function googleSignInAction() {
   await signIn("google", { redirectTo: "/dashboard" });
 }
 
+export async function fanvueSignInAction() {
+  await signIn("fanvue", { redirectTo: "/dashboard" });
+}
+
 export async function signOutAction() {
   await signOut({ redirectTo: "/" });
 }
