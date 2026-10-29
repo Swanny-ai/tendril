@@ -16,7 +16,7 @@ export default async function AdminSupport() {
     <div className="mx-auto max-w-5xl space-y-5">
       <Header
         title="Support"
-        intro="Chats from the help button on creators' dashboards. The AI assistant answers common questions first and hands off to you when it can't — those show as waiting on you."
+        intro="Chats from the help button on creators' dashboards. The scripted assistant answers common questions first and hands off to you when it can't — those show as waiting on you."
       />
       {waiting > 0 ? (
         <p className="text-sm font-medium text-[var(--persimmon)]">
@@ -41,7 +41,7 @@ export default async function AdminSupport() {
                   {t.lastBody}
                 </span>
               </td>
-              <td>{t.mode === "agent" ? <Pill tone="warn">Needs you</Pill> : <Pill tone="info">AI</Pill>}</td>
+              <td>{t.mode === "agent" ? <Pill tone="warn">Needs you</Pill> : <Pill tone="info">Assistant</Pill>}</td>
               <td className="text-xs whitespace-nowrap text-muted-foreground">{ago(t.lastAt)}</td>
               <td>
                 <div className="flex items-center justify-end gap-2">

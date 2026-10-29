@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Headset, Loader2, Send, Sparkles, X } from "lucide-react";
+import { BOT_TOPICS } from "@/lib/support-bot";
 
 type Role = "user" | "ai" | "agent";
 type Message = { id: string; body: string; role: Role; createdAt: string };
 type View = { messages: Message[]; mode: "ai" | "agent"; agentSeenAt: string | null };
 
-// A floating "Need help?" button (bottom-right of every dashboard page). An AI assistant answers
-// common questions; when it can't help — or the creator asks — it hands off to a real person, who
-// replies from the admin dashboard. Shows a typing indicator and "Seen" receipts.
+// A floating "Need help?" button (bottom-right of every dashboard page). A scripted assistant answers
+// common questions (topic buttons or typed); when it can't help — or the creator asks — it hands off
+// to a real person, who replies from the admin dashboard. Shows a typing indicator and "Seen" receipts.
 export function SupportWidget({ initialUnread }: { initialUnread: number }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -83,11 +84,15 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
     setError(null);
     if (withTyping) setTyping(true);
     try {
-      const r = await fetch("/api/support", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Let the typing dots show for a moment, like a person answering.
+      const [r] = await Promise.all([
+        fetch("/api/support", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        new Promise((done) => setTimeout(done, withTyping ? 900 : 0)),
+      ]);
       const d = (await r.json().catch(() => ({}))) as Partial<View> & { error?: string };
       if (!r.ok || !d.messages) {
         setError(d.error ?? "Something went wrong. Please try again.");
@@ -105,14 +110,13 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
     }
   }
 
-  async function send(e?: React.FormEvent) {
+  async function send(e?: React.FormEvent, preset?: string) {
     e?.preventDefault();
-    const body = text.trim();
+    const body = (preset ?? text).trim();
     if (!body || sending) return;
-    // Show the creator's message right away, then let the AI "type".
-    const optimistic: Message = { id: `tmp-${Date.now()}`, body, role: "user", createdAt: new Date().toISOString() };
-    setMessages((m) => [...m, optimistic]);
-    setText("");
+    // Show the creator's message right away, then let the assistant "type".
+    setMessages((m) => [...m, pendingMessage(body)]);
+    if (!preset) setText("");
     await post({ body }, mode === "ai");
   }
 
@@ -146,7 +150,7 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
             </span>
             <div className="min-w-0">
               <p className="font-semibold leading-tight">Support</p>
-              <p className="text-xs text-primary-foreground/80">{mode === "agent" ? "A real person is on it." : "AI assistant · replies instantly"}</p>
+              <p className="text-xs text-primary-foreground/80">{mode === "agent" ? "A real person is on it." : "Assistant · replies instantly"}</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="ml-auto rounded-md p-1 hover:bg-white/15">
               <X className="size-5" />
@@ -160,7 +164,7 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
               </div>
             ) : messages.length === 0 ? (
               <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
-                <p>Hi! 👋 Ask me anything about ViewLink — plans, custom domains, your links. I&apos;ll help right away, or bring in a real person if you need one.</p>
+                <p>Hi! 👋 Pick a topic below or type your question. You can talk to a real person anytime.</p>
               </div>
             ) : (
               messages.map((m) => (
@@ -196,7 +200,23 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
 
           {error ? <p className="px-4 pb-1 text-xs text-[var(--persimmon-text)]">{error}</p> : null}
 
-          {mode === "ai" && messages.length > 0 ? (
+          {mode === "ai" && !typing && (messages.length === 0 || messages[messages.length - 1].role === "ai") ? (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+              {BOT_TOPICS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  disabled={sending}
+                  onClick={() => void send(undefined, t.label)}
+                  className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-50"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {mode === "ai" ? (
             <button
               type="button"
               onClick={() => post({ action: "escalate" }, false)}
@@ -235,6 +255,11 @@ export function SupportWidget({ initialUnread }: { initialUnread: number }) {
       ) : null}
     </>
   );
+}
+
+/** The creator's message shown before the server confirms it. */
+function pendingMessage(body: string): Message {
+  return { id: `tmp-${Date.now()}`, body, role: "user", createdAt: new Date().toISOString() };
 }
 
 function Dot({ delay = "0ms" }: { delay?: string }) {

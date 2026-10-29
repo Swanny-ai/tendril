@@ -1,14 +1,14 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { aiReply, supportAiConfigured, type AiTurn } from "@/lib/support-ai";
+import { BOT_FALLBACK, botReply } from "@/lib/support-bot";
 
-// Help/support chat. An AI assistant answers common questions first and hands off to the site
+// Help/support chat. A scripted assistant answers common questions first and hands off to the site
 // owner (a real agent) when it can't help or the creator asks for a person. One "thread" is all
 // the SupportMessage rows for a single userId, plus a SupportThread row holding its state.
 
 export const SUPPORT_MAX_LEN = 2000;
 
-// Shown when the chat is handed from the AI to a real person.
+// Shown when the chat is handed from the assistant to a real person.
 const HANDOFF = "Thanks — I'm connecting you with a real person from our team. They'll reply right here, so you can close this and come back anytime.";
 
 export type SupportRole = "user" | "ai" | "agent";
@@ -80,7 +80,7 @@ async function setMode(userId: string, mode: "ai" | "agent") {
 }
 
 /**
- * A creator sends a message. In AI mode the assistant replies (and may hand off to a human);
+ * A creator sends a message. In "ai" mode the scripted assistant replies (and may hand off to a human);
  * in agent mode we just record it for the owner. Returns the refreshed thread view.
  */
 export async function handleUserMessage(userId: string, body: string): Promise<ThreadView | null> {
@@ -90,23 +90,17 @@ export async function handleUserMessage(userId: string, body: string): Promise<T
   await addMessage(userId, text, "user");
 
   if (thread.mode !== "agent") {
-    if (!supportAiConfigured()) {
-      // No assistant available — hand straight to a person.
-      await addMessage(userId, HANDOFF, "ai");
-      await setMode(userId, "agent");
-    } else {
-      try {
-        const history = await getThread(userId);
-        const turns: AiTurn[] = history.map((m) => ({ role: m.role, body: m.body }));
-        const { reply, escalate } = await aiReply(turns);
-        await addMessage(userId, escalate ? reply || HANDOFF : reply, "ai");
-        if (escalate) await setMode(userId, "agent");
-      } catch {
-        // Model failed — don't leave them hanging, hand off to a person.
-        await addMessage(userId, HANDOFF, "ai");
-        await setMode(userId, "agent");
-      }
-    }
+    // How many "didn't get that" replies came right before this message (two in a row → a person).
+    const recent = await db.supportMessage.findMany({
+      where: { userId, role: "ai" },
+      orderBy: { createdAt: "desc" },
+      take: 1,
+      select: { body: true },
+    });
+    const misses = recent[0]?.body === BOT_FALLBACK ? 1 : 0;
+    const { reply, escalate } = botReply(text, misses);
+    await addMessage(userId, escalate ? HANDOFF : reply, "ai");
+    if (escalate) await setMode(userId, "agent");
   }
   return getThreadView(userId);
 }
