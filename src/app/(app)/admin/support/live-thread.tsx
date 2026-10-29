@@ -2,42 +2,43 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { CheckCircle2, Sparkles } from "lucide-react";
 import { ReplyForm } from "./reply-form";
 
-type Role = "user" | "ai" | "agent";
+type Role = "user" | "ai" | "agent" | "event";
 export type LiveMessage = { id: string; body: string; role: Role; createdAt: string };
-type View = { messages: LiveMessage[]; userTyping: boolean; userSeenAt: string | null };
+export type LiveView = { status: "open" | "resolved"; messages: LiveMessage[]; userTyping: boolean; userSeenAt: string | null };
+type ApiView = { ticket: { status: "open" | "resolved" }; messages: LiveMessage[]; userTyping: boolean; userSeenAt: string | null };
 
 const POLL_MS = 3000;
 const TYPING_PING_MS = 3000;
 
 /**
- * One support conversation on the owner's side, kept live by polling: the creator's new messages,
- * their "typing…", and "Seen" on your last reply appear without a refresh.
+ * One support ticket on the owner's side, kept live by polling: the creator's new messages, their
+ * "typing…", status changes, and "Seen" on your last reply appear without a refresh.
  */
-export function LiveThread({ userId, who, initial }: { userId: string; who: string; initial: View }) {
-  const [view, setView] = useState<View>(initial);
+export function LiveThread({ ticketId, who, initial }: { ticketId: string; who: string; initial: LiveView }) {
+  const [view, setView] = useState<LiveView>(initial);
   const listRef = useRef<HTMLDivElement>(null);
   const lastPingRef = useRef(0);
-  const countRef = useRef(initial.messages.length);
+  const seenRef = useRef({ count: initial.messages.length, status: initial.status });
   const router = useRouter();
 
   const refresh = useCallback(async () => {
     try {
-      const r = await fetch(`/api/admin/support/${userId}`);
+      const r = await fetch(`/api/admin/support/${ticketId}`);
       if (!r.ok) return;
-      const v = (await r.json()) as View;
-      setView(v);
-      // New messages were just marked read: update the nav badge too.
-      if (v.messages.length !== countRef.current) {
-        countRef.current = v.messages.length;
+      const d = (await r.json()) as ApiView;
+      setView({ status: d.ticket.status, messages: d.messages, userTyping: d.userTyping, userSeenAt: d.userSeenAt });
+      // New messages (now read) or a status change: update the header buttons and nav badge too.
+      if (d.messages.length !== seenRef.current.count || d.ticket.status !== seenRef.current.status) {
+        seenRef.current = { count: d.messages.length, status: d.ticket.status };
         router.refresh();
       }
     } catch {
       /* ignore a dropped poll */
     }
-  }, [userId, router]);
+  }, [ticketId, router]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -48,15 +49,15 @@ export function LiveThread({ userId, who, initial }: { userId: string; who: stri
 
   // Keep the newest message in view.
   useEffect(() => {
-    listRef.current?.lastElementChild?.scrollIntoView({ block: "nearest" });
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [view.messages.length, view.userTyping]);
 
   const pingTyping = () => {
     if (!due(lastPingRef, TYPING_PING_MS)) return;
-    void fetch(`/api/admin/support/${userId}`, { method: "POST" }).catch(() => {});
+    void fetch(`/api/admin/support/${ticketId}`, { method: "POST" }).catch(() => {});
   };
 
-  const { messages, userTyping, userSeenAt } = view;
+  const { messages, userTyping, userSeenAt, status } = view;
   const lastAgent = [...messages].reverse().find((m) => m.role === "agent");
 
   return (
@@ -66,9 +67,17 @@ export function LiveThread({ userId, who, initial }: { userId: string; who: stri
           <p className="py-8 text-center text-sm text-muted-foreground">No messages yet.</p>
         ) : (
           messages.map((m) => {
+            if (m.role === "event") {
+              return (
+                <p key={m.id} className="text-center text-[11px] text-muted-foreground">
+                  {m.body} · {timeOf(m.createdAt)}
+                </p>
+              );
+            }
             const mine = m.role === "agent";
             const label = m.role === "agent" ? "You" : m.role === "ai" ? "Assistant" : who;
-            const seen = mine && m.id === lastAgent?.id && !!userSeenAt && userSeenAt >= m.createdAt;
+            const isLast = mine && m.id === lastAgent?.id;
+            const seen = isLast && !!userSeenAt && userSeenAt >= m.createdAt;
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className="max-w-[80%]">
@@ -82,7 +91,7 @@ export function LiveThread({ userId, who, initial }: { userId: string; who: stri
                   <p className={`mt-1 flex items-center gap-1 text-[11px] text-muted-foreground ${mine ? "justify-end" : "justify-start"}`}>
                     {m.role === "ai" ? <Sparkles className="size-3" /> : null}
                     {label} · {timeOf(m.createdAt)}
-                    {mine && m.id === lastAgent?.id ? (seen ? " · Seen" : " · Delivered") : null}
+                    {isLast ? (seen ? " · Seen" : " · Delivered") : null}
                   </p>
                 </div>
               </div>
@@ -99,7 +108,13 @@ export function LiveThread({ userId, who, initial }: { userId: string; who: stri
         ) : null}
       </div>
 
-      <ReplyForm userId={userId} onTyping={pingTyping} onSent={refresh} />
+      {status === "resolved" ? (
+        <p className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-4 text-primary" /> This ticket is resolved. Replying reopens it.
+        </p>
+      ) : null}
+
+      <ReplyForm ticketId={ticketId} onTyping={pingTyping} onSent={refresh} />
     </>
   );
 }

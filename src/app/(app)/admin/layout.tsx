@@ -4,7 +4,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { adminUnreadThreads } from "@/lib/support";
+import { adminUnreadTickets } from "@/lib/support";
 import { AdminNav } from "./nav";
 
 export const instant = false;
@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } }),
     db.linkReport.count(),
     db.payoutRequest.count({ where: { status: "requested" } }),
-    adminUnreadThreads(),
+    adminUnreadTickets(),
   ]);
   const badges = { "/admin/reports": openReports, "/admin/affiliates": openPayouts, "/admin/support": openSupport };
 

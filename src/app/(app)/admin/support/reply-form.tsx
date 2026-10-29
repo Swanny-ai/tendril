@@ -6,19 +6,19 @@ import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { markSupportReadAction, replySupportAction } from "../actions";
 
-/** Marks the creator's messages as read as soon as the owner opens the thread (clears the badge). */
-export function MarkRead({ userId }: { userId: string }) {
+/** Marks the creator's messages as read as soon as the owner opens the ticket (clears the badge). */
+export function MarkRead({ ticketId }: { ticketId: string }) {
   const router = useRouter();
   useEffect(() => {
     const form = new FormData();
-    form.set("userId", userId);
+    form.set("ticketId", ticketId);
     void markSupportReadAction(form).then(() => router.refresh());
-  }, [userId, router]);
+  }, [ticketId, router]);
   return null;
 }
 
-/** The owner's reply box under a conversation. `onTyping` fires on keystrokes, `onSent` after a reply. */
-export function ReplyForm({ userId, onTyping, onSent }: { userId: string; onTyping?: () => void; onSent?: () => void }) {
+/** The owner's reply box under a ticket. `onTyping` fires on keystrokes, `onSent` after a reply. */
+export function ReplyForm({ ticketId, onTyping, onSent }: { ticketId: string; onTyping?: () => void; onSent?: () => void }) {
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -27,7 +27,7 @@ export function ReplyForm({ userId, onTyping, onSent }: { userId: string; onTypi
     const body = text.trim();
     if (!body || pending) return;
     const form = new FormData();
-    form.set("userId", userId);
+    form.set("ticketId", ticketId);
     form.set("body", body);
     start(async () => {
       const res = await replySupportAction(form);

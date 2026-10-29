@@ -41,7 +41,7 @@ model User {
   payoutRequests   PayoutRequest[]
   cryptoPayments   CryptoPayment[]
   supportMessages  SupportMessage[]
-  supportThread    SupportThread?
+  supportTickets   SupportTicket[]
 
   @@index([referredById])
 }
@@ -445,39 +445,53 @@ model CryptoPayment {
   @@index([userId, createdAt])
 }
 
-// A message in the help/support chat. A conversation is all the rows for one userId. An AI
-// assistant answers common questions first; it hands off to the site owner (a real agent) when
-// it can't help or the creator asks for a person. The owner reads and replies in /admin/support.
+// A message in a support ticket. A scripted assistant answers common questions first and hands
+// off to the site owner (a real agent) when it can't help or the creator asks for a person.
 model SupportMessage {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   body        String
-  // Who wrote it: "user" (the creator), "ai" (the assistant), "agent" (the site owner).
-  role        String   @default("user")
-  fromAdmin   Boolean  @default(false)
-  readByUser  Boolean  @default(true)
-  readByAdmin Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  // Who wrote it: "user" (the creator), "ai" (the assistant), "agent" (the site owner),
+  // or "event" (a status line such as "Marked as resolved").
+  role        String        @default("user")
+  fromAdmin   Boolean       @default(false)
+  readByUser  Boolean       @default(true)
+  readByAdmin Boolean       @default(false)
+  createdAt   DateTime      @default(now())
 
   @@index([userId, createdAt])
+  @@index([ticketId, createdAt])
 }
 
-// Per-creator conversation state: whether the AI or a real agent is handling it, and the "seen"
-// timestamps powering the read receipts on both sides.
-model SupportThread {
-  userId      String    @id
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+// One support conversation ("ticket"). Creators can open several; each is open or resolved and
+// stays in their history (and the owner's inbox) either way.
+model SupportTicket {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // The creator's first message, shortened, shown in ticket lists.
+  subject       String           @default("")
+  // "open" | "resolved"
+  status        String           @default("open")
   // "ai" while the assistant handles it, "agent" once it's handed to the site owner.
-  mode        String    @default("ai")
-  escalatedAt DateTime?
-  // When the creator last viewed the chat (drives the owner's "Seen").
-  userSeenAt  DateTime?
-  // When an agent last viewed the creator's messages (drives the creator's "Seen" in agent mode).
-  agentSeenAt DateTime?
-  // Last keystroke on each side, for the live "typing…" indicator (shown for a few seconds).
+  mode          String           @default("ai")
+  escalatedAt   DateTime?
+  resolvedAt    DateTime?
+  // Who resolved it: "user" | "agent"
+  resolvedBy    String?
+  // Read receipts and the live "typing…" indicator, one per side.
+  userSeenAt    DateTime?
+  agentSeenAt   DateTime?
   userTypingAt  DateTime?
   agentTypingAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  lastMessageAt DateTime         @default(now())
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  messages      SupportMessage[]
+
+  @@index([userId, lastMessageAt])
+  @@index([status, lastMessageAt])
 }

@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { userId, page } = await requireAccount();
   const [plan, user, admin, sub, supportUnread] = await Promise.all([
     getPlan(userId),
-    db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true } }),
+    db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true, name: true } }),
     isAdmin(userId),
     db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } }),
     userUnreadCount(userId),
@@ -64,7 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
-      <SupportWidget initialUnread={supportUnread} />
+      <SupportWidget initialUnread={supportUnread} firstName={user.name?.trim().split(/\s+/)[0] || null} />
     </div>
   );
 }

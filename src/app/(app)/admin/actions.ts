@@ -10,7 +10,7 @@ import { extendPrepaid, PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
-import { adminReply, markReadByAdmin } from "@/lib/support";
+import { adminReply, markReadByAdmin, setTicketStatusByAdmin } from "@/lib/support";
 
 // Every admin action checks the admin again (actions are public endpoints) and refreshes /admin.
 
@@ -241,22 +241,28 @@ export async function markPayoutPaidAction(form: FormData): Promise<AdminResult>
 
 // ---------- Support ----------
 
-/** Reply to a creator in the help chat (shows up in their support widget). */
+/** Reply in a support ticket (shows up in the creator's help widget). Reopens a resolved ticket. */
 export async function replySupportAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
-  const userId = id(form, "userId");
-  const body = String(form.get("body") ?? "");
-  if (!userId) return { error: "Missing the recipient." };
-  const saved = await adminReply(userId, body);
-  if (!saved) return { error: "Please type a reply." };
+  const ticketId = id(form, "ticketId");
+  if (!ticketId) return { error: "Missing the conversation." };
+  if (!(await adminReply(ticketId, String(form.get("body") ?? "")))) return { error: "Please type a reply." };
   return done("Reply sent.");
 }
 
-/** Mark a creator's messages as read (clears the badge for that thread). */
+/** Mark a ticket's creator messages as read (clears the badge for it). */
 export async function markSupportReadAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
-  const userId = id(form, "userId");
-  if (!userId) return { error: "Missing the thread." };
-  await markReadByAdmin(userId);
+  const ticketId = id(form, "ticketId");
+  if (!ticketId) return { error: "Missing the conversation." };
+  await markReadByAdmin(ticketId);
   return done("Marked as read.");
+}
+
+/** Mark a ticket resolved, or reopen it (the creator sees the change in their widget). */
+export async function setSupportStatusAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const status = id(form, "status") === "resolved" ? "resolved" : "open";
+  if (!(await setTicketStatusByAdmin(id(form, "ticketId"), status))) return { error: "Conversation not found." };
+  return done(status === "resolved" ? "Marked as resolved." : "Conversation reopened.");
 }
