@@ -10,13 +10,23 @@ export const metadata: Metadata = { title: "Support" };
 export default async function AdminSupport() {
   await requireAdmin();
   const threads = await supportThreads();
+  const waiting = threads.filter((t) => t.unread > 0).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <Header title="Support" intro="Messages creators sent from the help button on their dashboard. Open a conversation to read it and reply." />
-      <Table head={["Creator", "Last message", "When", ""]} empty={!threads.length}>
+      <Header
+        title="Support"
+        intro="Chats from the help button on creators' dashboards. The AI assistant answers common questions first and hands off to you when it can't — those show as waiting on you."
+      />
+      {waiting > 0 ? (
+        <p className="text-sm font-medium text-[var(--persimmon)]">
+          {waiting} conversation{waiting === 1 ? "" : "s"} waiting on a reply.
+        </p>
+      ) : null}
+      <Table head={["Creator", "Last message", "Handled by", "When", ""]} empty={!threads.length}>
         {threads.map((t) => {
           const who = t.name || t.email || "Creator";
+          const prefix = t.lastRole === "agent" ? "You: " : t.lastRole === "ai" ? "Assistant: " : "";
           return (
             <tr key={t.userId} className="align-top">
               <td className="max-w-52">
@@ -27,10 +37,11 @@ export default async function AdminSupport() {
               </td>
               <td className="max-w-72">
                 <span className="block truncate text-sm text-muted-foreground">
-                  {t.lastFromAdmin ? "You: " : ""}
+                  {prefix}
                   {t.lastBody}
                 </span>
               </td>
+              <td>{t.mode === "agent" ? <Pill tone="warn">Needs you</Pill> : <Pill tone="info">AI</Pill>}</td>
               <td className="text-xs whitespace-nowrap text-muted-foreground">{ago(t.lastAt)}</td>
               <td>
                 <div className="flex items-center justify-end gap-2">

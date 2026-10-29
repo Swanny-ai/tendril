@@ -41,6 +41,7 @@ model User {
   payoutRequests   PayoutRequest[]
   cryptoPayments   CryptoPayment[]
   supportMessages  SupportMessage[]
+  supportThread    SupportThread?
 
   @@index([referredById])
 }
@@ -444,17 +445,36 @@ model CryptoPayment {
   @@index([userId, createdAt])
 }
 
-// A message in the help/support chat between a creator and the site owner. A conversation is all
-// the rows for one userId. The owner reads and replies in the admin dashboard (/admin/support).
+// A message in the help/support chat. A conversation is all the rows for one userId. An AI
+// assistant answers common questions first; it hands off to the site owner (a real agent) when
+// it can't help or the creator asks for a person. The owner reads and replies in /admin/support.
 model SupportMessage {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   body        String
+  // Who wrote it: "user" (the creator), "ai" (the assistant), "agent" (the site owner).
+  role        String   @default("user")
   fromAdmin   Boolean  @default(false)
   readByUser  Boolean  @default(true)
   readByAdmin Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Per-creator conversation state: whether the AI or a real agent is handling it, and the "seen"
+// timestamps powering the read receipts on both sides.
+model SupportThread {
+  userId      String    @id
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "ai" while the assistant handles it, "agent" once it's handed to the site owner.
+  mode        String    @default("ai")
+  escalatedAt DateTime?
+  // When the creator last viewed the chat (drives the owner's "Seen").
+  userSeenAt  DateTime?
+  // When an agent last viewed the creator's messages (drives the creator's "Seen" in agent mode).
+  agentSeenAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

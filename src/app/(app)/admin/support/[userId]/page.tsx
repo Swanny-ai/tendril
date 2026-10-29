@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Sparkles } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { getThread } from "@/lib/support";
@@ -14,12 +14,15 @@ export const metadata: Metadata = { title: "Conversation" };
 export default async function AdminSupportThread({ params }: { params: Promise<{ userId: string }> }) {
   await requireAdmin();
   const { userId } = await params;
-  const [user, messages] = await Promise.all([
+  const [user, messages, thread] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } }),
     getThread(userId),
+    db.supportThread.findUnique({ where: { userId }, select: { userSeenAt: true } }),
   ]);
   if (!user) notFound();
   const who = user.name || user.email || "Creator";
+  const lastAgent = [...messages].reverse().find((m) => m.role === "agent");
+  const userSeenAt = thread?.userSeenAt ?? null;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -44,22 +47,29 @@ export default async function AdminSupportThread({ params }: { params: Promise<{
         {messages.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No messages yet.</p>
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className={`flex ${m.fromAdmin ? "justify-end" : "justify-start"}`}>
-              <div className="max-w-[80%]">
-                <div
-                  className={`rounded-2xl px-3.5 py-2.5 text-sm break-words whitespace-pre-wrap ${
-                    m.fromAdmin ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                  }`}
-                >
-                  {m.body}
+          messages.map((m) => {
+            const mine = m.role === "agent";
+            const label = m.role === "agent" ? "You" : m.role === "ai" ? "Assistant" : who;
+            const seen = mine && m.id === lastAgent?.id && !!userSeenAt && userSeenAt >= m.createdAt;
+            return (
+              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div className="max-w-[80%]">
+                  <div
+                    className={`rounded-2xl px-3.5 py-2.5 text-sm break-words whitespace-pre-wrap ${
+                      m.role === "agent" ? "bg-primary text-primary-foreground" : m.role === "ai" ? "bg-sky-500/10 text-foreground" : "bg-muted text-foreground"
+                    }`}
+                  >
+                    {m.body}
+                  </div>
+                  <p className={`mt-1 flex items-center gap-1 text-[11px] text-muted-foreground ${mine ? "justify-end" : "justify-start"}`}>
+                    {m.role === "ai" ? <Sparkles className="size-3" /> : null}
+                    {label} · {ago(m.createdAt)}
+                    {seen ? " · Seen" : null}
+                  </p>
                 </div>
-                <p className={`mt-1 text-[11px] text-muted-foreground ${m.fromAdmin ? "text-right" : "text-left"}`}>
-                  {m.fromAdmin ? "You" : who} · {ago(m.createdAt)}
-                </p>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
