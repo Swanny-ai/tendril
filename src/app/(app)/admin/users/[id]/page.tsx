@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { signInMethods } from "@/lib/sign-in-methods";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, CalendarPlus, Crown, ExternalLink, LogOut, MailCheck, Trash2, UserMinus } from "lucide-react";
 import { appUrl } from "@/config/brand";
@@ -68,7 +69,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
             {user.emailVerified ? <Pill tone="info">Email confirmed</Pill> : <Pill tone="warn">Email not confirmed</Pill>}
             {self ? <Pill tone="info">You</Pill> : null}
             <span>Joined {day(user.createdAt)} ({ago(user.createdAt)})</span>
-            <span>· Sign-in: {[user.passwordHash ? "password" : null, ...user.accounts.map((a) => a.provider)].filter(Boolean).join(", ") || "none"}</span>
+            <span>· Sign-in: {signInMethods(user.passwordHash, user.accounts).join(", ") || "none"}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">ID {user.id}</p>
         </div>

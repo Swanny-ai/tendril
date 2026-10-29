@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { signInMethods } from "@/lib/sign-in-methods";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -55,7 +56,8 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
         subscription: { select: { plan: true, status: true, currentPeriodEnd: true, stripeSubscriptionId: true, paddleSubscriptionId: true } },
         referredBy: { select: { email: true } },
         pages: { select: { username: true }, orderBy: { createdAt: "asc" }, take: 1 },
-        _count: { select: { pages: true, smartLinks: true, domains: true, accounts: true } },
+        accounts: { select: { provider: true } },
+        _count: { select: { pages: true, smartLinks: true, domains: true } },
       },
     }),
     db.user.count(),
@@ -107,7 +109,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
               <td className="tabular-nums">{fmt(u._count.pages)}</td>
               <td className="tabular-nums">{fmt(u._count.smartLinks)}</td>
               <td className="tabular-nums">{fmt(u._count.domains)}</td>
-              <td className="text-xs text-muted-foreground">{[u.passwordHash ? "Password" : null, u._count.accounts ? "Google" : null].filter(Boolean).join(" + ") || "—"}</td>
+              <td className="text-xs text-muted-foreground">{signInMethods(u.passwordHash, u.accounts).join(" + ") || "—"}</td>
               <td className="max-w-40 truncate text-xs text-muted-foreground">{u.referredBy?.email ?? "—"}</td>
               <td className="text-xs whitespace-nowrap text-muted-foreground">{ago(u.createdAt)}</td>
             </tr>
