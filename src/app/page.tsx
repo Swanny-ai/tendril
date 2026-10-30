@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  BarChart3,
   Check,
   ExternalLink,
-  Gift,
-  Globe,
   LayoutTemplate,
   Link2,
   MousePointerClick,
@@ -114,12 +110,6 @@ export default function LandingPage() {
               className="hidden rounded-full px-3 py-2 text-muted-foreground hover:text-foreground md:block"
             >
               How it works
-            </a>
-            <a
-              href="#features"
-              className="hidden rounded-full px-3 py-2 text-muted-foreground hover:text-foreground md:block"
-            >
-              Features
             </a>
             <a
               href="#pricing"
@@ -553,132 +543,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Feature bento */}
-        <section id="features" className="scroll-mt-24 border-t bg-card/30">
-          <div className="mx-auto max-w-6xl px-4 py-20">
-            <p className="text-sm font-semibold tracking-[0.2em] text-[var(--plum)] uppercase">
-              Features
-            </p>
-            <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
-              More than a link in bio. A page that sells.
-            </h2>
-            <div className="mt-10 grid auto-rows-[minmax(220px,auto)] gap-4 md:grid-cols-6">
-              <Tile
-                className="md:col-span-4"
-                icon={ExternalLink}
-                eyebrow="Deep links"
-                title="Leaves the in-app browser for you"
-              >
-                Instagram, TikTok and Facebook open links inside their own
-                browser, where autofill and saved logins break. ViewLink hands
-                visitors over to Safari or Chrome.
-                <div
-                  aria-hidden
-                  className="mt-5 flex flex-wrap items-center gap-2 text-xs"
-                >
-                  <span className="flex items-center gap-1.5 rounded-full border bg-secondary px-3 py-1.5">
-                    <SocialGlyph network="instagram" size={14} /> In-app browser
-                  </span>
-                  <ArrowRight className="size-4 text-[var(--plum)]" />
-                  <span className="flex items-center gap-1.5 rounded-full bg-[var(--plum)] px-3 py-1.5 font-semibold text-[#0a0a0a]">
-                    <Globe className="size-3.5" /> Real browser
-                  </span>
-                  <ArrowRight className="size-4 text-[var(--plum)]" />
-                  <span className="rounded-full border bg-secondary px-3 py-1.5">
-                    Checkout works
-                  </span>
-                </div>
-              </Tile>
-              <Tile
-                className="md:col-span-2"
-                icon={ShieldCheck}
-                eyebrow="18+ pages"
-                title="Age checks that look good"
-              >
-                Put a short confirmation in front of any link, in the design you
-                like. See how many continue.
-              </Tile>
-              <Tile
-                className="md:col-span-2"
-                icon={LayoutTemplate}
-                eyebrow="Templates"
-                title="Pages that look made for you"
-              >
-                <div aria-hidden className="mt-4 flex gap-2">
-                  {["spotlight", "modern-card"].map((t) => (
-                    <Image
-                      key={t}
-                      src={`/templates/${t}.jpg`}
-                      alt=""
-                      width={120}
-                      height={213}
-                      className="h-28 w-auto rounded-xl border object-cover"
-                    />
-                  ))}
-                </div>
-              </Tile>
-              <Tile
-                className="md:col-span-2"
-                icon={Globe}
-                eyebrow="Custom domains"
-                title="yourname.com, not ours"
-              >
-                Put pages and links on your own domain, at the root or at a
-                path. HTTPS is automatic.
-              </Tile>
-              <Tile
-                className="md:col-span-2"
-                icon={Gift}
-                eyebrow="Affiliate"
-                title="Earn up to 35%"
-              >
-                Invite other creators and earn a share of every payment they
-                make, for as long as they stay.
-              </Tile>
-              <Tile
-                className="md:col-span-6"
-                icon={BarChart3}
-                eyebrow="Analytics"
-                title="See every view, click and country, live"
-              >
-                Totals and growth, your top links, a world map and visitors
-                arriving in real time, for each page and each link.
-                <div
-                  aria-hidden
-                  className="mt-6 grid items-end gap-6 sm:grid-cols-[auto_1fr]"
-                >
-                  <div className="flex gap-6">
-                    {[
-                      ["Views", "12.4k"],
-                      ["Clicks", "5.1k"],
-                      ["Opened in browser", "92%"],
-                    ].map(([k, v]) => (
-                      <div key={k}>
-                        <p className="text-xs">{k}</p>
-                        <p className="font-heading text-2xl font-semibold text-foreground">
-                          {v}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex h-20 items-end gap-1.5">
-                    {[
-                      18, 26, 22, 34, 30, 42, 38, 51, 47, 60, 56, 72, 66, 80,
-                      76, 92,
-                    ].map((h, i) => (
-                      <span
-                        key={i}
-                        className="flex-1 rounded-t-md bg-gradient-to-t from-[var(--plum)]/30 to-[var(--plum)]"
-                        style={{ height: `${h}%` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </Tile>
-            </div>
-          </div>
-        </section>
-
         {/* Who it's for */}
         <section className="overflow-x-clip border-t bg-card/30">
           <div className="mx-auto max-w-6xl px-4 py-20">
@@ -833,34 +697,6 @@ export default function LandingPage() {
       </main>
 
       <SiteFooter />
-    </div>
-  );
-}
-
-function Tile({
-  className,
-  icon: Icon,
-  eyebrow,
-  title,
-  children,
-}: {
-  className?: string;
-  icon: typeof Globe;
-  eyebrow: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={`rounded-3xl border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--plum)]/50 hover:shadow-[0_20px_50px_-25px_var(--plum)] ${className ?? ""}`}
-    >
-      <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-[var(--plum)] uppercase">
-        <Icon className="size-4" aria-hidden /> {eyebrow}
-      </p>
-      <h3 className="mt-3 text-xl font-semibold">{title}</h3>
-      <div className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {children}
-      </div>
     </div>
   );
 }
