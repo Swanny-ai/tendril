@@ -71,6 +71,17 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
   const { totals } = stats;
   const tzLabel = TIMEZONE_OPTIONS.find((o) => o.tz === tz)?.label ?? tz;
   const countries = stats.countries?.filter((c) => c.code !== "??") ?? [];
+  // Top performers by the name the creator gave each page or link, one row per name: a link that
+  // was deleted and re-created under the same name is merged into one.
+  const topByName = new Map<string, { key: string; name: string; views: number }>();
+  for (const s of stats.top) {
+    const name = s.label.replace(/ \(deleted\)$/, "").replace(/ \(bio page\)$/, "");
+    const key = `${s.kind}:${name.toLowerCase()}`;
+    const row = topByName.get(key) ?? { key, name, views: 0 };
+    row.views += s.views;
+    topByName.set(key, row);
+  }
+  const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views).slice(0, 8);
   const countryTotal = stats.countries?.reduce((s, c) => s + c.views, 0) ?? 0;
   // New accounts (email sign-up sends ?welcome=1; Google sign-ups are just minutes old) get a welcome.
   const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
@@ -132,12 +143,12 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
             <CardDescription>Most viewed links in this range</CardDescription>
           </CardHeader>
           <CardContent>
-            {stats.top.length ? (
+            {topPerformers.length ? (
               <ol className="space-y-2" data-testid="top-performers">
-                {stats.top.slice(0, 8).map((s, i) => {
+                {topPerformers.map((s, i) => {
                   const share = totals.views ? s.views / totals.views : 0;
                   return (
-                    <li key={s.id} className="relative overflow-hidden rounded-md px-2.5 py-2 text-sm">
+                    <li key={s.key} className="relative overflow-hidden rounded-md px-2.5 py-2 text-sm">
                       <span aria-hidden className="absolute inset-y-0 left-0 bg-primary/10" style={{ width: `${share * 100}%` }} />
                       <span className="relative flex items-center justify-between gap-3">
                         <span className="flex min-w-0 items-center gap-2">
@@ -145,8 +156,8 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
                             {MEDALS[i] ?? <span className="text-xs text-muted-foreground">{i + 1}</span>}
                           </span>
                           <span className="min-w-0">
-                            <span className="block truncate font-medium" title={s.label}>
-                              {s.url}
+                            <span className="block truncate font-medium" title={s.name}>
+                              {s.name}
                             </span>
                           </span>
                         </span>

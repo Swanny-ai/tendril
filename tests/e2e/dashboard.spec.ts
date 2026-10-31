@@ -16,7 +16,9 @@ test("shows key numbers, chart, top performers and live panels", async ({ page }
     await expect(page.getByRole("region", { name: "Key numbers" }).getByText(label, { exact: true })).toBeVisible();
   }
   await expect(page.getByText("Performance overview")).toBeVisible();
-  await expect(page.getByTestId("top-performers").getByText("/l/demo-vip")).toBeVisible();
+  // Listed by the link's name, not its address.
+  await expect(page.getByTestId("top-performers").getByText("VIP page (Instagram bio)")).toBeVisible();
+  await expect(page.getByTestId("top-performers").getByText("/l/demo-vip")).toHaveCount(0);
   await expect(page.getByText("Real-time overview")).toBeVisible();
   await expect(page.getByTestId("live-feed").locator("li").first()).toBeVisible();
   // The demo account is on Free, so geography stays a Pro feature.
