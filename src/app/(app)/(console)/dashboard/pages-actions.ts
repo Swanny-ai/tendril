@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getCurrentPage, rememberCurrentPage } from "@/lib/current-page";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { rememberDeletedSource } from "@/lib/analytics/global";
 import { editPagePath } from "@/lib/edit-paths";
 import { checkLinkTarget } from "@/lib/link-targets";
 import { expireUsername, invalidatePageFromAction } from "@/lib/pages";
@@ -136,13 +137,9 @@ export async function deletePageAction(pageId: string): Promise<PageActionResult
   const page = pages.find((p) => p.id === pageId);
   if (!page) return { ok: false, error: "That page no longer exists." };
   await invalidatePageFromAction(page.id);
-  await db.$transaction([
-    db.pageView.deleteMany({ where: { pageId: page.id } }),
-    db.warningView.deleteMany({ where: { pageId: page.id } }),
-    db.dailyStat.deleteMany({ where: { pageId: page.id } }),
-    db.media.deleteMany({ where: { pageId: page.id } }),
-    db.page.delete({ where: { id: page.id } }),
-  ]);
+  // Its views and clicks stay in the analytics; keep its name so they stay labelled.
+  await rememberDeletedSource("page", page.id, userId);
+  await db.$transaction([db.media.deleteMany({ where: { pageId: page.id } }), db.page.delete({ where: { id: page.id } })]);
   expireUsername(page.username);
   const next = pages.find((p) => p.id !== page.id);
   if (next) await rememberCurrentPage(next.id);

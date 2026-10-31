@@ -16,8 +16,15 @@ import { BreakdownGrid, delta, fmt, LinkReport, pct, UpgradeCard } from "./repor
 export const instant = false;
 export const metadata: Metadata = { title: "Analytics" };
 
-const pill = (active: boolean) =>
-  cn("rounded-full border px-3 py-1 text-sm", active ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground");
+const pill = (active: boolean, deleted = false) =>
+  cn(
+    "rounded-full border px-3 py-1 text-sm",
+    active ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+    deleted && !active && "border-dashed opacity-70",
+  );
+
+/** A source's name without its "(bio page)" / "(deleted)" suffixes, for tables that show the type separately. */
+const plainName = (s: Source) => s.label.replace(/ \(deleted\)$/, "").replace(/ \(bio page\)$/, "");
 
 export default async function AnalyticsPage(props: PageProps<"/dashboard/analytics">) {
   const { userId } = await requireAccount();
@@ -42,7 +49,7 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
                 All
               </Link>
               {sources.map((s) => (
-                <Link key={s.id} href={href(s.id, r.key)} aria-current={s.id === selected?.id ? "page" : undefined} className={pill(s.id === selected?.id)}>
+                <Link key={s.id} href={href(s.id, r.key)} aria-current={s.id === selected?.id ? "page" : undefined} className={pill(s.id === selected?.id, s.deleted)}>
                   {s.label}
                 </Link>
               ))}
@@ -69,6 +76,12 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
           })}
         </nav>
       </div>
+
+      {selected?.deleted ? (
+        <p className="rounded-lg border border-dashed bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground">
+          This {selected.kind === "page" ? "bio page" : "link"} was deleted. Its stats are kept here and still count in your totals.
+        </p>
+      ) : null}
 
       {!selected ? (
         <AllReport userId={userId} sources={sources} days={r.days} plan={plan} rangeKey={r.key} href={href} />
@@ -140,11 +153,14 @@ async function AllReport({
                   <tr key={s.id} className="border-b last:border-0">
                     <td className="max-w-[320px] truncate py-2.5 pr-4 font-medium">
                       <Link href={href(s.id, rangeKey)} className="hover:underline">
-                        {s.kind === "page" ? s.label.replace(/ \(bio page\)$/, "") : s.label}
+                        {plainName(s)}
                       </Link>
                       <span className="ml-2 text-xs font-normal text-muted-foreground">{s.url}</span>
                     </td>
-                    <td className="py-2.5 pr-4 text-muted-foreground">{s.kind === "page" ? "Bio page" : "Deep link"}</td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      {s.kind === "page" ? "Bio page" : "Deep link"}
+                      {s.deleted ? " · deleted" : ""}
+                    </td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.views)}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.clicks)}</td>
                     <td className="py-2.5 text-right tabular-nums">{pct(s.ctr)}</td>

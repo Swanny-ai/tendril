@@ -3,6 +3,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
+import { rememberDeletedSource } from "@/lib/analytics/global";
+import { deleteAccountAnalytics } from "@/lib/analytics/purge";
 import { wwwOf } from "@/lib/domain-names";
 import { removeHostedDomain } from "@/lib/domains";
 import { expireUsername, invalidatePageFromAction, invalidatePageFromRoute } from "@/lib/pages";
@@ -123,13 +125,8 @@ export async function deleteUserAction(form: FormData): Promise<AdminResult> {
     }
   }
   const pageIds = user.pages.map((p) => p.id);
-  await db.$transaction([
-    db.pageView.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.warningView.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.dailyStat.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.media.deleteMany({ where: { pageId: { in: [...pageIds, userId] } } }),
-    db.user.delete({ where: { id: userId } }),
-  ]);
+  await deleteAccountAnalytics(userId);
+  await db.$transaction([db.media.deleteMany({ where: { pageId: { in: [...pageIds, userId] } } }), db.user.delete({ where: { id: userId } })]);
   for (const p of user.pages) expireUsername(p.username);
   for (const l of user.smartLinks) revalidateTag(smartLinkTag(l.slug), { expire: 0 });
   return done(`${user.email} was deleted.`);
@@ -158,16 +155,12 @@ export async function togglePageVerifiedAction(form: FormData): Promise<AdminRes
 
 export async function deletePageAdminAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
-  const page = await db.page.findUnique({ where: { id: id(form) }, select: { id: true, username: true } });
+  const page = await db.page.findUnique({ where: { id: id(form) }, select: { id: true, username: true, userId: true } });
   if (!page) return done("Already deleted.");
   await invalidatePageFromAction(page.id);
-  await db.$transaction([
-    db.pageView.deleteMany({ where: { pageId: page.id } }),
-    db.warningView.deleteMany({ where: { pageId: page.id } }),
-    db.dailyStat.deleteMany({ where: { pageId: page.id } }),
-    db.media.deleteMany({ where: { pageId: page.id } }),
-    db.page.delete({ where: { id: page.id } }),
-  ]);
+  // The owner keeps its analytics, labelled as a deleted page.
+  await rememberDeletedSource("page", page.id, page.userId);
+  await db.$transaction([db.media.deleteMany({ where: { pageId: page.id } }), db.page.delete({ where: { id: page.id } })]);
   expireUsername(page.username);
   return done(`/${page.username} was deleted.`);
 }
@@ -185,8 +178,10 @@ export async function toggleLinkAction(form: FormData): Promise<AdminResult> {
 
 export async function deleteLinkAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
-  const link = await db.smartLink.findUnique({ where: { id: id(form) }, select: { id: true, slug: true } });
+  const link = await db.smartLink.findUnique({ where: { id: id(form) }, select: { id: true, slug: true, userId: true } });
   if (!link) return done("Already deleted.");
+  // The owner keeps its analytics, labelled as a deleted link.
+  await rememberDeletedSource("link", link.id, link.userId);
   await db.smartLink.delete({ where: { id: link.id } });
   invalidateSmartLinkFromAction(link.slug);
   return done(`${link.slug} was deleted.`);

@@ -2,6 +2,7 @@
 
 import { signOut } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { deleteAccountAnalytics } from "@/lib/analytics/purge";
 import { expireUsername } from "@/lib/pages";
 import { smartLinkTag } from "@/lib/smart-links";
 import { revalidateTag } from "next/cache";
@@ -44,17 +45,12 @@ export async function deleteAccountAction(_prev: SettingsState, form: FormData):
     }
   }
 
-  // Cascades remove the page, blocks, sessions and subscription row. Raw analytics
-  // rows reference pageId without a foreign key, so delete them explicitly.
+  // Cascades remove the pages, blocks, links, sessions and subscription row. Analytics rows have
+  // no foreign key (they outlive deleted links), so delete them explicitly.
   const pageIds = (await db.page.findMany({ where: { userId }, select: { id: true } })).map((p) => p.id);
   const smartSlugs = (await db.smartLink.findMany({ where: { userId }, select: { slug: true } })).map((l) => l.slug);
-  await db.$transaction([
-    db.pageView.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.warningView.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.dailyStat.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.media.deleteMany({ where: { pageId: { in: pageIds } } }),
-    db.user.delete({ where: { id: userId } }),
-  ]);
+  await deleteAccountAnalytics(userId);
+  await db.$transaction([db.media.deleteMany({ where: { pageId: { in: pageIds } } }), db.user.delete({ where: { id: userId } })]);
   for (const p of user.pages) expireUsername(p.username);
   for (const slug of smartSlugs) revalidateTag(smartLinkTag(slug), { expire: 0 });
   await signOut({ redirectTo: "/?deleted=1" });

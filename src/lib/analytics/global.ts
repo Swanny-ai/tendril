@@ -14,8 +14,11 @@ import { bucketKeys, previousPeriod, type ResolvedRange } from "./ranges";
 // The global dashboard counts a "view" as either a bio-page view or a smart-link
 // visit (SmartLinkEvent kind "hit"). Bots are excluded everywhere.
 
-/** url: the public address without https://, e.g. "mariarosie.com" or "tendril.app/maria". */
-export type Source = { id: string; kind: "page" | "link"; label: string; path: string; url: string };
+/**
+ * url: the public address without https://, e.g. "mariarosie.com" or "tendril.app/maria".
+ * deleted: the page or link was deleted; its stats are kept and still count (see DeletedSource).
+ */
+export type Source = { id: string; kind: "page" | "link"; label: string; path: string; url: string; deleted?: boolean };
 
 export type GlobalStats = {
   totals: { views: number; visitors: number; activeSources: number; totalSources: number; avgPerSource: number; previousViews: number; growth: number | null };
@@ -46,29 +49,63 @@ export function countryName(code: string | null): string {
   }
 }
 
-/** Everything that can get views: each of the account's bio pages and its smart links. */
+const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+const pageSelect = { id: true, username: true, displayName: true, atRoot: true, domain: { select: { hostname: true } } } as const;
+const linkSelect = { id: true, slug: true, label: true, atRoot: true, domain: { select: { hostname: true } } } as const;
+type PageRow = { id: string; username: string; displayName: string | null; atRoot: boolean; domain: { hostname: string } | null };
+type LinkRow = { id: string; slug: string; label: string; atRoot: boolean; domain: { hostname: string } | null };
+
+const pageSource = (p: PageRow): Source => ({ id: p.id, kind: "page", label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}`, url: bare(pageUrl(p, p.domain, appUrl)) });
+const linkSource = (l: LinkRow): Source => ({ id: l.id, kind: "link", label: l.label || l.slug, path: `/${l.slug}`, url: bare(smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)) });
+
+/**
+ * Everything that can get views: each of the account's bio pages and smart links, then the ones it
+ * deleted (their stats are kept), labelled "(deleted)".
+ */
 export async function getSources(userId: string): Promise<Source[]> {
-  const [pages, links] = await Promise.all([
-    db.page.findMany({ where: { userId }, select: { id: true, username: true, displayName: true, atRoot: true, domain: { select: { hostname: true } } }, orderBy: { createdAt: "asc" } }),
-    db.smartLink.findMany({ where: { userId }, select: { id: true, slug: true, label: true, atRoot: true, domain: { select: { hostname: true } } }, orderBy: { createdAt: "asc" } }),
+  const [pages, links, deleted] = await Promise.all([
+    db.page.findMany({ where: { userId }, select: pageSelect, orderBy: { createdAt: "asc" } }),
+    db.smartLink.findMany({ where: { userId }, select: linkSelect, orderBy: { createdAt: "asc" } }),
+    db.deletedSource.findMany({ where: { userId }, orderBy: { deletedAt: "desc" } }),
   ]);
-  const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return [
-    ...pages.map((p) => ({ id: p.id, kind: "page" as const, label: `${p.displayName || p.username} (bio page)`, path: `/${p.username}`, url: bare(pageUrl(p, p.domain, appUrl)) })),
-    ...links.map((l) => ({ id: l.id, kind: "link" as const, label: l.label || l.slug, path: `/${l.slug}`, url: bare(smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot)) })),
+    ...pages.map(pageSource),
+    ...links.map(linkSource),
+    ...deleted.map((d) => ({ id: d.id, kind: d.kind === "page" ? ("page" as const) : ("link" as const), label: `${d.label} (deleted)`, path: d.path, url: d.url, deleted: true })),
   ];
 }
 
-/** Unified view rows for one owner (all their pages and smart links) between two instants. */
+/**
+ * Call right before deleting a bio page or smart link: remembers its name and address so its
+ * analytics (which are kept) stay labelled in the dashboard and the analytics filter.
+ */
+export async function rememberDeletedSource(kind: "page" | "link", id: string, userId: string): Promise<void> {
+  const source =
+    kind === "page"
+      ? await db.page.findUnique({ where: { id }, select: pageSelect }).then((p) => (p ? pageSource(p) : null))
+      : await db.smartLink.findUnique({ where: { id }, select: linkSelect }).then((l) => (l ? linkSource(l) : null));
+  if (!source) return;
+  const data = { userId, kind, label: source.label, path: source.path, url: source.url, deletedAt: new Date() };
+  await db.deletedSource.upsert({ where: { id }, create: { id, ...data }, update: data });
+}
+
+/** Ids of an owner's bio pages or smart links, live and deleted, for the raw SQL below. */
+function ownedIds(userId: string, kind: "page" | "link") {
+  return kind === "page"
+    ? Prisma.sql`SELECT id FROM "Page" WHERE "userId" = ${userId} UNION ALL SELECT id FROM "DeletedSource" WHERE "userId" = ${userId} AND kind = 'page'`
+    : Prisma.sql`SELECT id FROM "SmartLink" WHERE "userId" = ${userId} UNION ALL SELECT id FROM "DeletedSource" WHERE "userId" = ${userId} AND kind = 'link'`;
+}
+
+/** Unified view rows for one owner (all their pages and smart links, deleted ones included) between two instants. */
 function viewRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
     SELECT 'p' || pv.id::text AS id, pv.ts, pv.country, pv.device, pv.os, pv.browser, pv."visitorHash" AS vh, pv."pageId" AS src
     FROM "PageView" pv
-    WHERE pv."pageId" IN (SELECT id FROM "Page" WHERE "userId" = ${userId}) AND pv."isBot" = false AND pv.ts >= ${from} AND pv.ts < ${to}
+    WHERE pv."pageId" IN (${ownedIds(userId, "page")}) AND pv."isBot" = false AND pv.ts >= ${from} AND pv.ts < ${to}
     UNION ALL
     SELECT 'l' || e.id::text, e.ts, e.country, e.device, e.os, e.browser, e."visitorHash", e."linkId"
-    FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
-    WHERE l."userId" = ${userId} AND e.kind = 'hit' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
+    FROM "SmartLinkEvent" e
+    WHERE e."linkId" IN (${ownedIds(userId, "link")}) AND e.kind = 'hit' AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
 
 /** Unified "clicks" for one owner: bio-page link clicks, deep links sending visitors on, and taps on Two-Steps pages' links. */
@@ -76,11 +113,11 @@ function clickRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
     SELECT c.ts, c."pageId" AS src
     FROM "ClickEvent" c
-    WHERE c."pageId" IN (SELECT id FROM "Page" WHERE "userId" = ${userId}) AND c."isBot" = false AND c.ts >= ${from} AND c.ts < ${to}
+    WHERE c."pageId" IN (${ownedIds(userId, "page")}) AND c."isBot" = false AND c.ts >= ${from} AND c.ts < ${to}
     UNION ALL
     SELECT e.ts, e."linkId"
-    FROM "SmartLinkEvent" e JOIN "SmartLink" l ON l.id = e."linkId"
-    WHERE l."userId" = ${userId} AND e.kind IN ('redirect', 'tap') AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
+    FROM "SmartLinkEvent" e
+    WHERE e."linkId" IN (${ownedIds(userId, "link")}) AND e.kind IN ('redirect', 'tap') AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
 
 const n = (x: bigint | number | null | undefined) => Number(x ?? 0);
@@ -125,7 +162,7 @@ export async function getGlobalStats(
       views,
       visitors: n(totalRow[0]?.visitors),
       activeSources,
-      totalSources: sources.length,
+      totalSources: sources.filter((s) => !s.deleted).length,
       avgPerSource: activeSources ? views / activeSources : 0,
       previousViews,
       growth: previousViews ? (views - previousViews) / previousViews : views ? null : 0,

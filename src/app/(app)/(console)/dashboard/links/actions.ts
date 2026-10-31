@@ -3,6 +3,7 @@
 import { appHost } from "@/config/brand";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { rememberDeletedSource } from "@/lib/analytics/global";
 import { checkLinkTarget } from "@/lib/link-targets";
 import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -134,6 +135,8 @@ export async function deleteSmartLinkAction(id: string): Promise<LinkActionResul
   const userId = await requireUserId();
   const link = await db.smartLink.findFirst({ where: { id, userId }, select: { slug: true } });
   if (!link) return { ok: true };
+  // Its analytics stay (no foreign key); keep its name so they stay labelled.
+  await rememberDeletedSource("link", id, userId);
   await db.smartLink.delete({ where: { id } });
   invalidateSmartLinkFromAction(link.slug);
   return { ok: true };

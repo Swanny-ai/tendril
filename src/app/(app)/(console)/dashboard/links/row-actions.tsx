@@ -68,7 +68,7 @@ export function LinkRowActions({ id, slug, url, editHref, enabled }: { id: strin
         aria-label="Delete link"
         disabled={pending}
         onClick={() => {
-          toast("Delete this link? It stops working right away.", {
+          toast("Delete this link? It stops working right away. Its stats stay in Analytics.", {
             action: {
               label: "Delete",
               onClick: () =>

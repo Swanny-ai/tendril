@@ -42,6 +42,7 @@ model User {
   cryptoPayments   CryptoPayment[]
   supportMessages  SupportMessage[]
   supportTickets   SupportTicket[]
+  deletedSources   DeletedSource[]
 
   @@index([referredById])
 }
@@ -174,7 +175,6 @@ model Block {
   contentWarningText String?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
-  clicks             ClickEvent[]
 
   @@index([pageId, position])
 }
@@ -200,8 +200,8 @@ model PageView {
 model ClickEvent {
   id               BigInt   @id @default(autoincrement())
   pageId           String
+  // No foreign key: a click stays in the stats after its button is deleted.
   blockId          String
-  block            Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
   ts               DateTime @default(now())
   visitorHash      String
   country          String?
@@ -306,7 +306,6 @@ model SmartLink {
   atRoot          Boolean          @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  events          SmartLinkEvent[]
   reports         LinkReport[]
 
   @@index([userId, createdAt])
@@ -315,8 +314,8 @@ model SmartLink {
 // kind: "view" (warning shown), "confirm" (visitor confirmed 18+), "redirect" (sent to destination), "leave"
 model SmartLinkEvent {
   id          BigInt    @id @default(autoincrement())
+  // No foreign key: a link's visits stay in the stats after the link is deleted (see DeletedSource).
   linkId      String
-  link        SmartLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
   kind        String
   ts          DateTime  @default(now())
   visitorHash String
@@ -494,4 +493,21 @@ model SupportTicket {
 
   @@index([userId, lastMessageAt])
   @@index([status, lastMessageAt])
+}
+
+// A bio page or smart link the owner deleted. Its analytics rows have no foreign key to it, so
+// they stay; this keeps its name and address so dashboards can still show and filter them.
+model DeletedSource {
+  // The deleted Page or SmartLink id (what the analytics rows point to).
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "page" | "link"
+  kind      String
+  label     String
+  path      String
+  url       String
+  deletedAt DateTime @default(now())
+
+  @@index([userId])
 }
