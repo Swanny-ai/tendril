@@ -40,6 +40,8 @@ export type LandingSection = {
   textColor?: string;
   /** Rendering only: the app link to try on tap (Step 1's button); a long press uses `url`. */
   deep?: string;
+  /** Rendering only: Step 1's button to Step 2. A tap does nothing; it opens only with a long press. */
+  hold?: boolean;
   /** Photo framing inside the card: focus point (0-100 %) and zoom (1-3). */
   imgX?: number;
   imgY?: number;
@@ -430,7 +432,9 @@ export const LANDING_CSS = `.lp{position:relative;min-height:100%;width:100%;dis
 .lp-nudge{position:absolute;z-index:3;right:.6rem;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:.35rem}.lp-nudge i{display:flex;width:2.1rem;height:2.1rem;align-items:center;justify-content:center;border-radius:9999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.3);color:#fff;font-style:normal;font-size:1rem;font-weight:700;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}.lp-nudge i:hover{background:rgba(0,0,0,.8)}
 .lp-tip{position:absolute;z-index:2;left:50%;top:.75rem;transform:translateX(-50%);padding:.3rem .7rem;border-radius:9999px;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;font-weight:600;white-space:nowrap;pointer-events:none;opacity:.85;transition:opacity .2s}.lp-card .lp-tip{top:auto;bottom:2.6rem;opacity:0}.lp-card:hover .lp-tip{opacity:.9}
 .lp-addc{position:absolute;z-index:2;left:50%;top:45%;transform:translate(-50%,-50%);padding:.6rem 1rem;border-radius:9999px;background:rgba(0,0,0,.55);color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;white-space:nowrap}
-.lp-link{-webkit-touch-callout:default}.lp-hint{margin-top:-.2rem!important;text-align:center;font-size:.8rem;color:var(--muted)}
+.lp-link{-webkit-touch-callout:default}.lp-hint{margin-top:-.2rem!important;text-align:center;font-size:.8rem;color:var(--muted);transition:color .2s}
+a[data-hold]{-webkit-touch-callout:default;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.lp-nudge{animation:lp-nudge .45s ease}@keyframes lp-nudge{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}.lp-hint.on{color:var(--text);font-weight:600}
 .lp-add1{grid-template-columns:1fr!important}.lp-add{margin-top:.25rem;display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;padding:.6rem;border:2px dashed var(--line);border-radius:var(--r2)}.lp-add p{grid-column:1/-1;text-align:center;font-size:.8rem;color:var(--muted)}.lp-add span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;padding:.5rem .2rem;border-radius:12px;background:var(--chip);font-size:.72rem;font-weight:700;line-height:1.15;text-align:center;cursor:pointer}.lp-add span:hover{background:var(--line)}
 .lp.pv .lp-sel{position:relative;overflow:visible}.lp-tools{position:absolute;z-index:5;top:-1.1rem;right:.5rem;display:flex;gap:2px;padding:3px;border-radius:9999px;background:#111113;border:1px solid #49f264;box-shadow:0 6px 16px rgba(0,0,0,.4)}.lp-tools i{display:flex;width:1.9rem;height:1.9rem;align-items:center;justify-content:center;border-radius:9999px;color:#fff;font-style:normal;font-size:.9rem;font-weight:700;cursor:pointer}.lp-tools i:hover{background:rgba(255,255,255,.15)}
 .lp.pv [data-edit]{cursor:text;border-radius:6px;transition:box-shadow .15s}.lp.pv [data-edit]:hover{box-shadow:0 0 0 2px rgba(255,255,255,.75),0 0 0 4px rgba(0,0,0,.25)}.lp.pv [data-drag]{cursor:grab}.lp.pv [data-drag]:active{cursor:grabbing}.lp.pv .lp-sel{box-shadow:0 0 0 2px #49f264,0 0 0 4px rgba(0,0,0,.4)!important}
@@ -501,7 +505,7 @@ export function landingHtml({
           handle: full.introHandle,
           bio: full.introBio,
           socials: [],
-          sections: full.introSections.map((s) => (s.url ? s : { ...s, url: step2Href, deep: step2Deep })),
+          sections: full.introSections.map((s) => (s.url ? s : { ...s, url: step2Href, deep: step2Deep, hold: true })),
         }
       : full;
   const viewName = view.name || fallbackName;
@@ -615,13 +619,15 @@ export function landingHtml({
           ? look(s.style || p.btnStyle, s.color || (s.style ? "" : p.btnColor), s.textColor || (s.style ? "" : p.btnText))
           : null;
       const ownVars = own ? ` style="--lb:${own.bg};--lt:${own.text};--lbd:${own.border}"` : "";
-      // Step 1's button keeps its own href (it opens Step 2, via data-deep inside social apps);
-      // normal content links go through /api/link-out, which records the tap, so no data-tap here.
+      // Step 1's button to Step 2 is hold-only: it keeps Step 2's address for the phone's long-press
+      // menu ("Open Link"), and a plain tap does nothing (see LANDING_JS). Normal content links go
+      // through /api/link-out, which records the tap, so no data-tap here.
+      const hold = s.hold && !preview;
       return link(
-        s.deep ? href : outHref(s),
+        hold || s.deep ? href : outHref(s),
         `lp-btn lp-link${zc(s)}${anim}${sel(s)}`,
         `${tools(s)}<span${edit(`sec:${s.id}:title`)}${ts(s)}>${blockIconHtml(s.icon, s.url)}${esc(s.title || "Link title")}</span>`,
-        `${ownVars}${secAttr(s)}${s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}${!s.deep && !preview && !slug ? ` data-tap=""` : ""}`,
+        `${ownVars}${secAttr(s)}${hold ? ` data-hold=""` : s.deep && !preview ? ` data-deep="${esc(s.deep)}"` : ""}${!hold && !s.deep && !preview && !slug ? ` data-tap=""` : ""}`,
       );
     }
     const net = networkOfUrl(href);
@@ -634,11 +640,12 @@ export function landingHtml({
         ? `<span class="lp-ct"${s.textColor ? ` style="color:${s.textColor}"` : ""}>${s.icon && s.icon !== "auto" ? blockIconHtml(s.icon, s.url, 18) : ""}<span${edit(`sec:${s.id}:title`)}${ts(s)}>${esc(s.title || "Title")}</span></span>`
         : "");
     const cardStyle = s.color ? ` style="--accent:${s.color}"` : "";
+    const holdCard = s.hold && !preview;
     return link(
-      outHref(s),
+      holdCard ? href : outHref(s),
       `lp-card${zc(s)}${s.size === "small" ? " sm" : ""}${s.highlight || s.color ? " hl" : ""}${anim}${sel(s)}`,
       inner,
-      `${cardStyle}${secAttr(s)}${!preview && !slug ? ` data-tap=""` : ""}`,
+      `${cardStyle}${secAttr(s)}${holdCard ? ` data-hold=""` : !preview && !slug ? ` data-tap=""` : ""}`,
     );
   };
   const boxStyle = (s: LandingSection) =>
@@ -783,4 +790,4 @@ export const REPORT_REASONS = ["Content involving minors", "Scam or fraud", "Imp
 export const LANDING_SHEETS_JS = `(function(){var d=document;d.addEventListener("click",function(e){var o=e.target.closest&&e.target.closest("[data-pop]");if(o){var p=d.getElementById(o.getAttribute("data-pop"));if(p){p.hidden=false;p.classList.remove("lp-sent")}return}var c=e.target.closest&&e.target.closest("[data-close]");if(c||(e.target.classList&&e.target.classList.contains("lp-pop")&&e.target.id!=="lp-age")){var q=(c||e.target).closest(".lp-pop");if(q){q.hidden=true;var f=q.querySelector("form");if(f)f.reset()}}});d.addEventListener("submit",function(e){var f=e.target;if(!f.classList||!f.classList.contains("lp-form"))return;e.preventDefault();var b=f.querySelector("[type=submit]");b.disabled=true;var r=f.querySelector("input[name=reason]:checked");fetch("/api/link-report",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({slug:f.getAttribute("data-slug"),reason:r?r.value:"",details:f.details.value})}).then(function(x){if(!x.ok)throw 0;b.disabled=false;f.closest(".lp-pop").classList.add("lp-sent")}).catch(function(){b.disabled=false;b.textContent="Couldn’t send. Try again"})})})();`;
 
 /** Live page only: countdowns tick, and 18+ links ask first. */
-export const LANDING_JS = `(function(){document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("a[data-tap]"),r=document.querySelector(".lp[data-slug]");if(t&&r&&navigator.sendBeacon)navigator.sendBeacon("/api/link-tap",JSON.stringify({slug:r.getAttribute("data-slug")}))});document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-deep]");if(a){e.preventDefault();location.href=a.getAttribute("data-deep")}});var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;
+export const LANDING_JS = `(function(){document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("a[data-tap]"),r=document.querySelector(".lp[data-slug]");if(t&&r&&navigator.sendBeacon)navigator.sendBeacon("/api/link-tap",JSON.stringify({slug:r.getAttribute("data-slug")}))});document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-deep]");if(a){e.preventDefault();location.href=a.getAttribute("data-deep")}});document.addEventListener("click",function(e){var h=e.target.closest&&e.target.closest("a[data-hold]");if(!h)return;e.preventDefault();h.classList.remove("lp-nudge");void h.offsetWidth;h.classList.add("lp-nudge");var n=document.querySelector(".lp-hint");if(n){n.classList.add("on");setTimeout(function(){n.classList.remove("on")},1600)}});var d=document,pop=d.getElementById("lp-age"),yes=d.getElementById("lp-yes");function pad(n){return(n<10?"0":"")+n}function tick(){var now=Date.now(),day=864e5;d.querySelectorAll(".lp-cd[data-end]").forEach(function(c){var e=Date.parse(c.getAttribute("data-end")),l=e-now;if(l<=0)l=day-((now-e)%day);var s=Math.floor(l/1e3),v={h:pad(Math.min(99,Math.floor(s/3600))),m:pad(Math.floor(s%3600/60)),s:pad(s%60)};c.querySelectorAll("[data-u]").forEach(function(x){x.firstChild.nodeValue=v[x.getAttribute("data-u")]})})}tick();setInterval(tick,1e3);d.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-adult]:not([data-hold])");if(a&&pop){e.preventDefault();yes.href=a.href;pop.hidden=false;return}if(e.target.id==="lp-no"||e.target===pop)pop.hidden=true})})();`;
