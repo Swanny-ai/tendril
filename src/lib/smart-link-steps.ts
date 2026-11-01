@@ -104,10 +104,13 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
   const step2Href = `${origin}${base}?step=2`;
   const lang = pickLang(h.get("accept-language"));
   const copy = WARNING_COPY[lang];
-  // Tab title and share previews: "Name (@handle)" with the cover photo (the Step 2 identity).
+  // Tab title and share previews: "Name (@handle)" with the cover photo, from this link's own
+  // template: the step being shown first, then the other step. Never the account's bio page, so
+  // each link shows the name and username typed into its template.
   const lp = link.landing!;
-  const metaName = (lp.name || link.owner?.name || link.label || "").trim();
-  const metaHandle = (lp.handle || link.owner?.username || "").trim();
+  const [first, other] = showStep1 ? [{ name: lp.introName, handle: lp.introHandle }, lp] : [lp, { name: lp.introName, handle: lp.introHandle }];
+  const metaName = (first.name || other.name || "").trim();
+  const metaHandle = (first.handle || other.handle || "").trim();
   const meta = { name: metaName || null, handle: metaHandle || null, description: lp.bio?.trim() || null, image: lp.coverUrl || null };
   return htmlResponse(
     leanLandingPage({
