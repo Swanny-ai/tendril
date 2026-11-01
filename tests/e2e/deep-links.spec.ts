@@ -84,6 +84,8 @@ test("android visitors get an intent link to their default browser", async ({ br
   const intent = (await openButton.getAttribute("href")) ?? "";
   expect(intent.startsWith("intent://")).toBe(true);
   expect(intent).toContain(`/l/${slug}?ib=1#Intent;scheme=http`);
+  // Named Chrome, so in-app browsers hand it over instead of loading it themselves.
+  expect(intent).toContain("package=com.android.chrome");
   expect(intent).toContain("S.browser_fallback_url=");
   await ctx.close();
 });
@@ -173,18 +175,13 @@ test("TikTok on iPhone: bio page links offer press-and-hold to open the browser"
   await ctx.close();
 });
 
-test("Facebook on iPhone: an 18+ deep link's confirm button becomes press-and-hold", async ({ page, browser }) => {
+test("Facebook on iPhone: an 18+ deep link's confirm button opens Safari", async ({ page, browser }) => {
   const { slug } = await newCreatorWithLink(page, true);
   const ctx = await browser.newContext({ userAgent: FB_IOS, viewport: { width: 390, height: 844 } });
   const visitor = await ctx.newPage();
   await visitor.goto(`/l/${slug}/warning`);
   const confirm = visitor.getByRole("link", { name: /18 or older|I'm 18\+/i });
-  await expect(confirm).toHaveAttribute("href", `/l/${slug}?ok=1`);
-  await expect(async () => {
-    await confirm.click();
-    await expect(visitor.getByRole("dialog", { name: "Open in your browser" })).toBeVisible({ timeout: 1000 });
-  }).toPass();
-  await expect(visitor).toHaveURL(new RegExp(`/l/${slug}/warning$`));
-  expect(await visitor.getByRole("link", { name: "Press and hold here" }).getAttribute("href")).toMatch(new RegExp(`/l/${slug}\\?ok=1&ib=1$`));
+  // Facebook gets the Safari hand-off; if it's ignored, the "Didn't open?" sheet offers press-and-hold.
+  expect(await confirm.getAttribute("href")).toMatch(new RegExp(`^x-safari-https?://[^/]+/l/${slug}\\?ok=1&ib=1$`));
   await ctx.close();
 });

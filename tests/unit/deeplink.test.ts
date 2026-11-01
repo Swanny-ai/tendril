@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inAppDeepLink, openInBrowserUrl, platformFromUserAgent, pressAndHoldOnly } from "@/lib/deeplink";
+import { inAppDeepLink, openHopLocation, openInBrowserUrl, platformFromUserAgent, pressAndHoldOnly } from "@/lib/deeplink";
 
 const ANDROID_IG =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 Instagram 350.0.0.0";
@@ -17,9 +17,38 @@ describe("platformFromUserAgent", () => {
 describe("openInBrowserUrl", () => {
   const target = "https://tendril.example/l/vip-page?ib=1";
 
-  it("builds an Android intent with a browser fallback", () => {
+  const hop = (s: number) => encodeURIComponent(`https://tendril.example/api/open-hop?u=${encodeURIComponent(target)}&s=${s}`);
+
+  it("builds an Android intent for Chrome that falls back to the next browser", () => {
     expect(openInBrowserUrl(target, "android")).toBe(
-      "intent://tendril.example/l/vip-page?ib=1#Intent;scheme=https;S.browser_fallback_url=https%3A%2F%2Ftendril.example%2Fl%2Fvip-page%3Fib%3D1;end",
+      `intent://tendril.example/l/vip-page?ib=1#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${hop(1)};end`,
+    );
+  });
+
+  it("chains Chrome, then Samsung Internet, then the default browser, then the page", () => {
+    const host = "tendril.example";
+    expect(openHopLocation(target, 1, host)).toBe(
+      `intent://tendril.example/l/vip-page?ib=1#Intent;scheme=https;package=com.sec.android.app.sbrowser;S.browser_fallback_url=${hop(2)};end`,
+    );
+    expect(openHopLocation(target, 2, host)).toBe(
+      "intent://tendril.example/l/vip-page?ib=1#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;" +
+        `S.browser_fallback_url=${encodeURIComponent(target)};end`,
+    );
+    expect(openHopLocation(target, 3, host)).toBe(target);
+    expect(openHopLocation(target, Number.NaN, host)).toBe(target);
+  });
+
+  it("only redirects to pages on its own site", () => {
+    expect(openHopLocation("https://evil.example/phish", 1, "tendril.example")).toBeNull();
+    expect(openHopLocation("javascript:alert(1)", 1, "tendril.example")).toBeNull();
+    expect(openHopLocation("not a url", 1, "tendril.example")).toBeNull();
+  });
+
+  it("hands Facebook on Android over to Chrome", () => {
+    const fbAndroid =
+      "Mozilla/5.0 (Linux; Android 14; SM-S918B Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/480.0.0.0;]";
+    expect(inAppDeepLink(fbAndroid, target)).toBe(
+      `intent://tendril.example/l/vip-page?ib=1#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${hop(1)};end`,
     );
   });
 
@@ -52,15 +81,20 @@ describe("iPhone apps", () => {
     const threads = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Barcelona 350.0.0";
     expect(openInBrowserUrl(target, "ios", threads)).toBe("barcelona://extbrowser/?url=https%3A%2F%2Ftendril.example%2Fl%2Fvip%3Fok%3D1");
   });
-  it("has no link for Facebook, Messenger and TikTok on iPhone: they use press-and-hold", () => {
+  it("has no link for TikTok on iPhone: it uses press-and-hold", () => {
     const tiktok = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_35.0 BytedanceWebview";
-    const facebook = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/480.0]";
-    for (const ua of [tiktok, facebook]) {
-      expect(pressAndHoldOnly(ua)).toBe(true);
-      expect(inAppDeepLink(ua, target)).toBeNull();
-    }
+    expect(pressAndHoldOnly(tiktok)).toBe(true);
+    expect(inAppDeepLink(tiktok, target)).toBeNull();
     expect(pressAndHoldOnly(IOS_IG)).toBe(false);
     expect(pressAndHoldOnly(ANDROID_IG)).toBe(false);
+  });
+  it("tries the Safari scheme for Facebook and Messenger on iPhone", () => {
+    const facebook = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/480.0]";
+    const messenger = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/MessengerForiOS;FBAV/480.0]";
+    for (const ua of [facebook, messenger]) {
+      expect(pressAndHoldOnly(ua)).toBe(false);
+      expect(inAppDeepLink(ua, target)).toBe("x-safari-https://tendril.example/l/vip?ok=1");
+    }
   });
   it("keeps the Safari scheme for other iPhone apps", () => {
     const x = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter for iPhone/10.60";

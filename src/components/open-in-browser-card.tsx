@@ -38,7 +38,7 @@ export function OpenInBrowserCard({ target, stayHref, name, username, avatarUrl,
   const deepLink = openInBrowserUrl(target, platform, ua);
   const browser = platform === "ios" ? "Safari" : "your browser";
 
-  // Facebook, Messenger and TikTok on iPhone can't be opened from a link: press and hold instead.
+  // TikTok on iPhone can't be opened from a link: press and hold instead.
   const holdOnly = pressAndHoldOnly(ua);
   // If the app ignores the request (older iOS, some app versions), show the manual steps.
   const watchForFailure = () => {
