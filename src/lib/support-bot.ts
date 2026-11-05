@@ -11,14 +11,14 @@ export const BOT_TOPICS: BotTopic[] = [
     label: "Plans & pricing",
     keywords: ["plan", "price", "pricing", "cost", "pro", "business", "free", "upgrade", "how much", "subscription"],
     answer:
-      "We have 3 plans:\n• Free: 1 smart link, 1 bio page, 30 days of analytics.\n• Pro ($8/month or $80/year): 3 smart links, 3 bio pages, 1 custom domain, 1 year of analytics, themes and the verified badge.\n• Business ($25/month or $250/year): 20 smart links, 10 bio pages, 10 custom domains.\nYou can upgrade from Dashboard → Billing.",
+      "We have 3 plans:\n• Free: 1 smart link, 1 bio page, 30 days of analytics.\n• Pro ($8/month or $80/year): 3 smart links, 3 bio pages, 1 custom domain, 1 year of analytics, themes and the verified badge.\n• Business ($25/month or $250/year): 20 smart links, 10 bio pages, 10 custom domains.\nYou can upgrade from Dashboard → Pricing.",
   },
   {
     id: "trial",
     label: "Free trial",
     keywords: ["trial", "5 days", "five days", "free pro", "trial end", "expired"],
     answer:
-      "Every new account gets 5 days of Pro free, no card needed. When it ends your account moves to Free and your extra Pro features pause. Pick a plan in Dashboard → Billing to keep them.",
+      "Every new account gets 5 days of Pro free, no card needed. When it ends your account moves to Free and your extra Pro features pause. Pick a plan in Dashboard → Pricing to keep them.",
   },
   {
     id: "domain",
@@ -39,7 +39,7 @@ export const BOT_TOPICS: BotTopic[] = [
     label: "Payments",
     keywords: ["pay", "payment", "card", "crypto", "paddle", "invoice", "receipt", "cancel"],
     answer:
-      "You can pay by card (through Paddle) or with crypto, monthly or yearly (yearly = 2 months free). To change or cancel your plan, go to Dashboard → Billing. If a payment failed or you were charged wrongly, tap \"Talk to a real person\".",
+      "You can pay by card (through Paddle) or with crypto, monthly or yearly (yearly = 2 months free). To change or cancel your plan, go to Dashboard → Pricing. If a payment failed or you were charged wrongly, tap \"Talk to a real person\".",
   },
   {
     id: "email",

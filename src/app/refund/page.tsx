@@ -46,7 +46,7 @@ export default function RefundPage() {
 
       <h2>4. Cancelling</h2>
       <p>
-        You can cancel a card plan at any time in <Link href="/dashboard/billing">Billing</Link> → Manage subscription. Cancelling stops future renewals; Pro stays on
+        You can cancel a card plan at any time in <Link href="/dashboard/billing">Pricing</Link> → Manage subscription. Cancelling stops future renewals; Pro stays on
         until the end of the period you already paid for. Crypto payments never renew, so there is nothing to cancel.
       </p>
 

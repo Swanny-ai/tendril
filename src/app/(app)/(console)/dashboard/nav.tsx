@@ -17,7 +17,7 @@ const items = [
   { href: "/dashboard/domains", label: "Custom domains", icon: Globe },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { href: "/dashboard/billing", label: "Pricing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

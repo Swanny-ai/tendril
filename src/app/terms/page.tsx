@@ -72,7 +72,7 @@ export default function TermsPage() {
         also apply to the purchase.
       </p>
       <ul>
-        <li>Monthly and yearly card plans renew automatically until you cancel. You can cancel any time from Billing → Manage subscription; the plan then stays on until the end of the period you paid for.</li>
+        <li>Monthly and yearly card plans renew automatically until you cancel. You can cancel any time from Pricing → Manage subscription; the plan then stays on until the end of the period you paid for.</li>
         <li>If a renewal payment fails, the paid plan may stop until the payment goes through.</li>
         <li>
           You can also pay in cryptocurrency through NOWPayments. Crypto payments are prepaid: each payment adds one month or one year of the plan and never renews by

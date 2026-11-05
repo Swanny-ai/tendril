@@ -12,7 +12,7 @@ import { CheckoutStatus, ManageButton } from "./billing-actions";
 import { PlanCards } from "./plan-cards";
 
 export const instant = false;
-export const metadata: Metadata = { title: "Billing" };
+export const metadata: Metadata = { title: "Pricing" };
 
 export default async function BillingPage(props: PageProps<"/dashboard/billing">) {
   const { userId } = await requireAccount();
