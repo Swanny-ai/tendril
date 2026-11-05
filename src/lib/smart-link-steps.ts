@@ -124,6 +124,8 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
       step: showStep1 ? 1 : 2,
       step2Href,
       step2Deep: deepLink ?? undefined,
+      // Staying in the app ("Open in phone browser" off): Step 1's button opens Step 2 with a tap.
+      holdToOpen: link.openInBrowser,
       meta,
       // Inside Instagram, TikTok...: show Step 1, then straight away open Step 2 in the phone's browser.
       autoOpen: showStep1 && deepLink ? deepLink : undefined,

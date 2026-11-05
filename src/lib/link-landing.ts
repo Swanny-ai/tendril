@@ -475,6 +475,11 @@ export type LandingRenderInput = {
   step2Href?: string;
   /** Inside a social app: the link that opens Step 2 in the phone's browser, tried when the button is tapped. */
   step2Deep?: string;
+  /**
+   * Step 1's button to Step 2 opens only with a long press (the phone's "Open Link" menu). Off when
+   * the link stays in the app ("Open in phone browser" off): then a plain tap opens Step 2.
+   */
+  holdToOpen?: boolean;
 };
 
 export function landingHtml({
@@ -490,6 +495,7 @@ export function landingHtml({
   step = 2,
   step2Href = "#",
   step2Deep,
+  holdToOpen = true,
 }: LandingRenderInput): string {
   // Step 1: its own cover, name, username and bio (nothing is borrowed from Step 2), no social icons, and only its one
   // button (to Step 2 unless it has its own link). "{NAME}" in titles becomes the step's name.
@@ -505,7 +511,7 @@ export function landingHtml({
           handle: full.introHandle,
           bio: full.introBio,
           socials: [],
-          sections: full.introSections.map((s) => (s.url ? s : { ...s, url: step2Href, deep: step2Deep, hold: true })),
+          sections: full.introSections.map((s) => (s.url ? s : { ...s, url: step2Href, deep: step2Deep, hold: holdToOpen })),
         }
       : full;
   const viewName = view.name || fallbackName;
@@ -721,7 +727,7 @@ export function landingHtml({
     nameFontLink +
     `<div class="lp${preview ? " pv" : ""}"${!preview && slug ? ` data-slug="${esc(slug)}"` : ""} style="${style}">` +
     `<div class="lp-bd" style="${backdrop ? bgImage(backdrop) : `background:radial-gradient(circle at 30% 20%,${p.accent}66,${vars.bg} 70%)`}"></div>` +
-    `<div class="lp-col">${backdrop ? `<div class="lp-cbg" style="${bgImage(backdrop)}"></div>` : ""}<div class="lp-tint"></div>${hero}${head}<div class="lp-list">${blocks.map((b) => `<div class="lp-it">${b}</div>`).join("")}${preview ? (step === 1 ? (p.sections.length ? "" : ADD_BAR_STEP1) : ADD_BAR) : ""}${step === 1 && p.sections.length ? `<p class="lp-hint">Press and hold, then choose Open Link.</p>` : ""}</div>` +
+    `<div class="lp-col">${backdrop ? `<div class="lp-cbg" style="${bgImage(backdrop)}"></div>` : ""}<div class="lp-tint"></div>${hero}${head}<div class="lp-list">${blocks.map((b) => `<div class="lp-it">${b}</div>`).join("")}${preview ? (step === 1 ? (p.sections.length ? "" : ADD_BAR_STEP1) : ADD_BAR) : ""}${step === 1 && p.sections.length && holdToOpen ? `<p class="lp-hint">Press and hold, then choose Open Link.</p>` : ""}</div>` +
     madeWith +
     footer +
     `</div>${popup}${sheets}</div>`

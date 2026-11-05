@@ -23,6 +23,13 @@ describe("Step 1's hold-to-open button", () => {
     expect(html).not.toContain("data-hold");
   });
 
+  it("opens with a tap when the link stays in the app (Open in phone browser off)", () => {
+    const html = render({ holdToOpen: false });
+    expect(html).not.toContain("data-hold");
+    expect(html).not.toContain("Press and hold");
+    expect(html).toContain(`href="${step2Href}"`);
+  });
+
   it("isn't hold-only on Step 2", () => {
     expect(render({ step: 2 })).not.toContain("data-hold");
   });
