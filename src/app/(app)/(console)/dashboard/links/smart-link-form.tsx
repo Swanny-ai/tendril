@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, ChevronsUpDown, Copy, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronsUpDown, Copy, EyeOff, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { QrCodeButton } from "@/components/qr-code-button";
 import { Button } from "@/components/ui/button";
@@ -343,6 +343,23 @@ export function SmartLinkForm({
           </ToggleSection>
         ) : null}
 
+        {/* Two-Steps: hide the "Made with ViewLink" badge on the template page (Pro). With Template off,
+            the same setting sits in the 18+ age check below. */}
+        {mode === "template" && lp.enabled ? (
+          <ToggleSection
+            icon={<EyeOff />}
+            title="Hide “Made with ViewLink”"
+            hint={
+              limits.removeBadge
+                ? "Removes the small ViewLink badge at the bottom of your page."
+                : "Part of Pro: removes the small ViewLink badge at the bottom of your page."
+            }
+            checked={limits.removeBadge ? !v.showBadge : false}
+            disabled={!limits.removeBadge}
+            onChange={(hide) => set({ showBadge: !hide })}
+          />
+        ) : null}
+
         {/* 5. 18+ age check (hidden while Template is on: links carry their own 18+ popups) */}
         {lp.enabled ? null : (
           <ToggleSection
@@ -656,6 +673,7 @@ function ToggleSection({
   hint,
   checked,
   onChange,
+  disabled = false,
   children,
 }: {
   icon: ReactNode;
@@ -663,6 +681,8 @@ function ToggleSection({
   hint: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  /** Locked (e.g. a Pro feature on the Free plan). */
+  disabled?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -674,7 +694,7 @@ function ToggleSection({
             <h2 className="text-base font-semibold">{title}</h2>
             <p className="text-xs text-muted-foreground">{hint}</p>
           </div>
-          <Switch checked={checked} onCheckedChange={onChange} aria-label={title} />
+          <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={title} />
         </div>
         {children}
       </CardContent>
