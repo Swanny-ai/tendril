@@ -106,7 +106,7 @@ export default async function LinkHealthPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", s.tone)}>{s.label}</span>
-                    <CheckButton kind={r.kind} id={r.id} checked={!!last} disabled={quota.left <= 0} />
+                    <CheckButton kind={r.kind} id={r.id} label={bare(r.url)} checked={!!last} disabled={quota.left <= 0} />
                   </div>
                 </div>
                 {last ? (
