@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Lock, ShieldAlert } from "lucide-react";
+import { Lock, ShieldAlert } from "lucide-react";
+import { DateRangePicker } from "./date-range-picker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getOverview, getSources, type Source } from "@/lib/analytics/global";
 import { customWindow, dayWindow, getAnalytics, getLinkAnalytics, parseRange, RANGES, type DayWindow, type RangeKey } from "@/lib/analytics/queries";
@@ -27,6 +28,11 @@ const pill = (active: boolean, deleted = false) =>
 const plainName = (s: Source) => s.label.replace(/ \(deleted\)$/, "").replace(/ \(bio page\)$/, "");
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const shortDay = (d: string, year: boolean) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(year ? { year: "numeric" } : {}), timeZone: "UTC" });
+/** "Nov 1 – Nov 6, 2026" for the calendar button. */
+const customLabel = (from: string, to: string) =>
+  from === to ? shortDay(from, true) : `${shortDay(from, from.slice(0, 4) !== to.slice(0, 4))} – ${shortDay(to, true)}`;
 
 /** The date range in the address: a preset (?range=7d) or two calendar days (?from=…&to=…). */
 type RangeQuery = { range: RangeKey } | { from: string; to: string };
@@ -88,35 +94,16 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
               );
             })}
           </nav>
-          {/* Any two days: the browser's own date picker, within the plan's history. */}
-          <form method="get" className={cn("flex items-center gap-1.5 rounded-lg border bg-card p-1 text-sm", custom && "border-primary")} aria-label="Pick dates">
-            {selected ? <input type="hidden" name="source" value={selected.id} /> : null}
-            <CalendarDays className="ml-1.5 size-4 text-muted-foreground" aria-hidden />
-            <input
-              type="date"
-              name="from"
-              aria-label="From"
-              required
-              min={oldest}
-              max={today}
-              defaultValue={"from" in current ? current.from : isoDay(win.from)}
-              className="h-8 rounded-md bg-transparent px-1.5 text-sm [color-scheme:dark] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            />
-            <span className="text-muted-foreground">to</span>
-            <input
-              type="date"
-              name="to"
-              aria-label="To"
-              required
-              min={oldest}
-              max={today}
-              defaultValue={"to" in current ? current.to : today}
-              className="h-8 rounded-md bg-transparent px-1.5 text-sm [color-scheme:dark] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            />
-            <button type="submit" className="h-8 rounded-md bg-primary px-3 font-medium text-primary-foreground hover:brightness-110">
-              Apply
-            </button>
-          </form>
+          {/* Any two days: a two-month calendar, within the plan's history. */}
+          <DateRangePicker
+            label={"from" in current ? customLabel(current.from, current.to) : `Last ${r.days} days`}
+            from={"from" in current ? current.from : isoDay(win.from)}
+            to={"to" in current ? current.to : today}
+            oldest={oldest}
+            today={today}
+            source={selected?.id ?? null}
+            active={!!custom}
+          />
         </div>
       </div>
 
