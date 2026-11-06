@@ -2,11 +2,13 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, Settings, Unlink } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, List, Settings, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  // Every link in one list: bio pages, Two-Steps and Deeplinks.
+  { href: "/dashboard/my-links", label: "My links", icon: List },
   // Bio pages: the list and the template gallery; editing a page also counts as this section.
   { href: "/dashboard/templates", label: "Templates", icon: LayoutTemplate, also: ["/dashboard/editor", "/edit/template/"] },
   // Template pages (deep links that open a designed page). Deep links are edited at /edit/<link>
