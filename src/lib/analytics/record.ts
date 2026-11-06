@@ -1,5 +1,6 @@
 import "server-only";
 import { isbot } from "isbot";
+import { isHealthCheck } from "@/lib/link-health-rules";
 import { db } from "@/lib/db";
 import { detectInAppBrowser } from "@/lib/in-app";
 import { parseUserAgent } from "@/lib/ua";
@@ -15,7 +16,7 @@ async function visitorContext({ headers }: Ctx) {
   return {
     ua,
     ...parsed,
-    isBot: !ua || isbot(ua),
+    isBot: !ua || isbot(ua) || isHealthCheck(ua),
     country: countryFromHeaders(headers),
     visitorHash: await visitorHash(clientIp(headers), ua),
     inApp: detectInAppBrowser(ua),

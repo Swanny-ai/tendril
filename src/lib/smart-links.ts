@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag, revalidateTag, updateTag } from "next/cache";
 import { isbot } from "isbot";
+import { isHealthCheck } from "@/lib/link-health-rules";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { allowedLinkIds, PLAN_LIMITS, planFromSubscription } from "@/lib/plan-rules";
@@ -116,7 +117,7 @@ export type SmartLinkEventKind = "hit" | "view" | "confirm" | "redirect" | "leav
 
 export async function recordSmartLinkEvent(headers: Headers, linkId: string, kind: SmartLinkEventKind) {
   const ua = headers.get("user-agent") ?? "";
-  const bot = !ua || isbot(ua);
+  const bot = !ua || isbot(ua) || isHealthCheck(ua);
   if (bot && kind !== "redirect") return; // keep bot redirects (flagged) for abuse review only
   const parsed = parseUserAgent(ua);
   await db.smartLinkEvent.create({

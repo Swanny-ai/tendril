@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Gift, Globe, LayoutDashboard, LayoutTemplate, Link2, List, Settings, Unlink } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, HeartPulse, LayoutDashboard, LayoutTemplate, Link2, List, Settings, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -18,6 +18,8 @@ const items = [
   { href: "/dashboard/deeplinks", label: "Deeplinks", icon: Link2 },
   { href: "/dashboard/domains", label: "Custom domains", icon: Globe },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  // Checks each link opens in the apps and browsers and leads somewhere that works.
+  { href: "/dashboard/link-health", label: "Link Health", icon: HeartPulse },
   { href: "/dashboard/affiliate", label: "Affiliate", icon: Gift },
   { href: "/dashboard/billing", label: "Pricing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

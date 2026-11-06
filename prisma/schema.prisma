@@ -46,6 +46,7 @@ model User {
   supportMessages  SupportMessage[]
   supportTickets   SupportTicket[]
   deletedSources   DeletedSource[]
+  healthChecks     LinkHealthCheck[]
 
   @@index([referredById])
 }
@@ -513,4 +514,23 @@ model DeletedSource {
   deletedAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// One Link Health run for a deep link or bio page: what was checked and how it went.
+// Also counts toward the account's checks per day.
+model LinkHealthCheck {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "page" | "link"
+  sourceKind String
+  sourceId   String
+  url        String
+  // "healthy" | "warning" | "down"
+  status     String
+  result     Json
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sourceId, createdAt])
 }
