@@ -7,7 +7,7 @@ import { smartLinkUrl } from "@/lib/domains";
 import { pageUrl } from "@/lib/link-targets";
 import { PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
 import { platformCounts } from "./platform";
-import { dayWindow, type Analytics, type Totals } from "./queries";
+import { dayWindow, type Analytics, type DayWindow, type Totals } from "./queries";
 import { referrerLabel } from "./referrer";
 import { bucketKeys, previousPeriod, type ResolvedRange } from "./ranges";
 
@@ -111,11 +111,11 @@ function viewRows(userId: string, from: Date, to: Date) {
 /** Unified "clicks" for one owner: bio-page link clicks, deep links sending visitors on, and taps on Two-Steps pages' links. */
 function clickRows(userId: string, from: Date, to: Date) {
   return Prisma.sql`
-    SELECT c.ts, c."pageId" AS src
+    SELECT c.ts, c."pageId" AS src, c."visitorHash" AS vh
     FROM "ClickEvent" c
     WHERE c."pageId" IN (${ownedIds(userId, "page")}) AND c."isBot" = false AND c.ts >= ${from} AND c.ts < ${to}
     UNION ALL
-    SELECT e.ts, e."linkId"
+    SELECT e.ts, e."linkId", e."visitorHash"
     FROM "SmartLinkEvent" e
     WHERE e."linkId" IN (${ownedIds(userId, "link")}) AND e.kind IN ('redirect', 'tap') AND e."isBot" = false AND e.ts >= ${from} AND e.ts < ${to}`;
 }
@@ -234,11 +234,11 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
   };
 }
 
-export type Overview = Omit<Analytics, "topLinks"> & { top: (Source & { views: number; clicks: number; ctr: number })[] };
+export type Overview = Omit<Analytics, "topLinks"> & { top: (Source & { views: number; clicks: number; ctr: number; reached: number })[] };
 
 /** The analytics page's "All" view: every bio page and smart link combined, by UTC day. */
-export async function getOverview(userId: string, sources: Source[], days: number, plan: PlanName): Promise<Overview> {
-  const { from, to, prevFrom } = dayWindow(days);
+export async function getOverview(userId: string, sources: Source[], range: number | DayWindow, plan: PlanName): Promise<Overview> {
+  const { from, to, prevFrom, days } = typeof range === "number" ? dayWindow(range) : range;
   const rows = viewRows(userId, from, to);
   const clicks = clickRows(userId, from, to);
   const day = Prisma.sql`to_char(ts, 'YYYY-MM-DD')`;
@@ -248,20 +248,26 @@ export async function getOverview(userId: string, sources: Source[], days: numbe
       db.$queryRaw<{ views: bigint; visitors: bigint }[]>`
         WITH v AS (${viewRows(userId, a, b)}), d AS (SELECT COUNT(*) AS c, COUNT(DISTINCT vh) AS u FROM v GROUP BY ${day})
         SELECT COALESCE(SUM(c), 0)::bigint AS views, COALESCE(SUM(u), 0)::bigint AS visitors FROM d`,
-      db.$queryRaw<{ n: bigint }[]>`WITH c AS (${clickRows(userId, a, b)}) SELECT COUNT(*)::bigint AS n FROM c`,
+      // clicks: every tap; reached: people sent on to a destination, unique per day (like visitors).
+      db.$queryRaw<{ n: bigint; reached: bigint }[]>`
+        WITH c AS (${clickRows(userId, a, b)}), d AS (SELECT COUNT(*) AS c, COUNT(DISTINCT vh) AS u FROM c GROUP BY ${day})
+        SELECT COALESCE(SUM(c), 0)::bigint AS n, COALESCE(SUM(u), 0)::bigint AS reached FROM d`,
     ]);
     const views = n(v[0]?.views);
     const clickCount = n(c[0]?.n);
-    return { views, visitors: n(v[0]?.visitors), clicks: clickCount, ctr: views ? clickCount / views : 0 };
+    return { views, visitors: n(v[0]?.visitors), clicks: clickCount, ctr: views ? clickCount / views : 0, reached: n(c[0]?.reached) };
   };
 
-  const [totals, previous, viewDays, clickDays, viewsBySource, clicksBySource] = await Promise.all([
+  const [totals, previous, viewDays, clickDays, viewsBySource, clicksBySource, reachedBySource] = await Promise.all([
     totalsBetween(from, to),
     totalsBetween(prevFrom, from),
     db.$queryRaw<{ day: string; n: bigint }[]>`WITH v AS (${rows}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM v GROUP BY 1`,
     db.$queryRaw<{ day: string; n: bigint }[]>`WITH c AS (${clicks}) SELECT ${day} AS day, COUNT(*)::bigint AS n FROM c GROUP BY 1`,
     db.$queryRaw<{ src: string; n: bigint }[]>`WITH v AS (${rows}) SELECT src, COUNT(*)::bigint AS n FROM v GROUP BY src`,
     db.$queryRaw<{ src: string; n: bigint }[]>`WITH c AS (${clicks}) SELECT src, COUNT(*)::bigint AS n FROM c GROUP BY src`,
+    db.$queryRaw<{ src: string; n: bigint }[]>`
+      WITH c AS (${clicks}), d AS (SELECT src, COUNT(DISTINCT vh) AS u FROM c GROUP BY src, ${day})
+      SELECT src, COALESCE(SUM(u), 0)::bigint AS n FROM d GROUP BY src`,
   ]);
 
   // Days are UTC dates ("YYYY-MM-DD"), whatever the database session time zone.
@@ -275,11 +281,12 @@ export async function getOverview(userId: string, sources: Source[], days: numbe
 
   const srcViews = new Map(viewsBySource.map((r) => [r.src, n(r.n)]));
   const srcClicks = new Map(clicksBySource.map((r) => [r.src, n(r.n)]));
+  const srcReached = new Map(reachedBySource.map((r) => [r.src, n(r.n)]));
   const top = sources
     .map((s) => {
       const views = srcViews.get(s.id) ?? 0;
       const sent = srcClicks.get(s.id) ?? 0;
-      return { ...s, views, clicks: sent, ctr: views ? sent / views : 0 };
+      return { ...s, views, clicks: sent, ctr: views ? sent / views : 0, reached: srcReached.get(s.id) ?? 0 };
     })
     .sort((a, b) => b.views - a.views || b.clicks - a.clicks);
 

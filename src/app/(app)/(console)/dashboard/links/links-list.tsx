@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { allowedLinkIds, linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
-import { getSmartLinkStats } from "@/lib/smart-links";
+import { getReachedByLink, getSmartLinkStats } from "@/lib/smart-links";
 import { getWarningTemplate } from "@/warning-templates/templates";
 import { parseLanding } from "@/lib/link-landing";
 import { LinkRowActions } from "./row-actions";
@@ -51,7 +51,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
   // Plan limits: each kind has its own allowance and both share a total, oldest links first.
   const allowed = allowedLinkIds(plan, all.map((l) => ({ id: l.id, twoSteps: isTemplateLink(l) })));
   const links = all.filter((l) => isTemplateLink(l) === (mode === "template"));
-  const stats = await getSmartLinkStats(links.map((l) => l.id));
+  const [stats, reached] = await Promise.all([getSmartLinkStats(links.map((l) => l.id)), getReachedByLink(links.map((l) => l.id))]);
   const count = (id: string, kind: string) => stats.find((s) => s.linkId === id && s.kind === kind)?._count._all ?? 0;
   const kindMax = Math.min(limits.maxLinksPerKind, limits.maxSmartLinks);
   const atLimit = linkLimitError(plan, { twoSteps: all.filter(isTemplateLink).length, classic: all.filter((l) => !isTemplateLink(l)).length }, mode === "template") !== null;
@@ -108,12 +108,18 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                       <th className="py-2 pr-4 text-right font-medium">Visits</th>
                       <th className="py-2 pr-4 text-right font-medium">Opened Step 2</th>
                       <th className="py-2 pr-4 text-right font-medium">Link taps</th>
+                      <th className="py-2 pr-4 text-right font-medium" title="People who went on to your link (each counted once a day)">
+                        Reached
+                      </th>
                     </>
                   ) : (
                     <>
                       <th className="py-2 pr-4 text-right font-medium">Warning views</th>
                       <th className="py-2 pr-4 text-right font-medium">Confirmed</th>
                       <th className="py-2 pr-4 text-right font-medium">Visits</th>
+                      <th className="py-2 pr-4 text-right font-medium" title="People sent on to your destination (each counted once a day)">
+                        Reached
+                      </th>
                     </>
                   )}
                   <th className="py-2 text-right font-medium">
@@ -151,6 +157,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                           <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "hit"))}</td>
                           <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "step2"))}</td>
                           <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "tap"))}</td>
+                          <td className="py-3 pr-4 text-right font-medium tabular-nums text-primary">{fmt.format(reached.get(l.id) ?? 0)}</td>
                         </>
                       ) : (
                         <>
@@ -159,6 +166,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                             {l.adultWarning && views ? `${Math.round((Math.min(confirms, views) / views) * 100)}%` : "—"}
                           </td>
                           <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(visits)}</td>
+                          <td className="py-3 pr-4 text-right font-medium tabular-nums text-primary">{fmt.format(reached.get(l.id) ?? 0)}</td>
                         </>
                       )}
                       <td className="py-3 text-right">
@@ -169,7 +177,7 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                 })}
               </tbody>
             </table>
-            <p className="mt-3 text-xs text-muted-foreground">Last 30 days. Bots are filtered out.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Last 30 days. Bots are filtered out. Reached: people who went on to your link, each counted once a day.</p>
           </CardContent>
         </Card>
       )}

@@ -13,7 +13,8 @@ export function parseRange(value: unknown, plan: PlanName): { key: RangeKey; day
   return { key: days === RANGES[key] ? key : "30d", days, clamped: days !== RANGES[key] };
 }
 
-export type Totals = { views: number; visitors: number; clicks: number; ctr: number };
+/** reached: people sent on to a destination (unique per day, like visitors); clicks counts every tap. */
+export type Totals = { views: number; visitors: number; clicks: number; ctr: number; reached: number };
 export type Analytics = {
   days: number;
   totals: Totals;
@@ -40,13 +41,41 @@ function dayStart(daysAgo: number) {
   return d;
 }
 
-/** The current window (whole UTC days, ending now) and the start of the equally long one before it. */
-export function dayWindow(days: number) {
-  return { from: dayStart(days - 1), to: new Date(Date.now() + 60_000), prevFrom: dayStart(2 * days - 1) };
+/** A report's window: whole UTC days from `from` to `to`, `days` long, and the start of the equally long one before it. */
+export type DayWindow = { from: Date; to: Date; prevFrom: Date; days: number };
+
+/** The last `days` whole UTC days, ending now. */
+export function dayWindow(days: number): DayWindow {
+  return { from: dayStart(days - 1), to: new Date(Date.now() + 60_000), prevFrom: dayStart(2 * days - 1), days };
 }
 
+const DAY = 86_400_000;
+const isoDay = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A custom window between two calendar days ("YYYY-MM-DD", both included, UTC), kept within the
+ * plan's analytics history and not past today. Null when the dates aren't valid.
+ */
+export function customWindow(fromDay: unknown, toDay: unknown, plan: PlanName): DayWindow | null {
+  if (typeof fromDay !== "string" || typeof toDay !== "string" || !isoDay.test(fromDay) || !isoDay.test(toDay)) return null;
+  let from = Date.parse(`${fromDay}T00:00:00Z`);
+  let to = Date.parse(`${toDay}T00:00:00Z`);
+  if (Number.isNaN(from) || Number.isNaN(to)) return null;
+  if (from > to) [from, to] = [to, from];
+  const today = dayStart(0).getTime();
+  const oldest = dayStart(PLAN_LIMITS[plan].analyticsDays - 1).getTime();
+  to = Math.min(to, today);
+  from = Math.max(Math.min(from, to), oldest);
+  const days = Math.round((to - from) / DAY) + 1;
+  return { from: new Date(from), to: new Date(Math.min(to + DAY, Date.now() + 60_000)), prevFrom: new Date(from - days * DAY), days };
+}
+
+const windowOf = (range: number | DayWindow) => (typeof range === "number" ? dayWindow(range) : range);
+/** The window's days, oldest first, as UTC dates ("YYYY-MM-DD"). */
+const daysOf = (w: DayWindow) => Array.from({ length: w.days }, (_, i) => new Date(w.from.getTime() + i * DAY).toISOString().slice(0, 10));
+
 async function totalsBetween(pageId: string, from: Date, to: Date): Promise<Totals> {
-  const [views, clicks, visitorRows] = await Promise.all([
+  const [views, clicks, visitorRows, reachedRows] = await Promise.all([
     db.pageView.count({ where: { pageId, ts: { gte: from, lt: to } } }),
     db.clickEvent.count({ where: { pageId, isBot: false, ts: { gte: from, lt: to } } }),
     // Visitor hashes rotate daily, so "visitors" = sum of daily unique visitors.
@@ -56,13 +85,21 @@ async function totalsBetween(pageId: string, from: Date, to: Date): Promise<Tota
         WHERE "pageId" = ${pageId} AND ts >= ${from} AND ts < ${to}
         GROUP BY to_char(ts, 'YYYY-MM-DD')
       ) t`,
+    // People who tapped through to a link's destination (unique per day).
+    db.$queryRaw<{ n: bigint }[]>`
+      SELECT COALESCE(SUM(c), 0)::bigint AS n FROM (
+        SELECT COUNT(DISTINCT "visitorHash") AS c FROM "ClickEvent"
+        WHERE "pageId" = ${pageId} AND "isBot" = false AND ts >= ${from} AND ts < ${to}
+        GROUP BY to_char(ts, 'YYYY-MM-DD')
+      ) t`,
   ]);
   const visitors = Number(visitorRows[0]?.n ?? 0);
-  return { views, visitors, clicks, ctr: ctr(clicks, views) };
+  return { views, visitors, clicks, ctr: ctr(clicks, views), reached: Number(reachedRows[0]?.n ?? 0) };
 }
 
-export async function getAnalytics(pageId: string, days: number, plan: PlanName): Promise<Analytics> {
-  const { from, to, prevFrom } = dayWindow(days);
+export async function getAnalytics(pageId: string, range: number | DayWindow, plan: PlanName): Promise<Analytics> {
+  const w = windowOf(range);
+  const { from, to, prevFrom, days } = w;
   const where = { pageId, ts: { gte: from, lt: to } };
 
   const [totals, previous, viewDays, clickDays, clicksByBlock, warnByBlock, blocks] = await Promise.all([
@@ -83,10 +120,7 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
   const key = (d: Date | string) => (typeof d === "string" ? d : d.toISOString().slice(0, 10));
   const vMap = new Map(viewDays.map((r) => [key(r.day), Number(r.n)]));
   const cMap = new Map(clickDays.map((r) => [key(r.day), Number(r.n)]));
-  const series = Array.from({ length: days }, (_, i) => {
-    const d = key(dayStart(days - 1 - i));
-    return { day: d, views: vMap.get(d) ?? 0, clicks: cMap.get(d) ?? 0 };
-  });
+  const series = daysOf(w).map((d) => ({ day: d, views: vMap.get(d) ?? 0, clicks: cMap.get(d) ?? 0 }));
 
   const clickCount = new Map(clicksByBlock.map((r) => [r.blockId, r._count._all]));
   const warnCount = new Map(warnByBlock.map((r) => [r.blockId, r._count._all]));
@@ -137,7 +171,8 @@ export async function getAnalytics(pageId: string, days: number, plan: PlanName)
 
 export type LinkAnalytics = {
   days: number;
-  totals: { visits: number; visitors: number; warningViews: number; confirms: number; redirects: number; leaves: number; step2: number; taps: number };
+  /** reached: people sent on to the destination (unique per day); redirects and taps count every time. */
+  totals: { visits: number; visitors: number; warningViews: number; confirms: number; redirects: number; leaves: number; step2: number; taps: number; reached: number };
   previousVisits: number;
   /** views = visits, clicks = visitors sent on to the destination */
   series: { day: string; views: number; clicks: number }[];
@@ -145,10 +180,11 @@ export type LinkAnalytics = {
 };
 
 /** One deep link's numbers: visits ("hit"), 18+ page views, confirmations, redirects, leaves. Bots excluded. */
-export async function getLinkAnalytics(linkId: string, days: number, plan: PlanName): Promise<LinkAnalytics> {
-  const { from, to, prevFrom } = dayWindow(days);
+export async function getLinkAnalytics(linkId: string, range: number | DayWindow, plan: PlanName): Promise<LinkAnalytics> {
+  const w = windowOf(range);
+  const { from, to, prevFrom, days } = w;
   const where = { linkId, isBot: false, ts: { gte: from, lt: to } };
-  const [kinds, previousVisits, visitors, perDay] = await Promise.all([
+  const [kinds, previousVisits, visitors, perDay, reached] = await Promise.all([
     db.smartLinkEvent.groupBy({ by: ["kind"], where, _count: { _all: true } }),
     db.smartLinkEvent.count({ where: { linkId, isBot: false, kind: "hit", ts: { gte: prevFrom, lt: from } } }),
     db.$queryRaw<{ n: bigint }[]>`
@@ -157,16 +193,20 @@ export async function getLinkAnalytics(linkId: string, days: number, plan: PlanN
     db.$queryRaw<{ day: string; kind: string; n: bigint }[]>`
       SELECT to_char(ts, 'YYYY-MM-DD') AS day, kind, COUNT(*)::bigint AS n FROM "SmartLinkEvent"
       WHERE "linkId" = ${linkId} AND "isBot" = false AND kind IN ('hit', 'redirect', 'tap') AND ts >= ${from} AND ts < ${to} GROUP BY 1, 2`,
+    // People sent on to the destination: redirects (deep links) and taps (Two-Steps), unique per day.
+    db.$queryRaw<{ n: bigint }[]>`
+      SELECT COALESCE(SUM(c), 0)::bigint AS n FROM (
+        SELECT COUNT(DISTINCT "visitorHash") AS c FROM "SmartLinkEvent"
+        WHERE "linkId" = ${linkId} AND "isBot" = false AND kind IN ('redirect', 'tap') AND ts >= ${from} AND ts < ${to}
+        GROUP BY to_char(ts, 'YYYY-MM-DD')
+      ) t`,
   ]);
   const count = (k: string) => kinds.find((r) => r.kind === k)?._count._all ?? 0;
   // Days are UTC dates ("YYYY-MM-DD"), whatever the database session time zone.
   const key = (d: Date | string) => (typeof d === "string" ? d : d.toISOString().slice(0, 10));
   const byDay = new Map(perDay.map((r) => [`${key(r.day)}|${r.kind}`, Number(r.n)]));
-  const series = Array.from({ length: days }, (_, i) => {
-    const d = key(dayStart(days - 1 - i));
-    // clicks: visitors sent to the destination, or taps on a Two-Steps page's links
-    return { day: d, views: byDay.get(`${d}|hit`) ?? 0, clicks: (byDay.get(`${d}|redirect`) ?? 0) + (byDay.get(`${d}|tap`) ?? 0) };
-  });
+  // clicks: visitors sent to the destination, or taps on a Two-Steps page's links
+  const series = daysOf(w).map((d) => ({ day: d, views: byDay.get(`${d}|hit`) ?? 0, clicks: (byDay.get(`${d}|redirect`) ?? 0) + (byDay.get(`${d}|tap`) ?? 0) }));
 
   let breakdowns: LinkAnalytics["breakdowns"] = null;
   if (PLAN_LIMITS[plan].breakdowns) {
@@ -186,7 +226,17 @@ export async function getLinkAnalytics(linkId: string, days: number, plan: PlanN
   }
   return {
     days,
-    totals: { visits: count("hit"), visitors: Number(visitors[0]?.n ?? 0), warningViews: count("view"), confirms: count("confirm"), redirects: count("redirect"), leaves: count("leave"), step2: count("step2"), taps: count("tap") },
+    totals: {
+      visits: count("hit"),
+      visitors: Number(visitors[0]?.n ?? 0),
+      warningViews: count("view"),
+      confirms: count("confirm"),
+      redirects: count("redirect"),
+      leaves: count("leave"),
+      step2: count("step2"),
+      taps: count("tap"),
+      reached: Number(reached[0]?.n ?? 0),
+    },
     previousVisits,
     series,
     breakdowns,

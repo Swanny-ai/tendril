@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag, revalidateTag, updateTag } from "next/cache";
 import { isbot } from "isbot";
+import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { allowedLinkIds, PLAN_LIMITS, planFromSubscription } from "@/lib/plan-rules";
 import { parseUserAgent } from "@/lib/ua";
@@ -130,6 +131,22 @@ export async function recordSmartLinkEvent(headers: Headers, linkId: string, kin
       isBot: bot,
     },
   });
+}
+
+/**
+ * Last-30-day people sent on to each link's destination (deep-link redirects and Two-Steps taps),
+ * unique per day like visitors, bots excluded. Map of linkId to count.
+ */
+export async function getReachedByLink(linkIds: string[]): Promise<Map<string, number>> {
+  if (!linkIds.length) return new Map();
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const rows = await db.$queryRaw<{ linkId: string; n: bigint }[]>`
+    SELECT "linkId", COALESCE(SUM(c), 0)::bigint AS n FROM (
+      SELECT "linkId", COUNT(DISTINCT "visitorHash") AS c FROM "SmartLinkEvent"
+      WHERE "linkId" IN (${Prisma.join(linkIds)}) AND "isBot" = false AND kind IN ('redirect', 'tap') AND ts >= ${since}
+      GROUP BY "linkId", to_char(ts, 'YYYY-MM-DD')
+    ) t GROUP BY "linkId"`;
+  return new Map(rows.map((r) => [r.linkId, Number(r.n)]));
 }
 
 /** Last-30-day event counts per link and kind (bots excluded). */

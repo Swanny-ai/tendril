@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Lock, ShieldAlert } from "lucide-react";
+import { CalendarDays, Lock, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getOverview, getSources, type Source } from "@/lib/analytics/global";
-import { getAnalytics, getLinkAnalytics, parseRange, RANGES, type RangeKey } from "@/lib/analytics/queries";
+import { customWindow, dayWindow, getAnalytics, getLinkAnalytics, parseRange, RANGES, type DayWindow, type RangeKey } from "@/lib/analytics/queries";
 import { db } from "@/lib/db";
 import { PLAN_LIMITS, type PlanName } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
@@ -11,7 +11,7 @@ import { requireAccount } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { StatCard, ViewsClicksChart } from "./charts";
 import { parseLanding } from "@/lib/link-landing";
-import { BreakdownGrid, delta, fmt, LinkReport, pct, UpgradeCard } from "./report";
+import { BreakdownGrid, delta, fmt, LinkReport, pct, periodText, UpgradeCard } from "./report";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Analytics" };
@@ -26,14 +26,25 @@ const pill = (active: boolean, deleted = false) =>
 /** A source's name without its "(bio page)" / "(deleted)" suffixes, for tables that show the type separately. */
 const plainName = (s: Source) => s.label.replace(/ \(deleted\)$/, "").replace(/ \(bio page\)$/, "");
 
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+/** The date range in the address: a preset (?range=7d) or two calendar days (?from=…&to=…). */
+type RangeQuery = { range: RangeKey } | { from: string; to: string };
+
 export default async function AnalyticsPage(props: PageProps<"/dashboard/analytics">) {
   const { userId } = await requireAccount();
   const [plan, sources] = await Promise.all([getPlan(userId), getSources(userId)]);
-  const { range, source: sourceParam, page: pageParam } = await props.searchParams;
+  const { range, from, to, source: sourceParam, page: pageParam } = await props.searchParams;
   const r = parseRange(range, plan);
+  // ?from=YYYY-MM-DD&to=YYYY-MM-DD picks any days (within the plan's history); otherwise a preset.
+  const custom = customWindow(from, to, plan);
+  const win: DayWindow = custom ?? dayWindow(r.days);
+  const current: RangeQuery = custom ? { from: isoDay(custom.from), to: isoDay(new Date(custom.from.getTime() + (custom.days - 1) * 86_400_000)) } : { range: r.key };
   // ?source=<page or deep link id> narrows to one of them (?page= is the older name); default: everything.
   const selected = sources.find((s) => s.id === (sourceParam ?? pageParam)) ?? null;
-  const href = (source: string | null, rangeKey: RangeKey) => `?${new URLSearchParams(source ? { source, range: rangeKey } : { range: rangeKey })}`;
+  const href = (source: string | null, q: RangeQuery = current) => `?${new URLSearchParams({ ...(source ? { source } : {}), ...q })}`;
+  const oldest = isoDay(dayWindow(PLAN_LIMITS[plan].analyticsDays).from);
+  const today = isoDay(new Date());
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -45,36 +56,68 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
           </p>
           {sources.length > 1 ? (
             <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Source">
-              <Link href={href(null, r.key)} aria-current={selected ? undefined : "page"} className={pill(!selected)}>
+              <Link href={href(null)} aria-current={selected ? undefined : "page"} className={pill(!selected)}>
                 All
               </Link>
               {sources.map((s) => (
-                <Link key={s.id} href={href(s.id, r.key)} aria-current={s.id === selected?.id ? "page" : undefined} className={pill(s.id === selected?.id, s.deleted)}>
+                <Link key={s.id} href={href(s.id)} aria-current={s.id === selected?.id ? "page" : undefined} className={pill(s.id === selected?.id, s.deleted)}>
                   {s.label}
                 </Link>
               ))}
             </nav>
           ) : null}
         </div>
-        <nav className="flex rounded-lg border bg-card p-0.5" aria-label="Date range">
-          {(Object.keys(RANGES) as RangeKey[]).map((k) => {
-            const locked = RANGES[k] > PLAN_LIMITS[plan].analyticsDays;
-            return locked ? (
-              <span key={k} aria-disabled="true" className="flex cursor-not-allowed items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground" title="Pro feature">
-                {k} <Lock className="size-3" />
-              </span>
-            ) : (
-              <Link
-                key={k}
-                href={href(selected?.id ?? null, k)}
-                aria-current={r.key === k ? "page" : undefined}
-                className={cn("rounded-md px-3 py-1.5 text-sm font-medium", r.key === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                {k}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          <nav className="flex rounded-lg border bg-card p-0.5" aria-label="Date range">
+            {(Object.keys(RANGES) as RangeKey[]).map((k) => {
+              const locked = RANGES[k] > PLAN_LIMITS[plan].analyticsDays;
+              const on = !custom && r.key === k;
+              return locked ? (
+                <span key={k} aria-disabled="true" className="flex cursor-not-allowed items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground" title="Pro feature">
+                  {k} <Lock className="size-3" />
+                </span>
+              ) : (
+                <Link
+                  key={k}
+                  href={href(selected?.id ?? null, { range: k })}
+                  aria-current={on ? "page" : undefined}
+                  className={cn("rounded-md px-3 py-1.5 text-sm font-medium", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {k}
+                </Link>
+              );
+            })}
+          </nav>
+          {/* Any two days: the browser's own date picker, within the plan's history. */}
+          <form method="get" className={cn("flex items-center gap-1.5 rounded-lg border bg-card p-1 text-sm", custom && "border-primary")} aria-label="Pick dates">
+            {selected ? <input type="hidden" name="source" value={selected.id} /> : null}
+            <CalendarDays className="ml-1.5 size-4 text-muted-foreground" aria-hidden />
+            <input
+              type="date"
+              name="from"
+              aria-label="From"
+              required
+              min={oldest}
+              max={today}
+              defaultValue={"from" in current ? current.from : isoDay(win.from)}
+              className="h-8 rounded-md bg-transparent px-1.5 text-sm [color-scheme:dark] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            />
+            <span className="text-muted-foreground">to</span>
+            <input
+              type="date"
+              name="to"
+              aria-label="To"
+              required
+              min={oldest}
+              max={today}
+              defaultValue={"to" in current ? current.to : today}
+              className="h-8 rounded-md bg-transparent px-1.5 text-sm [color-scheme:dark] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            />
+            <button type="submit" className="h-8 rounded-md bg-primary px-3 font-medium text-primary-foreground hover:brightness-110">
+              Apply
+            </button>
+          </form>
+        </div>
       </div>
 
       {selected?.deleted ? (
@@ -84,11 +127,11 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
       ) : null}
 
       {!selected ? (
-        <AllReport userId={userId} sources={sources} days={r.days} plan={plan} rangeKey={r.key} href={href} />
+        <AllReport userId={userId} sources={sources} win={win} plan={plan} href={href} />
       ) : selected.kind === "page" ? (
-        <PageReport pageId={selected.id} days={r.days} plan={plan} />
+        <PageReport pageId={selected.id} win={win} plan={plan} />
       ) : (
-        <DeepLinkReport linkId={selected.id} days={r.days} plan={plan} />
+        <DeepLinkReport linkId={selected.id} win={win} plan={plan} />
       )}
     </div>
   );
@@ -97,32 +140,31 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
 async function AllReport({
   userId,
   sources,
-  days,
+  win,
   plan,
-  rangeKey,
   href,
 }: {
   userId: string;
   sources: Source[];
-  days: number;
+  win: DayWindow;
   plan: PlanName;
-  rangeKey: RangeKey;
-  href: (source: string | null, rangeKey: RangeKey) => string;
+  href: (source: string | null) => string;
 }) {
-  const data = await getOverview(userId, sources, days, plan);
+  const data = await getOverview(userId, sources, win, plan);
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Views" value={fmt.format(data.totals.views)} delta={delta(data.totals.views, data.previous.views)} />
         <StatCard label="Visitors" hint="Unique per day" value={fmt.format(data.totals.visitors)} delta={delta(data.totals.visitors, data.previous.visitors)} />
         <StatCard label="Clicks" value={fmt.format(data.totals.clicks)} delta={delta(data.totals.clicks, data.previous.clicks)} />
         <StatCard label="Click-through rate" value={pct(data.totals.ctr)} delta={delta(data.totals.ctr, data.previous.ctr)} />
+        <StatCard label="Reached destination" hint="People" value={fmt.format(data.totals.reached)} delta={delta(data.totals.reached, data.previous.reached)} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Views and clicks</CardTitle>
-          <CardDescription>Last {data.days} days · Clicks are link clicks on your bio pages plus deep-link visitors sent to the destination.</CardDescription>
+          <CardDescription>{periodText(data.series)} · Clicks are link clicks on your bio pages plus deep-link visitors sent to the destination.</CardDescription>
         </CardHeader>
         <CardContent>
           <ViewsClicksChart data={data.series} />
@@ -132,7 +174,7 @@ async function AllReport({
       <Card>
         <CardHeader>
           <CardTitle>Bio pages and deep links</CardTitle>
-          <CardDescription>Views and clicks for each one. Pick one for its full report.</CardDescription>
+          <CardDescription>Views and clicks for each one; Reached is how many people went on to your link. Pick one for its full report.</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {data.top.length === 0 ? (
@@ -145,6 +187,7 @@ async function AllReport({
                   <th className="py-2 pr-4 font-medium">Type</th>
                   <th className="py-2 pr-4 text-right font-medium">Views</th>
                   <th className="py-2 pr-4 text-right font-medium">Clicks</th>
+                  <th className="py-2 pr-4 text-right font-medium">Reached</th>
                   <th className="py-2 text-right font-medium">CTR</th>
                 </tr>
               </thead>
@@ -152,7 +195,7 @@ async function AllReport({
                 {data.top.map((s) => (
                   <tr key={s.id} className="border-b last:border-0">
                     <td className="max-w-[320px] truncate py-2.5 pr-4 font-medium">
-                      <Link href={href(s.id, rangeKey)} className="hover:underline">
+                      <Link href={href(s.id)} className="hover:underline">
                         {plainName(s)}
                       </Link>
                       <span className="ml-2 text-xs font-normal text-muted-foreground">{s.url}</span>
@@ -163,6 +206,7 @@ async function AllReport({
                     </td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.views)}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.clicks)}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{fmt.format(s.reached)}</td>
                     <td className="py-2.5 text-right tabular-nums">{pct(s.ctr)}</td>
                   </tr>
                 ))}
@@ -177,21 +221,22 @@ async function AllReport({
   );
 }
 
-async function PageReport({ pageId, days, plan }: { pageId: string; days: number; plan: PlanName }) {
-  const data = await getAnalytics(pageId, days, plan);
+async function PageReport({ pageId, win, plan }: { pageId: string; win: DayWindow; plan: PlanName }) {
+  const data = await getAnalytics(pageId, win, plan);
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Views" value={fmt.format(data.totals.views)} delta={delta(data.totals.views, data.previous.views)} />
         <StatCard label="Visitors" hint="Unique per day" value={fmt.format(data.totals.visitors)} delta={delta(data.totals.visitors, data.previous.visitors)} />
         <StatCard label="Clicks" value={fmt.format(data.totals.clicks)} delta={delta(data.totals.clicks, data.previous.clicks)} />
         <StatCard label="Click-through rate" value={pct(data.totals.ctr)} delta={delta(data.totals.ctr, data.previous.ctr)} />
+        <StatCard label="Reached destination" hint="People" value={fmt.format(data.totals.reached)} delta={delta(data.totals.reached, data.previous.reached)} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Views and clicks</CardTitle>
-          <CardDescription>Last {data.days} days</CardDescription>
+          <CardDescription>{periodText(data.series)}</CardDescription>
         </CardHeader>
         <CardContent>
           <ViewsClicksChart data={data.series} />
@@ -241,7 +286,7 @@ async function PageReport({ pageId, days, plan }: { pageId: string; days: number
   );
 }
 
-async function DeepLinkReport({ linkId, days, plan }: { linkId: string; days: number; plan: PlanName }) {
-  const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true, landingPage: true } }), getLinkAnalytics(linkId, days, plan)]);
+async function DeepLinkReport({ linkId, win, plan }: { linkId: string; win: DayWindow; plan: PlanName }) {
+  const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true, landingPage: true } }), getLinkAnalytics(linkId, win, plan)]);
   return <LinkReport data={data} adultWarning={link?.adultWarning ?? false} twoSteps={!!parseLanding(link?.landingPage)?.enabled} />;
 }

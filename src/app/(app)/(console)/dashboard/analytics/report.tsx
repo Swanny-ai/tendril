@@ -91,16 +91,17 @@ export function LinkReport({ data, adultWarning, twoSteps = false }: { data: Lin
   if (twoSteps)
     return (
       <>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard label="Visits" value={fmt.format(data.totals.visits)} delta={delta(data.totals.visits, data.previousVisits)} />
           <StatCard label="Visitors" hint="Unique" value={fmt.format(data.totals.visitors)} delta={null} />
           <StatCard label="Opened Step 2" value={fmt.format(data.totals.step2)} delta={null} hint={rate(data.totals.step2, data.totals.visits)} />
           <StatCard label="Link taps" value={fmt.format(data.totals.taps)} delta={null} hint={data.totals.visits ? `${(data.totals.taps / data.totals.visits).toFixed(1)} per visit` : undefined} />
+          <StatCard label="Reached destination" value={fmt.format(data.totals.reached)} delta={null} hint={`${rate(data.totals.reached, data.totals.visitors)} of visitors`} />
         </div>
         <Card>
           <CardHeader>
             <CardTitle>Visits and link taps</CardTitle>
-            <CardDescription>Last {data.days} days</CardDescription>
+            <CardDescription>{periodText(data.series)}</CardDescription>
           </CardHeader>
           <CardContent>
             <ViewsClicksChart data={data.series} labels={{ views: "Visits", clicks: "Link taps" }} />
@@ -111,10 +112,11 @@ export function LinkReport({ data, adultWarning, twoSteps = false }: { data: Lin
     );
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Visits" value={fmt.format(data.totals.visits)} delta={delta(data.totals.visits, data.previousVisits)} />
         <StatCard label="Visitors" hint="Unique" value={fmt.format(data.totals.visitors)} delta={null} />
         <StatCard label="Sent to destination" value={fmt.format(data.totals.redirects)} delta={null} hint={rate(data.totals.redirects, data.totals.visits)} />
+        <StatCard label="Reached destination" value={fmt.format(data.totals.reached)} delta={null} hint={`${rate(data.totals.reached, data.totals.visitors)} of visitors`} />
         <StatCard
           label={adultWarning ? "Confirmed 18+" : "Left"}
           value={fmt.format(adultWarning ? data.totals.confirms : data.totals.leaves)}
@@ -126,7 +128,7 @@ export function LinkReport({ data, adultWarning, twoSteps = false }: { data: Lin
       <Card>
         <CardHeader>
           <CardTitle>Visits and redirects</CardTitle>
-          <CardDescription>Last {data.days} days</CardDescription>
+          <CardDescription>{periodText(data.series)}</CardDescription>
         </CardHeader>
         <CardContent>
           <ViewsClicksChart data={data.series} labels={{ views: "Visits", clicks: "Sent to destination" }} />
@@ -136,4 +138,13 @@ export function LinkReport({ data, adultWarning, twoSteps = false }: { data: Lin
       {data.breakdowns ? <BreakdownGrid data={data.breakdowns} /> : <UpgradeCard />}
     </>
   );
+}
+
+/** "Oct 1 – Oct 7, 2026" for a report's days (whole UTC days, oldest first). */
+export function periodText(series: { day: string }[]): string {
+  if (!series.length) return "";
+  const f = (d: string, year: boolean) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC", ...(year ? { year: "numeric" } : {}) });
+  const first = series[0].day;
+  const last = series[series.length - 1].day;
+  return first === last ? f(first, true) : `${f(first, false)} – ${f(last, true)}`;
 }
