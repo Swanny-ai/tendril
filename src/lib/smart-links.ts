@@ -151,14 +151,32 @@ export async function getReachedByLink(linkIds: string[]): Promise<Map<string, n
 }
 
 /**
- * Last-30-day numbers for bio pages, bots excluded: visits (page views) and people who tapped one
- * of the page's links (unique per day, like deep links' "reached"). Map of pageId to both.
+ * Last-30-day unique visitors of each link, bots excluded. The visitor hash changes every day,
+ * so someone who comes back on another day counts again. Map of linkId to count.
  */
-export async function getPageStats(pageIds: string[]): Promise<Map<string, { visits: number; reached: number }>> {
+export async function getUniqueVisitorsByLink(linkIds: string[]): Promise<Map<string, number>> {
+  if (!linkIds.length) return new Map();
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const rows = await db.$queryRaw<{ linkId: string; n: bigint }[]>`
+    SELECT "linkId", COUNT(DISTINCT "visitorHash")::bigint AS n FROM "SmartLinkEvent"
+    WHERE "linkId" IN (${Prisma.join(linkIds)}) AND "isBot" = false AND kind = 'hit' AND ts >= ${since}
+    GROUP BY "linkId"`;
+  return new Map(rows.map((r) => [r.linkId, Number(r.n)]));
+}
+
+/**
+ * Last-30-day numbers for bio pages, bots excluded: visits (page views), unique visitors, and people
+ * who tapped one of the page's links (unique per day, like deep links' "reached"). Map of pageId to all three.
+ */
+export async function getPageStats(pageIds: string[]): Promise<Map<string, { visits: number; visitors: number; reached: number }>> {
   if (!pageIds.length) return new Map();
   const since = new Date(Date.now() - 30 * 86_400_000);
-  const [views, reached] = await Promise.all([
+  const [views, visitors, reached] = await Promise.all([
     db.pageView.groupBy({ by: ["pageId"], where: { pageId: { in: pageIds }, isBot: false, ts: { gte: since } }, _count: { _all: true } }),
+    db.$queryRaw<{ pageId: string; n: bigint }[]>`
+      SELECT "pageId", COUNT(DISTINCT "visitorHash")::bigint AS n FROM "PageView"
+      WHERE "pageId" IN (${Prisma.join(pageIds)}) AND "isBot" = false AND ts >= ${since}
+      GROUP BY "pageId"`,
     db.$queryRaw<{ pageId: string; n: bigint }[]>`
       SELECT "pageId", COALESCE(SUM(c), 0)::bigint AS n FROM (
         SELECT "pageId", COUNT(DISTINCT "visitorHash") AS c FROM "ClickEvent"
@@ -166,8 +184,9 @@ export async function getPageStats(pageIds: string[]): Promise<Map<string, { vis
         GROUP BY "pageId", to_char(ts, 'YYYY-MM-DD')
       ) t GROUP BY "pageId"`,
   ]);
-  const out = new Map(pageIds.map((id) => [id, { visits: 0, reached: 0 }]));
+  const out = new Map(pageIds.map((id) => [id, { visits: 0, visitors: 0, reached: 0 }]));
   for (const v of views) out.get(v.pageId)!.visits = v._count._all;
+  for (const v of visitors) out.get(v.pageId)!.visitors = Number(v.n);
   for (const r of reached) out.get(r.pageId)!.reached = Number(r.n);
   return out;
 }

@@ -10,7 +10,7 @@ import { editLinkPath, editPagePath } from "@/lib/edit-paths";
 import { parseLanding } from "@/lib/link-landing";
 import { pageUrl } from "@/lib/link-targets";
 import { requireAccount } from "@/lib/session";
-import { getPageStats, getReachedByLink, getSmartLinkStats } from "@/lib/smart-links";
+import { getPageStats, getReachedByLink, getSmartLinkStats, getUniqueVisitorsByLink } from "@/lib/smart-links";
 import { cn } from "@/lib/utils";
 import { MyLinkActions } from "./link-actions";
 
@@ -36,10 +36,10 @@ export default async function MyLinksPage() {
   ]);
   const linkIds = links.map((l) => l.id);
   const pageIds = pages.map((p) => p.id);
-  const [reached, linkStats, pageStats] = await Promise.all([getReachedByLink(linkIds), getSmartLinkStats(linkIds), getPageStats(pageIds)]);
+  const [reached, linkStats, linkVisitors, pageStats] = await Promise.all([getReachedByLink(linkIds), getSmartLinkStats(linkIds), getUniqueVisitorsByLink(linkIds), getPageStats(pageIds)]);
   const linkVisits = (id: string) => linkStats.find((s) => s.linkId === id && s.kind === "hit")?._count._all ?? 0;
 
-  const rows: { id: string; kind: Kind; name: string; note: string; url: string; on: boolean; editHref: string; visits: number; reached: number }[] = [
+  const rows: { id: string; kind: Kind; name: string; note: string; url: string; on: boolean; editHref: string; visits: number; visitors: number; reached: number }[] = [
     ...links.map((l) => ({
       id: l.id,
       kind: (parseLanding(l.landingPage)?.enabled ? "two-steps" : "deeplink") as Kind,
@@ -49,6 +49,7 @@ export default async function MyLinksPage() {
       on: l.enabled,
       editHref: editLinkPath(l, l.domain),
       visits: linkVisits(l.id),
+      visitors: linkVisitors.get(l.id) ?? 0,
       reached: reached.get(l.id) ?? 0,
     })),
     ...pages.map((p) => ({
@@ -60,6 +61,7 @@ export default async function MyLinksPage() {
       on: p.published,
       editHref: editPagePath(p, p.domain),
       visits: pageStats.get(p.id)?.visits ?? 0,
+      visitors: pageStats.get(p.id)?.visitors ?? 0,
       reached: pageStats.get(p.id)?.reached ?? 0,
     })),
   ];
@@ -106,6 +108,9 @@ export default async function MyLinksPage() {
                   <th className="py-2 pr-4 text-right font-medium" title="Visits in the last 30 days">
                     Visits
                   </th>
+                  <th className="py-2 pr-4 text-right font-medium" title="Different people who visited in the last 30 days (each counted once a day)">
+                    Unique visitors
+                  </th>
                   <th className="py-2 pr-4 text-right font-medium" title="People who went on to your link in the last 30 days (each counted once a day)">
                     Reached
                   </th>
@@ -137,6 +142,7 @@ export default async function MyLinksPage() {
                         </span>
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(r.visits)}</td>
+                      <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(r.visitors)}</td>
                       <td className="py-3 pr-4 text-right font-medium tabular-nums text-primary">{fmt.format(r.reached)}</td>
                       <td className="py-3">
                         <MyLinkActions
@@ -154,7 +160,7 @@ export default async function MyLinksPage() {
               </tbody>
             </table>
             <p className="mt-3 text-xs text-muted-foreground">
-              Last 30 days, bots filtered out. Reached: people who went on to your link, each counted once a day. The switch turns a link or page on and off.
+              Last 30 days, bots filtered out. Unique visitors and Reached count each person once a day. Reached: people who went on to your link. The switch turns a link or page on and off.
             </p>
           </CardContent>
         </Card>
