@@ -76,7 +76,8 @@ export function PlanCards({
   cardSub: { plan: PaidPlan; interval: Interval } | null;
 }) {
   const router = useRouter();
-  const [interval, setPeriod] = useState<Interval>(cardSub?.interval ?? "year");
+  // Opens on monthly prices (a current card subscription shows its own period).
+  const [interval, setPeriod] = useState<Interval>(cardSub?.interval ?? "month");
   const [busy, setBusy] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<PaidPlan | null>(null);
   const yearly = interval === "year";
