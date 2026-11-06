@@ -36,6 +36,8 @@ export type LiveStats = {
   users: number;
   previousUsers: number;
   topLocations: null | { code: string; name: string; views: number }[];
+  /** Where the people of the last 30 minutes are (unique visitors per country), for the map's live dots. */
+  liveCountries: null | { code: string; numeric: string; name: string; visitors: number }[];
   activeLinks: { label: string; path: string; url: string; views: number }[];
 };
 
@@ -190,7 +192,7 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
   const prevStart = new Date(start.getTime() - 30 * MINUTE);
   const window = viewRows(userId, start, end);
 
-  const [recent, perMinute, users, prevUsers, locations, links] = await Promise.all([
+  const [recent, perMinute, users, prevUsers, locations, links, here] = await Promise.all([
     db.$queryRaw<{ id: string; ts: Date; country: string | null; device: string; src: string }[]>`
       WITH v AS (${viewRows(userId, new Date(now.getTime() - 7 * 86_400_000), end)})
       SELECT id, ts, country, device, src FROM v ORDER BY ts DESC LIMIT 10`,
@@ -204,6 +206,10 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
       : Promise.resolve(null),
     db.$queryRaw<{ src: string; views: bigint }[]>`
       WITH v AS (${window}) SELECT src, COUNT(*)::bigint AS views FROM v GROUP BY src ORDER BY views DESC`,
+    withGeo
+      ? db.$queryRaw<{ country: string | null; visitors: bigint }[]>`
+          WITH v AS (${window}) SELECT country, COUNT(DISTINCT vh)::bigint AS visitors FROM v WHERE country IS NOT NULL GROUP BY country ORDER BY visitors DESC LIMIT 60`
+      : Promise.resolve(null),
   ]);
 
   const byId = new Map(sources.map((s) => [s.id, s]));
@@ -230,6 +236,12 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
     users: n(users[0]?.n),
     previousUsers: n(prevUsers[0]?.n),
     topLocations: locations ? locations.map((r) => ({ code: r.country ?? "??", name: countryName(r.country), views: n(r.views) })) : null,
+    liveCountries: here
+      ? here.flatMap((r) => {
+          const numeric = r.country && /^[A-Z]{2}$/.test(r.country) ? countries.alpha2ToNumeric(r.country) : undefined;
+          return numeric ? [{ code: r.country!, numeric, name: countryName(r.country), visitors: n(r.visitors) }] : [];
+        })
+      : null,
     activeLinks: links.map((r) => ({ label: byId.get(r.src)?.label ?? "Deleted link", path: byId.get(r.src)?.path ?? "", url: byId.get(r.src)?.url ?? "", views: n(r.views) })),
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link2, Monitor, Radio, Smartphone, Tablet, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,7 +66,7 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
   const change = data.previousUsers ? (data.users - data.previousUsers) / data.previousUsers : null;
 
   return (
-    <>
+    <LiveContext value={data}>
     <div className="grid gap-4 lg:grid-cols-3">
       {map}
       {/* On wide screens the feed fits the map's height and scrolls, so the map has no empty space. */}
@@ -214,6 +214,72 @@ export function LivePanels({ initial, geo, map, countries }: { initial: LiveStat
         </CardContent>
       </Card>
     </div>
+    </LiveContext>
+  );
+}
+
+/** The live stream, for pieces rendered inside the panels (the map's dots). */
+const LiveContext = createContext<LiveStats | null>(null);
+
+/**
+ * Pulsing dots over the world map, one per country people are on your links from in the last
+ * 30 minutes (bigger with more people). `at` is each country's dot position in the map's own units.
+ */
+export function LiveMapDots({ width, height, at }: { width: number; height: number; at: Record<string, [number, number]> }) {
+  const live = useContext(LiveContext);
+  const dots = (live?.liveCountries ?? []).filter((c) => at[c.numeric]);
+  const people = dots.reduce((sum, c) => sum + c.visitors, 0);
+  const max = Math.max(1, ...dots.map((c) => c.visitors));
+  return (
+    <>
+      <svg viewBox={`0 0 ${width} ${height}`} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden data-testid="live-dots">
+        <defs>
+          {/* Soft green light around each dot, fading to nothing. */}
+          <radialGradient id="live-glow">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.55" />
+            <stop offset="45%" stopColor="var(--primary)" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+          </radialGradient>
+          {/* A light core with a hint of green, so it reads on dark and on green countries alike. */}
+          <radialGradient id="live-core" cx="38%" cy="35%" r="70%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="55%" style={{ stopColor: "color-mix(in oklab, var(--primary) 35%, #ffffff)" }} />
+            <stop offset="100%" stopColor="var(--primary)" />
+          </radialGradient>
+        </defs>
+        {dots.map((c, i) => {
+          const [x, y] = at[c.numeric];
+          // 0..1 by how many people; rounded so the server and the browser draw the same numbers.
+          const t = Math.round((Math.log1p(c.visitors) / Math.log1p(max)) * 100) / 100;
+          const core = Math.round((4 + 2.5 * t) * 10) / 10;
+          const glow = Math.round((12 + 10 * t) * 10) / 10;
+          const begin = `${((i * 0.47) % 2.4).toFixed(2)}s`;
+          return (
+            <g key={c.code} className="pointer-events-auto cursor-default">
+              <title>{`${c.name}: ${c.visitors} ${c.visitors === 1 ? "visitor" : "visitors"} right now`}</title>
+              <circle cx={x} cy={y} r={glow} fill="url(#live-glow)" />
+              {/* A thin ring that eases out and fades, like a radar ping. */}
+              <circle cx={x} cy={y} r={core} fill="none" stroke="var(--primary)" strokeWidth={1.2}>
+                <animate attributeName="r" values={`${core};${glow + 6}`} dur="2.4s" begin={begin} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.7 0.3 1" />
+                <animate attributeName="stroke-opacity" values="0.9;0" dur="2.4s" begin={begin} repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines="0.3 0 0.6 1" />
+              </circle>
+              <circle cx={x} cy={y} r={core} fill="url(#live-core)" />
+            </g>
+          );
+        })}
+      </svg>
+      {live?.liveCountries ? (
+        <div className="pointer-events-none absolute top-2 right-2 flex items-center gap-2 rounded-full border bg-card/90 px-3 py-1 text-xs shadow-sm backdrop-blur">
+          <span className="relative flex size-2" aria-hidden>
+            {people ? <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" /> : null}
+            <span className={cn("relative inline-flex size-2 rounded-full", people ? "bg-primary" : "bg-muted-foreground/50")} />
+          </span>
+          <span>
+            <span className="font-semibold tabular-nums">{people}</span> {people === 1 ? "visitor" : "visitors"} right now
+            {dots.length ? <span className="text-muted-foreground"> · {dots.length} {dots.length === 1 ? "country" : "countries"}</span> : null}
+          </span>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -1,9 +1,10 @@
 import "server-only";
-import { geoNaturalEarth1, geoPath } from "d3-geo";
-import type { FeatureCollection, Geometry } from "geojson";
+import { geoArea, geoNaturalEarth1, geoPath } from "d3-geo";
+import type { Feature, FeatureCollection, Geometry, Polygon } from "geojson";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import world from "world-atlas/countries-110m.json";
+import { LiveMapDots } from "./live-panels";
 import { MapHover } from "./map-hover";
 
 // Rendered on the server as plain SVG, so the map ships no client JavaScript.
@@ -11,7 +12,7 @@ import { MapHover } from "./map-hover";
 const WIDTH = 960;
 const HEIGHT = 470;
 
-type Shape = { id: string; name: string; d: string };
+type Shape = { id: string; name: string; d: string; /** Where its live dot goes: the middle of its biggest landmass (so the US dot isn't pulled toward Alaska). */ at: [number, number] };
 let shapes: Shape[] | null = null;
 
 function worldShapes(): Shape[] {
@@ -20,7 +21,14 @@ function worldShapes(): Shape[] {
   const fc = feature(topo, topo.objects.countries) as FeatureCollection<Geometry, { name: string }>;
   fc.features = fc.features.filter((f) => f.id !== "010"); // Antarctica
   const path = geoPath(geoNaturalEarth1().fitSize([WIDTH, HEIGHT], fc));
-  shapes = fc.features.map((f) => ({ id: String(f.id ?? ""), name: f.properties?.name ?? "", d: path(f) ?? "" })).filter((s) => s.d);
+  const mainland = (f: Feature<Geometry>): Feature<Geometry> => {
+    if (f.geometry.type !== "MultiPolygon") return f;
+    const parts = f.geometry.coordinates.map((coordinates): Feature<Polygon> => ({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates } }));
+    return parts.reduce((a, b) => (geoArea(b) > geoArea(a) ? b : a));
+  };
+  shapes = fc.features
+    .map((f) => ({ id: String(f.id ?? ""), name: f.properties?.name ?? "", d: path(f) ?? "", at: path.centroid(mainland(f)).map((v) => Math.round(v * 10) / 10) as [number, number] }))
+    .filter((s) => s.d);
   return shapes;
 }
 
@@ -62,6 +70,8 @@ export function WorldMap({ data }: { data: { numeric: string | null; name: strin
             );
           })}
         </svg>
+        {/* Live visitors: a pulsing dot on each country someone is on your links from right now. */}
+        <LiveMapDots width={WIDTH} height={HEIGHT} at={Object.fromEntries(worldShapes().map((s) => [s.id, s.at]))} />
       </MapHover>
       <figcaption className="pointer-events-none absolute bottom-3 left-3 rounded-xl border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
         <p className="mb-1.5 font-medium">Views intensity (log scale)</p>
