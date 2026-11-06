@@ -10,7 +10,7 @@ import { editLinkPath, editPagePath } from "@/lib/edit-paths";
 import { parseLanding } from "@/lib/link-landing";
 import { pageUrl } from "@/lib/link-targets";
 import { requireAccount } from "@/lib/session";
-import { getReachedByLink } from "@/lib/smart-links";
+import { getPageStats, getReachedByLink, getSmartLinkStats } from "@/lib/smart-links";
 import { cn } from "@/lib/utils";
 import { MyLinkActions } from "./link-actions";
 
@@ -34,9 +34,12 @@ export default async function MyLinksPage() {
     db.page.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { domain: { select: { hostname: true } } } }),
     db.smartLink.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, include: { domain: { select: { hostname: true } } } }),
   ]);
-  const reached = await getReachedByLink(links.map((l) => l.id));
+  const linkIds = links.map((l) => l.id);
+  const pageIds = pages.map((p) => p.id);
+  const [reached, linkStats, pageStats] = await Promise.all([getReachedByLink(linkIds), getSmartLinkStats(linkIds), getPageStats(pageIds)]);
+  const linkVisits = (id: string) => linkStats.find((s) => s.linkId === id && s.kind === "hit")?._count._all ?? 0;
 
-  const rows: { id: string; kind: Kind; name: string; note: string; url: string; on: boolean; editHref: string; reached: number | null }[] = [
+  const rows: { id: string; kind: Kind; name: string; note: string; url: string; on: boolean; editHref: string; visits: number; reached: number }[] = [
     ...links.map((l) => ({
       id: l.id,
       kind: (parseLanding(l.landingPage)?.enabled ? "two-steps" : "deeplink") as Kind,
@@ -45,6 +48,7 @@ export default async function MyLinksPage() {
       url: smartLinkUrl(l.slug, l.domain, appUrl, l.atRoot),
       on: l.enabled,
       editHref: editLinkPath(l, l.domain),
+      visits: linkVisits(l.id),
       reached: reached.get(l.id) ?? 0,
     })),
     ...pages.map((p) => ({
@@ -55,7 +59,8 @@ export default async function MyLinksPage() {
       url: pageUrl(p, p.domain, appUrl),
       on: p.published,
       editHref: editPagePath(p, p.domain),
-      reached: null,
+      visits: pageStats.get(p.id)?.visits ?? 0,
+      reached: pageStats.get(p.id)?.reached ?? 0,
     })),
   ];
   const counts = { "two-steps": 0, deeplink: 0, page: 0 } as Record<Kind, number>;
@@ -98,6 +103,9 @@ export default async function MyLinksPage() {
                   <th className="py-2 pr-4 font-medium">Link</th>
                   <th className="py-2 pr-4 font-medium">Type</th>
                   <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 pr-4 text-right font-medium" title="Visits in the last 30 days">
+                    Visits
+                  </th>
                   <th className="py-2 pr-4 text-right font-medium" title="People who went on to your link in the last 30 days (each counted once a day)">
                     Reached
                   </th>
@@ -128,16 +136,26 @@ export default async function MyLinksPage() {
                           {r.on ? (r.kind === "page" ? "Live" : "Active") : r.kind === "page" ? "Offline" : "Paused"}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-right tabular-nums">{r.reached === null ? "—" : fmt.format(r.reached)}</td>
+                      <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(r.visits)}</td>
+                      <td className="py-3 pr-4 text-right font-medium tabular-nums text-primary">{fmt.format(r.reached)}</td>
                       <td className="py-3">
-                        <MyLinkActions url={r.url} editHref={r.editHref} analyticsHref={`/dashboard/analytics?source=${r.id}`} />
+                        <MyLinkActions
+                          id={r.id}
+                          kind={r.kind === "page" ? "page" : "link"}
+                          on={r.on}
+                          url={r.url}
+                          editHref={r.editHref}
+                          analyticsHref={`/dashboard/analytics?source=${r.id}`}
+                        />
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            <p className="mt-3 text-xs text-muted-foreground">Reached: people who went on to your link in the last 30 days, each counted once a day.</p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Last 30 days, bots filtered out. Reached: people who went on to your link, each counted once a day. The switch turns a link or page on and off.
+            </p>
           </CardContent>
         </Card>
       )}

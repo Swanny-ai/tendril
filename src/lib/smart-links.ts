@@ -149,6 +149,28 @@ export async function getReachedByLink(linkIds: string[]): Promise<Map<string, n
   return new Map(rows.map((r) => [r.linkId, Number(r.n)]));
 }
 
+/**
+ * Last-30-day numbers for bio pages, bots excluded: visits (page views) and people who tapped one
+ * of the page's links (unique per day, like deep links' "reached"). Map of pageId to both.
+ */
+export async function getPageStats(pageIds: string[]): Promise<Map<string, { visits: number; reached: number }>> {
+  if (!pageIds.length) return new Map();
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const [views, reached] = await Promise.all([
+    db.pageView.groupBy({ by: ["pageId"], where: { pageId: { in: pageIds }, isBot: false, ts: { gte: since } }, _count: { _all: true } }),
+    db.$queryRaw<{ pageId: string; n: bigint }[]>`
+      SELECT "pageId", COALESCE(SUM(c), 0)::bigint AS n FROM (
+        SELECT "pageId", COUNT(DISTINCT "visitorHash") AS c FROM "ClickEvent"
+        WHERE "pageId" IN (${Prisma.join(pageIds)}) AND "isBot" = false AND ts >= ${since}
+        GROUP BY "pageId", to_char(ts, 'YYYY-MM-DD')
+      ) t GROUP BY "pageId"`,
+  ]);
+  const out = new Map(pageIds.map((id) => [id, { visits: 0, reached: 0 }]));
+  for (const v of views) out.get(v.pageId)!.visits = v._count._all;
+  for (const r of reached) out.get(r.pageId)!.reached = Number(r.n);
+  return out;
+}
+
 /** Last-30-day event counts per link and kind (bots excluded). */
 export async function getSmartLinkStats(linkIds: string[]) {
   if (!linkIds.length) return [];

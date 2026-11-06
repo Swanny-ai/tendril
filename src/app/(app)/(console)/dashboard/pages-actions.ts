@@ -130,6 +130,16 @@ export async function createPageAction(input: { username: string; template?: str
   }
 }
 
+/** Take one of the account's bio pages offline, or put it back live (the switch on My links). */
+export async function setPagePublishedAction(pageId: string, published: boolean): Promise<PageActionResult> {
+  const userId = await requireUserId();
+  const page = await db.page.findFirst({ where: { id: pageId, userId }, select: { id: true } });
+  if (!page) return { ok: false, error: "That page no longer exists." };
+  await db.page.update({ where: { id: page.id }, data: { published } });
+  await invalidatePageFromAction(page.id);
+  return { ok: true };
+}
+
 /** Delete one of the account's pages (never the last one). */
 export async function deletePageAction(pageId: string): Promise<PageActionResult> {
   const userId = await requireUserId();
