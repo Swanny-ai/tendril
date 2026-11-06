@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { PLAN_PRICES_USD, planFromSubscription } from "@/lib/plan-rules";
 import { paddlePriceIds } from "@/lib/paddle";
+import { CountryFlag } from "@/components/country-flag";
+import { countryName } from "@/lib/analytics/global";
 import { DayBars, Header, Pill, Stat, ago, daysAgo, fillDays, fmt, money } from "./ui";
 
 export const instant = false;
@@ -35,6 +37,7 @@ export default async function AdminOverview() {
     visitDays,
     recentUsers,
     recentCrypto,
+    signupCountries,
   ] = await Promise.all([
     db.user.count(),
     db.user.count({ where: { createdAt: { gte: since(1) } } }),
@@ -62,9 +65,17 @@ export default async function AdminOverview() {
         UNION ALL
         SELECT to_char(ts, 'YYYY-MM-DD') AS day, count(*) AS n FROM "SmartLinkEvent" WHERE ts >= ${since(30)} AND NOT "isBot" AND kind = 'hit' GROUP BY 1
       ) t GROUP BY day`,
-    db.user.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, email: true, createdAt: true, pages: { select: { username: true }, take: 1 } } }),
+    db.user.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, email: true, createdAt: true, signupCountry: true, pages: { select: { username: true }, take: 1 } } }),
     db.cryptoPayment.findMany({ where: { status: "finished" }, orderBy: { paidAt: "desc" }, take: 6, include: { user: { select: { id: true, email: true } } } }),
+    db.user.groupBy({ by: ["signupCountry"], _count: { _all: true } }),
   ]);
+  // Where accounts were created from (recorded since sign-up countries were added; older ones are unknown).
+  const knownCountries = signupCountries
+    .filter((c) => c.signupCountry)
+    .map((c) => ({ code: c.signupCountry!, count: c._count._all }))
+    .sort((a, b) => b.count - a.count);
+  const unknownCountry = signupCountries.find((c) => !c.signupCountry)?._count._all ?? 0;
+  const topCountry = knownCountries[0]?.count ?? 0;
 
   const pro = subs.filter((s) => planFromSubscription(s) !== "FREE");
   const business = pro.filter((s) => s.plan === "BUSINESS").length;
@@ -117,6 +128,33 @@ export default async function AdminOverview() {
         </div>
       </section>
 
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">Where accounts sign up from</h2>
+        <div className="rounded-xl border bg-card p-4">
+          {knownCountries.length ? (
+            <ul className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+              {knownCountries.slice(0, 20).map((c) => (
+                <li key={c.code} className="flex items-center gap-3 text-sm">
+                  <CountryFlag code={c.code} />
+                  <span className="w-32 shrink-0 truncate">{countryName(c.code)}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(4, (c.count / topCountry) * 100)}%` }} />
+                  </span>
+                  <span className="w-10 text-right tabular-nums">{fmt(c.count)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No sign-up countries yet. They&apos;re recorded for every new account from now on.</p>
+          )}
+          {unknownCountry ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {fmt(unknownCountry)} account{unknownCountry === 1 ? "" : "s"} signed up before countries were recorded.
+            </p>
+          ) : null}
+        </div>
+      </section>
+
       {reports || payouts._count ? (
         <section className="grid gap-3 sm:grid-cols-2">
           {reports ? <Stat label="Open reports" value={fmt(reports)} hint="Visitors reported a link" href="/admin/reports" tone="warn" /> : null}
@@ -133,7 +171,8 @@ export default async function AdminOverview() {
             {recentUsers.map((u) => (
               <li key={u.id}>
                 <Link href={`/admin/users/${u.id}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-muted/50">
-                  <span className="min-w-0 truncate">
+                  <span className="flex min-w-0 items-center gap-2 truncate">
+                    <CountryFlag code={u.signupCountry} size="sm" />
                     {u.email}
                     {u.pages[0] ? <span className="ml-2 text-muted-foreground">@{u.pages[0].username}</span> : null}
                   </span>

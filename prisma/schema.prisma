@@ -36,6 +36,9 @@ model User {
   referredBy       User?                 @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
   referrals        User[]                @relation("Referrals")
   referredAt       DateTime?
+  // Country the account was created from (ISO code, from the visitor's IP at sign-up), for the
+  // admin dashboard. Null for accounts created before this was recorded.
+  signupCountry    String?
   affiliateClicks  AffiliateClick[]
   commissions      AffiliateCommission[]
   payoutRequests   PayoutRequest[]

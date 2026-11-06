@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { signInMethods } from "@/lib/sign-in-methods";
+import { CountryFlag } from "@/components/country-flag";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -49,6 +50,7 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
       select: {
         id: true,
         email: true,
+        signupCountry: true,
         name: true,
         emailVerified: true,
         createdAt: true,
@@ -91,8 +93,9 @@ export default async function AdminUsers(props: PageProps<"/admin/users">) {
           return (
             <tr key={u.id} className="hover:bg-muted/40">
               <td className="max-w-72">
-                <Link href={`/admin/users/${u.id}`} className="block truncate font-medium hover:underline">
-                  {u.email}
+                <Link href={`/admin/users/${u.id}`} className="flex items-center gap-2 truncate font-medium hover:underline" title={u.signupCountry ? `Signed up from ${u.signupCountry}` : undefined}>
+                  <CountryFlag code={u.signupCountry} size="sm" />
+                  <span className="truncate">{u.email}</span>
                 </Link>
                 <span className="block truncate text-xs text-muted-foreground">
                   {u.pages[0] ? `@${u.pages[0].username}` : (u.name ?? "No page yet")}

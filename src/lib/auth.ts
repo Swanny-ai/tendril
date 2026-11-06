@@ -1,5 +1,7 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import { connection } from "next/server";
+import { headers } from "next/headers";
+import { countryFromHeaders } from "@/lib/analytics/visitor";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import type { Provider } from "next-auth/providers";
@@ -113,7 +115,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     // A brand-new account (here: Google sign-up; credentials sign-up grants it in the action) gets the Pro trial.
     async createUser({ user }) {
-      if (user.id) await startTrial(user.id).catch(() => {});
+      if (!user.id) return;
+      await startTrial(user.id).catch(() => {});
+      // Where the account was created from (for the admin dashboard); never blocks sign-up.
+      try {
+        const country = countryFromHeaders(await headers());
+        if (country) await db.user.update({ where: { id: user.id }, data: { signupCountry: country } });
+      } catch {
+        /* no request headers here (or no country): leave it unknown */
+      }
     },
   },
 });

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { clientIp } from "@/lib/analytics/visitor";
+import { clientIp, countryFromHeaders } from "@/lib/analytics/visitor";
 import { signIn, signOut } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { passwordResetEmail, sendEmail, verifyEmail } from "@/lib/mailer";
@@ -47,7 +47,7 @@ export async function signupAction(_prev: AuthFormState, form: FormData): Promis
   if (existing) return { fieldErrors: { email: "An account with this email already exists" }, email: email.data };
 
   const passwordHash = await bcrypt.hash(password.data, 12);
-  const user = await db.user.create({ data: { email: email.data, passwordHash } });
+  const user = await db.user.create({ data: { email: email.data, passwordHash, signupCountry: countryFromHeaders(await headers()) } });
   await attributeReferral(user.id); // arrived through someone's /join/<code> link
   await startTrial(user.id); // every new account gets a 5-day Pro trial
   await sendVerification(user.id, user.email);
