@@ -1,8 +1,9 @@
 "use server";
 
-import { appHost } from "@/config/brand";
+import { appHost, appUrl } from "@/config/brand";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { smartLinkUrl } from "@/lib/domains";
 import { rememberDeletedSource } from "@/lib/analytics/global";
 import { checkLinkTarget, linkNameTaken } from "@/lib/link-targets";
 import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
@@ -17,7 +18,7 @@ import { accessError, isDefaultAccess, parseAccess } from "@/lib/link-access";
 import { parseWarningColors } from "@/warning-templates/colors";
 import { isWarningTemplateKey } from "@/warning-templates/templates";
 
-export type LinkActionResult = { ok: true; id?: string } | { ok: false; error: string; field?: string };
+export type LinkActionResult = { ok: true; id?: string; /** A new link's public address and where it goes. */ url?: string; destination?: string } | { ok: false; error: string; field?: string };
 
 async function validate(userId: string, input: SmartLinkInput, linkId?: string) {
   const parsed = smartLinkSchema.safeParse(input);
@@ -85,9 +86,9 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
   const limitError = linkLimitError(v.plan, await linkKindCounts(userId), isTwoSteps(v.data));
   if (limitError) return { ok: false, error: limitError };
   try {
-    const link = await db.smartLink.create({ data: { userId, ...v.data } });
+    const link = await db.smartLink.create({ data: { userId, ...v.data }, include: { domain: { select: { hostname: true } } } });
     invalidateSmartLinkFromAction(link.slug);
-    return { ok: true, id: link.id };
+    return { ok: true, id: link.id, url: smartLinkUrl(link.slug, link.domain, appUrl, link.atRoot), destination: link.destinationUrl };
   } catch (e) {
     // Unique slug clash (P2002) is the expected case; anything else is logged so it can be fixed.
     if ((e as { code?: string }).code !== "P2002") {

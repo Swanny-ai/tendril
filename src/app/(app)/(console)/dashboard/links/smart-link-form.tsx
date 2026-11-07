@@ -23,6 +23,7 @@ import { WarningScreen } from "@/warning-templates/warning-screen";
 import { createSmartLinkAction, updateSmartLinkAction, type LinkActionResult } from "./actions";
 import { AdvancedAccess } from "./advanced-access";
 import { LandingEditor } from "./landing-editor";
+import { showLinkCreated } from "./link-created-host";
 import type { LinkAccess } from "@/lib/link-access";
 import { LandingPhone } from "./landing-phone";
 
@@ -181,8 +182,14 @@ export function SmartLinkForm({
       toast.error(res.error);
       return;
     }
-    toast.success(id ? "Link saved" : "Link created 🎉");
-    if (!id) celebrate();
+    if (!id && res.url) {
+      // New link: its address, QR code and sharing show in a popup over the links list.
+      celebrate();
+      showLinkCreated({ url: res.url, destination: res.destination ?? v.destinationUrl, twoSteps: lp.enabled, adultWarning: !lp.enabled && v.adultWarning, openInBrowser: v.openInBrowser, enabled: v.enabled });
+      setV(initial); // the router keeps this page alive: start clean next time
+    } else {
+      toast.success(id ? "Link saved" : "Link created 🎉");
+    }
     router.push(listHref);
     router.refresh();
   }

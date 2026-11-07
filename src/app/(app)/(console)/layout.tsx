@@ -8,6 +8,7 @@ import { DashboardNav } from "./dashboard/nav";
 import { UserMenu } from "./dashboard/user-menu";
 import { VerifyBanner } from "./dashboard/verify-banner";
 import { TrialBanner, TrialPopup } from "./dashboard/trial-notices";
+import { LinkCreatedHost } from "./dashboard/links/link-created-host";
 import { SupportWidget } from "./dashboard/support-widget";
 import { UsageMeter } from "./dashboard/usage-meter";
 import { trialInfo } from "@/lib/trial";
@@ -72,6 +73,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
+      <LinkCreatedHost />
       <SupportWidget initialUnread={supportUnread} firstName={user.name?.trim().split(/\s+/)[0] || null} />
     </div>
   );
