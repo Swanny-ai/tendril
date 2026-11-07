@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appUrl } from "@/config/brand";
+import { smartLinkUrl } from "@/lib/domains";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { countryName } from "@/lib/analytics/global";
@@ -31,10 +32,10 @@ export default async function AdminActivity(props: PageProps<"/admin/activity">)
       SELECT p.id, p.username, u.email, u.id AS "userId", count(*) AS n FROM "PageView" v
       JOIN "Page" p ON p.id = v."pageId" JOIN "User" u ON u.id = p."userId"
       WHERE v.ts >= ${since} AND NOT v."isBot" GROUP BY p.id, u.id ORDER BY n DESC LIMIT 15`,
-    db.$queryRaw<{ id: string; slug: string; email: string; userId: string; n: bigint }[]>`
-      SELECT l.id, l.slug, u.email, u.id AS "userId", count(*) AS n FROM "SmartLinkEvent" e
-      JOIN "SmartLink" l ON l.id = e."linkId" JOIN "User" u ON u.id = l."userId"
-      WHERE e.ts >= ${since} AND NOT e."isBot" AND e.kind = 'hit' GROUP BY l.id, u.id ORDER BY n DESC LIMIT 15`,
+    db.$queryRaw<{ id: string; slug: string; atRoot: boolean; hostname: string | null; email: string; userId: string; n: bigint }[]>`
+      SELECT l.id, l.slug, l."atRoot", d.hostname, u.email, u.id AS "userId", count(*) AS n FROM "SmartLinkEvent" e
+      JOIN "SmartLink" l ON l.id = e."linkId" JOIN "User" u ON u.id = l."userId" LEFT JOIN "Domain" d ON d.id = l."domainId"
+      WHERE e.ts >= ${since} AND NOT e."isBot" AND e.kind = 'hit' GROUP BY l.id, u.id, d.hostname ORDER BY n DESC LIMIT 15`,
     db.$queryRaw<Row[]>`
       SELECT key, sum(n) AS n FROM (
         SELECT country AS key, count(*) AS n FROM "PageView" WHERE ts >= ${since} AND NOT "isBot" GROUP BY 1
@@ -103,9 +104,16 @@ export default async function AdminActivity(props: PageProps<"/admin/activity">)
         <section className="space-y-2">
           <h2 className="font-semibold">Top links</h2>
           <Table head={["Link", "Owner", "Visits"]} empty={!topLinks.length}>
-            {topLinks.map((l) => (
+            {topLinks.map((l) => {
+              // The address people really use: custom domain when it has one, not the internal slug.
+              const url = smartLinkUrl(l.slug, l.hostname ? { hostname: l.hostname } : null, appUrl, l.atRoot);
+              return (
               <tr key={l.id}>
-                <td className="font-medium">/{l.slug}</td>
+                <td className="max-w-64 truncate">
+                  <a href={url} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                    {url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  </a>
+                </td>
                 <td className="max-w-48 truncate text-xs">
                   <Link href={`/admin/users/${l.userId}`} className="hover:underline">
                     {l.email}
@@ -113,7 +121,8 @@ export default async function AdminActivity(props: PageProps<"/admin/activity">)
                 </td>
                 <td className="tabular-nums">{fmt(Number(l.n))}</td>
               </tr>
-            ))}
+              );
+            })}
           </Table>
         </section>
         <Breakdown title="Countries" rows={share(countries).map((r) => ({ ...r, label: r.key ? countryName(r.key) : "Unknown" }))} />
