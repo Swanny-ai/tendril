@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
-const config = { views: { label: "Views", color: "var(--chart-1)" } } satisfies ChartConfig;
+const config = { views: { label: "Views", color: "var(--chart-1)" }, clicks: { label: "Clicks", color: "var(--chart-2)" } } satisfies ChartConfig;
 
 /** Bucket keys are already wall-clock times in the chosen zone, so format them as UTC. */
 function bucketDate(key: string) {
@@ -23,9 +23,10 @@ export function formatBucket(key: string, bucket: "hour" | "day", withDay: boole
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 
-export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: string; views: number }[]; bucket: "hour" | "day"; tzLabel: string }) {
+export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: string; views: number; clicks: number }[]; bucket: "hour" | "day"; tzLabel: string }) {
   const [legend, setLegend] = useState(true);
   const total = series.reduce((s, p) => s + p.views, 0);
+  const clicks = series.reduce((s, p) => s + p.clicks, 0);
   const average = series.length ? total / series.length : 0;
   const peak = series.reduce((best, p) => (p.views > best.views ? p : best), { key: "", views: 0 });
   const multiDay = bucket === "hour" && new Set(series.map((p) => p.key.slice(0, 10))).size > 1;
@@ -36,15 +37,19 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
       <div className="flex flex-wrap items-center justify-between gap-3">
         <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <div>
-            <dt className="text-muted-foreground">Total</dt>
+            <dt className="text-muted-foreground">Views</dt>
             <dd className="font-heading text-xl font-semibold tabular-nums">{total.toLocaleString("en-US")}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Average / {per}</dt>
+            <dt className="text-muted-foreground">Clicks</dt>
+            <dd className="font-heading text-xl font-semibold tabular-nums">{clicks.toLocaleString("en-US")}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Avg views / {per}</dt>
             <dd className="font-heading text-xl font-semibold tabular-nums">{fmt.format(average)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Peak</dt>
+            <dt className="text-muted-foreground">Peak views</dt>
             <dd className="font-heading text-xl font-semibold tabular-nums">
               {peak.views.toLocaleString("en-US")}
               {peak.views ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">{formatBucket(peak.key, bucket, multiDay || bucket === "day")}</span> : null}
@@ -65,6 +70,10 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
               <stop offset="5%" stopColor="var(--color-views)" stopOpacity={0.35} />
               <stop offset="95%" stopColor="var(--color-views)" stopOpacity={0.02} />
             </linearGradient>
+            <linearGradient id="fill-global-clicks" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--color-clicks)" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="var(--color-clicks)" stopOpacity={0.02} />
+            </linearGradient>
           </defs>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="key" tickLine={false} axisLine={false} tickMargin={8} minTickGap={32} tickFormatter={(k) => formatBucket(String(k), bucket, false)} />
@@ -72,6 +81,7 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
           <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => formatBucket(String(p?.[0]?.payload?.key ?? ""), bucket, true)} />} />
           {legend ? <ChartLegend content={<ChartLegendContent />} /> : null}
           <Area dataKey="views" type="monotone" stroke="var(--color-views)" fill="url(#fill-global-views)" strokeWidth={2} dot={false} />
+          <Area dataKey="clicks" type="monotone" stroke="var(--color-clicks)" fill="url(#fill-global-clicks)" strokeWidth={2} dot={false} />
         </AreaChart>
       </ChartContainer>
     </div>

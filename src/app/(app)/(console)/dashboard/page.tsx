@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, BarChart3, Eye, Globe2, Link2, Lock, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, BarChart3, Eye, Globe2, Link2, Lock, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,8 +109,14 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
         />
       </div>
 
-      <section aria-label="Key numbers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Key numbers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Kpi icon={Eye} label="Total views" value={<LiveNumber value={totals.views} text={fmt.format(totals.views)} />} note={`${fmt.format(totals.visitors)} unique visitors`} />
+        <Kpi
+          icon={Target}
+          label="Reached"
+          value={<LiveNumber value={totals.reached} text={fmt.format(totals.reached)} />}
+          note="People who landed on your destinations"
+        />
         <Kpi icon={Link2} label="Active links" value={<LiveNumber value={totals.activeSources} text={fmt.format(totals.activeSources)} />} note={`of ${totals.totalSources} with at least one view`} />
         <Kpi icon={BarChart3} label="Avg views per link" value={<LiveNumber value={totals.avgPerSource} text={fmt1.format(totals.avgPerSource)} />} note="Across links with views" />
         <Kpi
@@ -131,7 +137,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Performance overview</CardTitle>
-            <CardDescription>Views {range.bucket === "hour" ? "per hour" : "per day"}</CardDescription>
+            <CardDescription>Views and clicks {range.bucket === "hour" ? "per hour" : "per day"}</CardDescription>
           </CardHeader>
           <CardContent>
             <PerformanceChart series={stats.series} bucket={range.bucket} tzLabel={tzLabel} />

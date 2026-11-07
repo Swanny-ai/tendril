@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test("shows key numbers, chart, top performers and live panels", async ({ page }) => {
   await expect(page.getByRole("combobox", { name: "Time zone" })).toHaveText(/UTC/); // UTC by default
-  for (const label of ["Total views", "Active links", "Avg views per link", "Growth"]) {
+  for (const label of ["Total views", "Reached", "Active links", "Avg views per link", "Growth"]) {
     await expect(page.getByRole("region", { name: "Key numbers" }).getByText(label, { exact: true })).toBeVisible();
   }
   await expect(page.getByText("Performance overview")).toBeVisible();

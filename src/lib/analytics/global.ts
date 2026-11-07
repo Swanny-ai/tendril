@@ -21,8 +21,9 @@ import { bucketKeys, previousPeriod, type ResolvedRange } from "./ranges";
 export type Source = { id: string; kind: "page" | "link"; label: string; path: string; url: string; deleted?: boolean };
 
 export type GlobalStats = {
-  totals: { views: number; visitors: number; activeSources: number; totalSources: number; avgPerSource: number; previousViews: number; growth: number | null };
-  series: { key: string; views: number }[];
+  /** clicks: every tap that sent someone on; reached: people sent to a destination, each counted once a day. */
+  totals: { views: number; visitors: number; activeSources: number; totalSources: number; avgPerSource: number; previousViews: number; growth: number | null; clicks: number; reached: number };
+  series: { key: string; views: number; clicks: number }[];
   top: (Source & { views: number })[];
   /** null when the plan has no geographic breakdowns */
   countries: null | { code: string; numeric: string | null; name: string; views: number }[];
@@ -36,8 +37,6 @@ export type LiveStats = {
   users: number;
   previousUsers: number;
   topLocations: null | { code: string; name: string; views: number }[];
-  /** Where the people of the last 30 minutes are (unique visitors per country), for the map's live dots. */
-  liveCountries: null | { code: string; numeric: string; name: string; visitors: number }[];
   activeLinks: { label: string; path: string; url: string; views: number }[];
 };
 
@@ -136,7 +135,10 @@ export async function getGlobalStats(
   const rows = viewRows(userId, range.from, range.to);
   const fmt = range.bucket === "hour" ? 'YYYY-MM-DD"T"HH24' : "YYYY-MM-DD";
 
-  const [totalRow, prevRow, bySource, byBucket, byCountry] = await Promise.all([
+  const clicks = clickRows(userId, range.from, range.to);
+  const bucketOf = Prisma.sql`to_char(date_trunc(${range.bucket}, (ts AT TIME ZONE 'UTC') AT TIME ZONE ${tz}), ${fmt})`;
+
+  const [totalRow, prevRow, bySource, byBucket, byCountry, clickTotal, clickBuckets] = await Promise.all([
     db.$queryRaw<{ views: bigint; visitors: bigint }[]>`
       WITH v AS (${rows}) SELECT COUNT(*)::bigint AS views, COUNT(DISTINCT vh)::bigint AS visitors FROM v`,
     db.$queryRaw<{ views: bigint }[]>`
@@ -145,12 +147,18 @@ export async function getGlobalStats(
       WITH v AS (${rows}) SELECT src, COUNT(*)::bigint AS views FROM v GROUP BY src`,
     db.$queryRaw<{ k: string; views: bigint }[]>`
       WITH v AS (${rows})
-      SELECT to_char(date_trunc(${range.bucket}, (ts AT TIME ZONE 'UTC') AT TIME ZONE ${tz}), ${fmt}) AS k, COUNT(*)::bigint AS views
+      SELECT ${bucketOf} AS k, COUNT(*)::bigint AS views
       FROM v GROUP BY 1`,
     withGeo
       ? db.$queryRaw<{ country: string | null; views: bigint }[]>`
           WITH v AS (${rows}) SELECT country, COUNT(*)::bigint AS views FROM v GROUP BY country ORDER BY views DESC`
       : Promise.resolve(null),
+    // Visitor hashes change every day, so "reached" adds up each day's unique people (as everywhere else).
+    db.$queryRaw<{ clicks: bigint; reached: bigint }[]>`
+      WITH c AS (${clicks}), d AS (SELECT COUNT(*) AS c, COUNT(DISTINCT vh) AS u FROM c GROUP BY to_char(ts, 'YYYY-MM-DD'))
+      SELECT COALESCE(SUM(c), 0)::bigint AS clicks, COALESCE(SUM(u), 0)::bigint AS reached FROM d`,
+    db.$queryRaw<{ k: string; clicks: bigint }[]>`
+      WITH c AS (${clicks}) SELECT ${bucketOf} AS k, COUNT(*)::bigint AS clicks FROM c GROUP BY 1`,
   ]);
 
   const views = n(totalRow[0]?.views);
@@ -158,6 +166,7 @@ export async function getGlobalStats(
   const sourceViews = new Map(bySource.map((r) => [r.src, n(r.views)]));
   const activeSources = sourceViews.size;
   const bucketViews = new Map(byBucket.map((r) => [r.k, n(r.views)]));
+  const bucketClicks = new Map(clickBuckets.map((r) => [r.k, n(r.clicks)]));
 
   return {
     totals: {
@@ -168,8 +177,10 @@ export async function getGlobalStats(
       avgPerSource: activeSources ? views / activeSources : 0,
       previousViews,
       growth: previousViews ? (views - previousViews) / previousViews : views ? null : 0,
+      clicks: n(clickTotal[0]?.clicks),
+      reached: n(clickTotal[0]?.reached),
     },
-    series: bucketKeys(range.from, range.to, tz, range.bucket).map((key) => ({ key, views: bucketViews.get(key) ?? 0 })),
+    series: bucketKeys(range.from, range.to, tz, range.bucket).map((key) => ({ key, views: bucketViews.get(key) ?? 0, clicks: bucketClicks.get(key) ?? 0 })),
     top: sources
       .map((s) => ({ ...s, views: sourceViews.get(s.id) ?? 0 }))
       .filter((s) => s.views > 0)
@@ -192,7 +203,7 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
   const prevStart = new Date(start.getTime() - 30 * MINUTE);
   const window = viewRows(userId, start, end);
 
-  const [recent, perMinute, users, prevUsers, locations, links, here] = await Promise.all([
+  const [recent, perMinute, users, prevUsers, locations, links] = await Promise.all([
     db.$queryRaw<{ id: string; ts: Date; country: string | null; device: string; src: string }[]>`
       WITH v AS (${viewRows(userId, new Date(now.getTime() - 7 * 86_400_000), end)})
       SELECT id, ts, country, device, src FROM v ORDER BY ts DESC LIMIT 10`,
@@ -206,10 +217,6 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
       : Promise.resolve(null),
     db.$queryRaw<{ src: string; views: bigint }[]>`
       WITH v AS (${window}) SELECT src, COUNT(*)::bigint AS views FROM v GROUP BY src ORDER BY views DESC`,
-    withGeo
-      ? db.$queryRaw<{ country: string | null; visitors: bigint }[]>`
-          WITH v AS (${window}) SELECT country, COUNT(DISTINCT vh)::bigint AS visitors FROM v WHERE country IS NOT NULL GROUP BY country ORDER BY visitors DESC LIMIT 60`
-      : Promise.resolve(null),
   ]);
 
   const byId = new Map(sources.map((s) => [s.id, s]));
@@ -236,12 +243,6 @@ export async function getLiveStats(owner: { userId: string }, sources: Source[],
     users: n(users[0]?.n),
     previousUsers: n(prevUsers[0]?.n),
     topLocations: locations ? locations.map((r) => ({ code: r.country ?? "??", name: countryName(r.country), views: n(r.views) })) : null,
-    liveCountries: here
-      ? here.flatMap((r) => {
-          const numeric = r.country && /^[A-Z]{2}$/.test(r.country) ? countries.alpha2ToNumeric(r.country) : undefined;
-          return numeric ? [{ code: r.country!, numeric, name: countryName(r.country), visitors: n(r.visitors) }] : [];
-        })
-      : null,
     activeLinks: links.map((r) => ({ label: byId.get(r.src)?.label ?? "Deleted link", path: byId.get(r.src)?.path ?? "", url: byId.get(r.src)?.url ?? "", views: n(r.views) })),
   };
 }
