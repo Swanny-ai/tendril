@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
+import { appHost } from "@/config/brand";
 import { leanNotFound } from "@/lib/lean-link-pages";
-import { isLinkEntry } from "@/lib/link-paths";
+import { isLinkEntry, linkOpensHere } from "@/lib/link-paths";
 import { accessDenied, warningStep } from "@/lib/smart-link-steps";
 import { getSmartLink } from "@/lib/smart-links";
 
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]/war
   const { slug } = await ctx.params;
   const link = await getSmartLink(slug);
   const h = new Headers(request.headers);
-  if (!link || !link.adultWarning) return leanNotFound(h.get("host") ?? "");
+  if (!link || !link.adultWarning || !linkOpensHere(link, h, appHost)) return leanNotFound(h.get("host") ?? "");
   const denied = accessDenied(h, link);
   if (denied) return denied;
   // On a custom domain this page can be the first thing a visitor sees, so it counts the visit too.

@@ -14,6 +14,18 @@ export function publicLinkBase(headers: Headers, slug: string, appHost: string):
   return `/l/${slug}`;
 }
 
+/**
+ * True when this request may open the link. On a custom domain a link only opens on the domain it
+ * was created for, and a Root link only at "/" (not at its internal slug). The ViewLink domain
+ * keeps serving every link. /l/<slug> on the link's own domain stays open: its steps redirect there.
+ */
+export function linkOpensHere(link: { slug: string; atRoot: boolean; domainHost: string | null }, headers: Headers, appHost: string): boolean {
+  const host = headers.get("host");
+  if (isAppHost(host, appHost)) return true;
+  if (link.domainHost !== host?.toLowerCase().replace(/:\d+$/, "")) return false;
+  return !(link.atRoot && headers.get(LINK_BASE_HEADER) === `/${link.slug}`);
+}
+
 /** True when this page is the visitor's first stop at the link's clean address (so it counts the visit). */
 export function isLinkEntry(headers: Headers): boolean {
   return headers.get(LINK_ENTRY_HEADER) === "1";

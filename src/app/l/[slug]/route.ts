@@ -1,10 +1,8 @@
 import { after, type NextRequest } from "next/server";
 import { clientIp } from "@/lib/analytics/visitor";
 import { appHost } from "@/config/brand";
-import { isAppHost } from "@/lib/domain-names";
-import { getVerifiedDomain } from "@/lib/domains";
 import { detectInAppBrowser } from "@/lib/in-app";
-import { isLinkEntry } from "@/lib/link-paths";
+import { isLinkEntry, linkOpensHere } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
 import { accessDenied, landingStep, openStep, warningStep } from "@/lib/smart-link-steps";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
@@ -25,14 +23,9 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
   const { slug } = await ctx.params;
   if (!SLUG.test(slug)) return notFound();
   const link = await getSmartLink(slug);
-  if (!link) return notFound();
-  const host = request.headers.get("host");
-  if (!isAppHost(host, appHost)) {
-    const domain = host ? await getVerifiedDomain(host) : null;
-    if (!domain || domain.userId !== link.userId) return notFound();
-  }
-
   const headers = new Headers(request.headers);
+  if (!link || !linkOpensHere(link, headers, appHost)) return notFound();
+
   const denied = accessDenied(headers, link);
   if (denied) return denied;
   const confirmed = request.nextUrl.searchParams.get("ok") === "1";

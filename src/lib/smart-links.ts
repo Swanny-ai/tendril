@@ -34,6 +34,8 @@ export type SmartLinkTarget = {
   userId: string;
   /** Custom domain the link is shared on, if any. */
   domainHost: string | null;
+  /** Lives at its custom domain's home page, not at a path. */
+  atRoot: boolean;
   /** The creator's bio-page identity, shown on the "open in browser" page. */
   owner: { name: string; username: string; avatarUrl: string | null } | null;
 };
@@ -89,6 +91,7 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
     label: link.label,
     userId: link.userId,
     domainHost: link.domain?.hostname ?? null,
+    atRoot: link.atRoot,
     owner: link.user.pages[0]
       ? { name: link.user.pages[0].displayName || link.user.pages[0].username, username: link.user.pages[0].username, avatarUrl: link.user.pages[0].avatarUrl }
       : null,

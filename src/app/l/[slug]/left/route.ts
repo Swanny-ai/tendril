@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
+import { appHost } from "@/config/brand";
 import { leanNotFound } from "@/lib/lean-link-pages";
+import { linkOpensHere } from "@/lib/link-paths";
 import { accessDenied, leftStep } from "@/lib/smart-link-steps";
 import { getSmartLink } from "@/lib/smart-links";
 
@@ -8,6 +10,6 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]/lef
   const { slug } = await ctx.params;
   const link = await getSmartLink(slug);
   const h = new Headers(request.headers);
-  if (!link) return leanNotFound(h.get("host") ?? "");
+  if (!link || !linkOpensHere(link, h, appHost)) return leanNotFound(h.get("host") ?? "");
   return accessDenied(h, link) ?? leftStep(h, link);
 }
