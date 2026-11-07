@@ -4,7 +4,7 @@ import { appHost } from "@/config/brand";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { rememberDeletedSource } from "@/lib/analytics/global";
-import { checkLinkTarget } from "@/lib/link-targets";
+import { checkLinkTarget, linkNameTaken } from "@/lib/link-targets";
 import { linkLimitError, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
@@ -46,8 +46,7 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   if (warningColors && !limits.customWarningText) return { error: { ok: false as const, error: "Custom colors are part of Pro." } };
   if (!data.showBadge && !limits.removeBadge) return { error: { ok: false as const, error: "Removing the badge is part of Pro." } };
   // Domain + Root/Path: same rules as bio pages (one root per domain, no shared paths).
-  // Deep links share <app domain>/<name> with bio pages.
-  if (await db.page.findUnique({ where: { username: data.slug }, select: { id: true } })) {
+  if (await linkNameTaken(data.slug, data.domainId, linkId)) {
     return { error: { ok: false as const, error: "That link name is taken.", field: "slug" } };
   }
   const target = await checkLinkTarget(userId, { domainId: data.domainId, atRoot: data.atRoot }, data.slug, { linkId });
@@ -85,9 +84,6 @@ export async function createSmartLinkAction(input: SmartLinkInput): Promise<Link
   if ("error" in v) return v.error!;
   const limitError = linkLimitError(v.plan, await linkKindCounts(userId), isTwoSteps(v.data));
   if (limitError) return { ok: false, error: limitError };
-  if (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } })) {
-    return { ok: false, error: "That link name is taken.", field: "slug" };
-  }
   try {
     const link = await db.smartLink.create({ data: { userId, ...v.data } });
     invalidateSmartLinkFromAction(link.slug);
@@ -113,10 +109,12 @@ export async function updateSmartLinkAction(id: string, input: SmartLinkInput): 
     const limitError = linkLimitError(v.plan, await linkKindCounts(userId, id), isTwoSteps(v.data));
     if (limitError) return { ok: false, error: limitError };
   }
-  if (v.data.slug !== existing.slug && (await db.smartLink.findUnique({ where: { slug: v.data.slug }, select: { id: true } }))) {
-    return { ok: false, error: "That link name is taken.", field: "slug" };
+  try {
+    await db.smartLink.update({ where: { id }, data: v.data });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") return { ok: false, error: "That link name was just taken.", field: "slug" };
+    throw e;
   }
-  await db.smartLink.update({ where: { id }, data: v.data });
   invalidateSmartLinkFromAction(existing.slug);
   if (v.data.slug !== existing.slug) invalidateSmartLinkFromAction(v.data.slug);
   return { ok: true, id };

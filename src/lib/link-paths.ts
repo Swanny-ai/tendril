@@ -14,6 +14,12 @@ export function publicLinkBase(headers: Headers, slug: string, appHost: string):
   return `/l/${slug}`;
 }
 
+/** The custom domain this request came in on, or null on the ViewLink domain. Link names are looked up within it. */
+export function linkHost(headers: Headers, appHost: string): string | null {
+  const host = headers.get("host");
+  return isAppHost(host, appHost) ? null : host!.toLowerCase().replace(/:\d+$/, "");
+}
+
 /**
  * True when this request may open the link. On a custom domain a link only opens on the domain it
  * was created for, and a Root link only at "/" (not at its internal slug). The ViewLink domain

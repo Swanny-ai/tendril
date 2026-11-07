@@ -1,5 +1,7 @@
 import { after, type NextRequest } from "next/server";
+import { appHost } from "@/config/brand";
 import { clientIp } from "@/lib/analytics/visitor";
+import { linkHost } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
   if (!SLUG.test(slug)) return new Response("Not found", { status: 404, headers: NO_STORE });
   if (!rateLimit(`out:${clientIp(request.headers)}:${slug}`, 120, 60_000)) return new Response("Slow down", { status: 429, headers: NO_STORE });
 
-  const link = await getSmartLink(slug);
+  const link = await getSmartLink(slug, linkHost(request.headers, appHost));
   const section = link?.landing?.sections.find((s) => s.id === sectionId && s.url);
   const dest = section?.url ?? "";
   // Only ever redirect to a real web address we stored.

@@ -9,6 +9,7 @@ import { wwwOf } from "@/lib/domain-names";
 import { removeHostedDomain } from "@/lib/domains";
 import { expireUsername, invalidatePageFromAction, invalidatePageFromRoute } from "@/lib/pages";
 import { extendPrepaid, PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
+import { freeNamesForDomainRemoval } from "@/lib/copy-names";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
@@ -216,11 +217,12 @@ export async function deleteDomainAdminAction(form: FormData): Promise<AdminResu
   const keep = www && (await db.domain.findUnique({ where: { hostname: www }, select: { id: true } })) ? [www] : [];
   const hosted = await removeHostedDomain(domain.hostname, keep);
   if (hosted === "error") return { error: "Couldn't remove the domain from the hosting right now. Please try again." };
+  const renamed = await freeNamesForDomainRemoval(domainId);
   await db.smartLink.updateMany({ where: { domainId }, data: { atRoot: false } });
   const pages = await db.page.findMany({ where: { domainId }, select: { id: true } });
   await db.page.updateMany({ where: { domainId }, data: { atRoot: false } });
   await db.domain.delete({ where: { id: domainId } });
-  for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
+  for (const slug of [...domain.smartLinks.map((l) => l.slug), ...renamed]) invalidateSmartLinkFromAction(slug);
   for (const p of pages) await invalidatePageFromAction(p.id);
   return done(hosted === "manual" ? `${domain.hostname} removed. Remove it from the hosting dashboard too.` : `${domain.hostname} removed everywhere.`);
 }

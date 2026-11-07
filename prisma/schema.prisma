@@ -284,7 +284,9 @@ model SmartLink {
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug            String           @unique
+  // Unique per custom domain. Links without a domain (ViewLink's own) must have a name no other link
+  // uses: checked in lib/link-targets.ts, since the database treats empty domainIds as all different.
+  slug            String
   destinationUrl  String
   label           String           @default("")
   enabled         Boolean          @default(true)
@@ -312,6 +314,8 @@ model SmartLink {
   updatedAt       DateTime         @updatedAt
   reports         LinkReport[]
 
+  @@unique([domainId, slug])
+  @@index([slug])
   @@index([userId, createdAt])
 }
 

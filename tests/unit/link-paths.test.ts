@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LINK_BASE_HEADER, linkOpensHere } from "@/lib/link-paths";
+import { LINK_BASE_HEADER, linkHost, linkOpensHere } from "@/lib/link-paths";
 
 const APP = "viewlink.me";
 const req = (host: string, base?: string) => new Headers({ host, ...(base ? { [LINK_BASE_HEADER]: base } : {}) });
@@ -29,5 +29,16 @@ describe("linkOpensHere", () => {
   it("keeps every link working on the ViewLink domain", () => {
     expect(linkOpensHere(noDomain, req(APP, "/here"), APP)).toBe(true);
     expect(linkOpensHere(onDomain, req(APP, "/here"), APP)).toBe(true);
+  });
+});
+
+describe("linkHost", () => {
+  it("names the custom domain a request came in on", () => {
+    expect(linkHost(new Headers({ host: "Maria.me:443" }), APP)).toBe("maria.me");
+  });
+
+  it("is null on the ViewLink domain", () => {
+    expect(linkHost(new Headers({ host: APP }), APP)).toBeNull();
+    expect(linkHost(new Headers({ host: "localhost:3100" }), APP)).toBeNull();
   });
 });

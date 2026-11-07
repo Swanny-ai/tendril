@@ -63,7 +63,7 @@ export async function createPageAction(input: { username: string; template?: str
   const plan = await getPlan(userId);
   const pageLimit = countLimitError(plan, "maxPages", await db.page.count({ where: { userId } }));
   if (pageLimit) return { ok: false, error: pageLimit };
-  if ((await db.page.findUnique({ where: { username }, select: { id: true } })) || (await db.smartLink.findUnique({ where: { slug: username }, select: { id: true } }))) {
+  if ((await db.page.findUnique({ where: { username }, select: { id: true } })) || (await db.smartLink.findFirst({ where: { slug: username }, select: { id: true } }))) {
     return { ok: false, field: "username", error: "That link is taken. Try another one." };
   }
   const target = await checkLinkTarget(userId, { domainId: input.domainId, atRoot: input.atRoot }, username);

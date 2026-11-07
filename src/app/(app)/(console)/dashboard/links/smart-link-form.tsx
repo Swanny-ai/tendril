@@ -101,18 +101,20 @@ export function SmartLinkForm({
   const set = (patch: Partial<SmartLinkFormValues>) => setV((s) => ({ ...s, ...patch }));
   const domain = domains.find((d) => d.id === v.domainId);
 
+  // A name is checked on the domain picked: the same name can live on another domain.
+  const slugKey = `${v.domainId ?? ""}/${v.slug}`;
   useEffect(() => {
     if (!v.slug) return;
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/smart-link-slug?s=${encodeURIComponent(v.slug)}${id ? `&id=${id}` : ""}`, { signal: ctrl.signal });
+        const res = await fetch(`/api/smart-link-slug?s=${encodeURIComponent(v.slug)}${v.domainId ? `&d=${encodeURIComponent(v.domainId)}` : ""}${id ? `&id=${id}` : ""}`, { signal: ctrl.signal });
         const json = (await res.json()) as {
           available: boolean;
           error?: string;
         };
         setSlugCheck({
-          value: v.slug,
+          value: slugKey,
           available: json.available,
           message: json.error,
         });
@@ -124,9 +126,9 @@ export function SmartLinkForm({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [v.slug, id]);
+  }, [v.slug, v.domainId, slugKey, id]);
 
-  const slugState = !v.slug ? "idle" : slugCheck?.value !== v.slug ? "checking" : slugCheck.available ? "ok" : "bad";
+  const slugState = !v.slug ? "idle" : slugCheck?.value !== slugKey ? "checking" : slugCheck.available ? "ok" : "bad";
   const template = useMemo(() => getWarningTemplate(v.warningTemplate), [v.warningTemplate]);
   const colors = limits.customWarningText ? v.warningColors : {};
   const styled = applyWarningColors(template, colors);

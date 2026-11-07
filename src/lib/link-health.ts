@@ -143,7 +143,7 @@ export async function runHealthCheck(userId: string, kind: "link" | "page", id: 
     access = parseAccess(link.access);
     destinations = [link.destinationUrl];
     expectEscape = link.openInBrowser;
-    const resolves = link.enabled && !!(await loadSmartLink(link.slug));
+    const resolves = link.enabled && !!(await loadSmartLink(link.slug, link.domain?.hostname ?? null));
     live = !link.enabled
       ? { outcome: "fail", note: "The link is switched off" }
       : resolves

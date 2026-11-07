@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { appHost } from "@/config/brand";
 import { clientIp, visitorHash } from "@/lib/analytics/visitor";
 import { db } from "@/lib/db";
 import { REPORT_REASONS } from "@/lib/link-landing";
+import { linkHost } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
+import { loadSmartLink } from "@/lib/smart-links";
 
 // Visitors report a template page (the Report popup). Anonymous: only a daily visitor hash is kept.
 export async function POST(request: NextRequest) {
@@ -12,7 +15,7 @@ export async function POST(request: NextRequest) {
   const slug = typeof body?.slug === "string" ? body.slug.slice(0, 60) : "";
   const reason = typeof body?.reason === "string" && REPORT_REASONS.includes(body.reason) ? body.reason : null;
   if (!slug || !reason) return NextResponse.json({ ok: false }, { status: 400 });
-  const link = await db.smartLink.findUnique({ where: { slug }, select: { id: true } });
+  const link = await loadSmartLink(slug, linkHost(request.headers, appHost));
   if (!link) return NextResponse.json({ ok: false }, { status: 404 });
   await db.linkReport.create({
     data: {

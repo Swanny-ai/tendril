@@ -50,10 +50,15 @@ export async function linkKindCounts(userId: string, exceptId?: string): Promise
   return { twoSteps, classic: links.length - twoSteps };
 }
 
-/** Uncached loader (used by the proxy, where "use cache" is not available). */
-export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | null> {
-  const link = await db.smartLink.findUnique({
-    where: { slug },
+/**
+ * Uncached loader (used by the proxy, where "use cache" is not available). `host` is the custom
+ * domain to look in. Without one (the ViewLink domain) it's the link that lives there, else, for
+ * addresses shared before names became per-domain, the oldest link with that name.
+ */
+export async function loadSmartLink(slug: string, host: string | null): Promise<SmartLinkTarget | null> {
+  const matches = await db.smartLink.findMany({
+    where: host ? { slug, domain: { hostname: host } } : { slug },
+    orderBy: { createdAt: "asc" },
     include: {
       domain: { select: { hostname: true } },
       user: {
@@ -64,6 +69,7 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
       },
     },
   });
+  const link = matches.find((l) => !l.domainId) ?? matches[0];
   if (!link || !link.enabled) return null;
   const plan = planFromSubscription(link.user.subscription);
   const limits = PLAN_LIMITS[plan];
@@ -98,11 +104,11 @@ export async function loadSmartLink(slug: string): Promise<SmartLinkTarget | nul
   };
 }
 
-export async function getSmartLink(slug: string) {
+export async function getSmartLink(slug: string, host: string | null) {
   "use cache";
   cacheTag(smartLinkTag(slug));
   cacheLife("hours");
-  return loadSmartLink(slug);
+  return loadSmartLink(slug, host);
 }
 
 export function invalidateSmartLinkFromAction(slug: string) {

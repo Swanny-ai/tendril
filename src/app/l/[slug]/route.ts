@@ -2,7 +2,7 @@ import { after, type NextRequest } from "next/server";
 import { clientIp } from "@/lib/analytics/visitor";
 import { appHost } from "@/config/brand";
 import { detectInAppBrowser } from "@/lib/in-app";
-import { isLinkEntry, linkOpensHere } from "@/lib/link-paths";
+import { isLinkEntry, linkHost, linkOpensHere } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
 import { accessDenied, landingStep, openStep, warningStep } from "@/lib/smart-link-steps";
 import { getSmartLink, recordSmartLinkEvent, type SmartLinkEventKind } from "@/lib/smart-links";
@@ -22,8 +22,8 @@ function notFound() {
 export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) {
   const { slug } = await ctx.params;
   if (!SLUG.test(slug)) return notFound();
-  const link = await getSmartLink(slug);
   const headers = new Headers(request.headers);
+  const link = await getSmartLink(slug, linkHost(headers, appHost));
   if (!link || !linkOpensHere(link, headers, appHost)) return notFound();
 
   const denied = accessDenied(headers, link);

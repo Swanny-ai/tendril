@@ -45,6 +45,20 @@ export async function checkLinkTarget(
   return { ok: true, target: { domainId, atRoot: false } };
 }
 
+/**
+ * Whether a deep link name is taken where it would live. On a custom domain only that domain counts.
+ * On the ViewLink domain the name must be free everywhere: every bio page lives there, and a link
+ * from another domain may still be reached there at an address shared before names became per-domain.
+ */
+export async function linkNameTaken(slug: string, domainId: string | null | undefined, exceptLinkId?: string | null): Promise<boolean> {
+  const notThisLink = exceptLinkId ? { NOT: { id: exceptLinkId } } : {};
+  const [link, page] = await Promise.all([
+    db.smartLink.findFirst({ where: { slug, ...(domainId ? { domainId } : {}), ...notThisLink }, select: { id: true } }),
+    db.page.findFirst({ where: { username: slug, ...(domainId ? { domainId } : {}) }, select: { id: true } }),
+  ]);
+  return !!link || !!page;
+}
+
 /** A bio page's public address. */
 export function pageUrl(page: { username: string; atRoot: boolean }, domain: { hostname: string } | null | undefined, appUrl: string) {
   if (!domain) return `${appUrl}/${page.username}`;

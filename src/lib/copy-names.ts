@@ -9,7 +9,7 @@ import { smartLinkSlugSchema, usernameSchema } from "@/lib/validation";
 async function nameIsFree(name: string) {
   const [page, link] = await Promise.all([
     db.page.findUnique({ where: { username: name }, select: { id: true } }),
-    db.smartLink.findUnique({ where: { slug: name }, select: { id: true } }),
+    db.smartLink.findFirst({ where: { slug: name }, select: { id: true } }),
   ]);
   return !page && !link;
 }
@@ -32,6 +32,27 @@ export function copySlug(slug: string) {
     },
     (name) => smartLinkSlugSchema.safeParse(name).success,
   );
+}
+
+/**
+ * Before a domain is removed, its links are about to fall back to the ViewLink domain, where a name
+ * must be free everywhere. Links whose name is used elsewhere get a free one. Returns the new names.
+ */
+export async function freeNamesForDomainRemoval(domainId: string): Promise<string[]> {
+  const links = await db.smartLink.findMany({ where: { domainId }, select: { id: true, slug: true } });
+  const renamed: string[] = [];
+  for (const link of links) {
+    const [other, page] = await Promise.all([
+      db.smartLink.findFirst({ where: { slug: link.slug, NOT: { id: link.id } }, select: { id: true } }),
+      db.page.findUnique({ where: { username: link.slug }, select: { id: true } }),
+    ]);
+    if (!other && !page) continue;
+    const slug = await copySlug(link.slug);
+    if (!slug) continue;
+    await db.smartLink.update({ where: { id: link.id }, data: { slug } });
+    renamed.push(slug);
+  }
+  return renamed;
 }
 
 /** A free username for a copy of a bio page. */

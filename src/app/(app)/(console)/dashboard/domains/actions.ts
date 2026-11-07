@@ -9,6 +9,7 @@ import { countLimitError } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireUserId } from "@/lib/session";
 import { invalidatePageFromAction } from "@/lib/pages";
+import { freeNamesForDomainRemoval } from "@/lib/copy-names";
 import { invalidateSmartLinkFromAction } from "@/lib/smart-links";
 
 export type DomainResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -67,11 +68,12 @@ export async function removeDomainAction(id: string): Promise<DomainResult> {
   if (hosted === "error") return { ok: false, error: "Couldn't remove the domain from the hosting right now. Please try again." };
 
   // 2. Remove it from ViewLink. Its links fall back to the ViewLink domain; a Root link becomes a normal link.
+  const renamed = await freeNamesForDomainRemoval(id);
   await db.smartLink.updateMany({ where: { domainId: id }, data: { atRoot: false } });
   const pages = await db.page.findMany({ where: { domainId: id }, select: { id: true } });
   await db.page.updateMany({ where: { domainId: id }, data: { atRoot: false } });
   await db.domain.delete({ where: { id } });
-  for (const l of domain.smartLinks) invalidateSmartLinkFromAction(l.slug);
+  for (const slug of [...domain.smartLinks.map((l) => l.slug), ...renamed]) invalidateSmartLinkFromAction(slug);
   for (const p of pages) await invalidatePageFromAction(p.id);
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/links");

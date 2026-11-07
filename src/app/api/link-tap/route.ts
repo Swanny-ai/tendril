@@ -1,5 +1,7 @@
 import { after, type NextRequest } from "next/server";
+import { appHost } from "@/config/brand";
 import { clientIp } from "@/lib/analytics/visitor";
+import { linkHost } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
 import { getSmartLink, recordSmartLinkEvent } from "@/lib/smart-links";
 
@@ -11,7 +13,7 @@ export async function POST(request: NextRequest) {
   const slug = typeof body?.slug === "string" ? body.slug : "";
   if (!SLUG.test(slug)) return new Response(null, { status: 400 });
   if (!rateLimit(`tap:${clientIp(request.headers)}:${slug}`, 60, 60_000)) return new Response(null, { status: 429 });
-  const link = await getSmartLink(slug);
+  const link = await getSmartLink(slug, linkHost(request.headers, appHost));
   if (!link) return new Response(null, { status: 404 });
   const headers = new Headers(request.headers);
   after(async () => {

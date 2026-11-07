@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
 
   // <app domain>/<name>: is it a deep link? (cached lookup first: this runs for bio page visits too)
   if (kind === "smart" && page === "route") {
-    if (!SLUG.test(id) || !(await getSmartLink(id))) return reply(false);
+    if (!SLUG.test(id) || !(await getSmartLink(id, null))) return reply(false);
     // A bio page with the same name (from before links moved here) keeps its address.
     return reply(!(await db.page.findUnique({ where: { username: id }, select: { id: true } })));
   }
   if (kind === "smart" && SLUG.test(id)) {
-    const link = await loadSmartLink(id);
+    const link = await loadSmartLink(id, null);
     if (!link) return reply(false);
     if (page === "warning") return reply(link.adultWarning);
     if (page === "open") return reply(link.openInBrowser);
