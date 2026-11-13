@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeSwitch } from "@/components/app-theme";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { requireAccount } from "@/lib/session";
@@ -20,6 +21,16 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">Your account details.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>Dark (green on black) or Light (white and green). Saved on this device.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeSwitch />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

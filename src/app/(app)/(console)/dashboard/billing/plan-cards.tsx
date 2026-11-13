@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Bitcoin, Check, CreditCard, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeftRight, Check, CreditCard, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,15 +76,11 @@ const priceOf = (plan: PaidPlan, interval: Interval) => (interval === "year" ? P
 export function PlanCards({
   plan,
   cardPay,
-  cryptoPay,
-  prepaid,
   paddle,
   cardSub,
 }: {
   plan: PlanName;
   cardPay: boolean;
-  cryptoPay: boolean;
-  prepaid: boolean;
   /** Card payments through Paddle (popup checkout); null = Stripe Checkout. */
   paddle: PaddleClient | null;
   /** The card plan this account pays for through Paddle, if any (it can switch plan or period). */
@@ -113,11 +109,6 @@ export function PlanCards({
       if (url) window.location.assign(url);
     });
   };
-  const payCrypto = (p: PaidPlan) =>
-    run(`crypto-${p}`, async () => {
-      const { url } = await post("/api/billing/crypto", { interval, plan: p });
-      if (url) window.location.assign(url);
-    });
   const switchTo = (p: PaidPlan) => {
     const what = `${PLAN_LABEL[p]} ${yearly ? "yearly" : "monthly"} ($${priceOf(p, interval)}/${yearly ? "year" : "month"})`;
     if (!window.confirm(`Switch to ${what}? Paddle charges or credits the difference for the rest of this period.`)) return;
@@ -178,11 +169,9 @@ export function PlanCards({
         </div>
 
         {PAID_PLANS.map((p) => {
-          const popular = p === "PRO";
+          const popular = p === "BUSINESS";
           const mine = plan === p;
           const onThisCard = cardSub?.plan === p && cardSub.interval === interval;
-          // Prepaid (crypto) plans can add time or move to the other plan with crypto.
-          const canCrypto = cryptoPay && !cardSub && (plan === "FREE" || prepaid);
           // Upgrades only (to a higher plan) for accounts without a card plan; card plans switch instead.
           // Stripe (the fallback when Paddle isn't set up) only has Pro prices, and a plan needs its
           // Paddle price set up (Agency's are added in Paddle by hand).
@@ -230,19 +219,14 @@ export function PlanCards({
                     {busy === `card-${p}` ? <Loader2 className="animate-spin" /> : <CreditCard />} Get {PLAN_LABEL[p]} · ${priceOf(p, interval)}/{yearly ? "year" : "month"}
                   </Button>
                 ) : null}
-                {canCrypto ? (
-                  <Button size="lg" variant="outline" className="w-full" disabled={!!busy} onClick={() => payCrypto(p)}>
-                    {busy === `crypto-${p}` ? <Loader2 className="animate-spin" /> : <Bitcoin />} {mine ? `Add more ${PLAN_LABEL[p]} time` : "Pay with crypto"} · ${priceOf(p, interval)}
-                  </Button>
-                ) : null}
-                {mine && !cardSub && !canCrypto ? (
+                {mine && !cardSub ? (
                   <Button size="lg" className="w-full" disabled>
                     You&apos;re on {PLAN_LABEL[p]}
                   </Button>
                 ) : null}
-                {!onThisCard && !canSwitch && !canCard && !canCrypto && !mine ? (
+                {!onThisCard && !canSwitch && !canCard && !mine ? (
                   <Button size="lg" variant="outline" className="w-full" disabled>
-                    {cardPay || cryptoPay ? "Not available with your current plan" : `Get ${PLAN_LABEL[p]}`}
+                    {cardPay ? "Not available with your current plan" : `Get ${PLAN_LABEL[p]}`}
                   </Button>
                 ) : null}
               </div>
@@ -253,8 +237,7 @@ export function PlanCards({
 
       <div className="space-y-1 text-center text-xs text-muted-foreground">
         <p>
-          {cardPay ? `Secure card payment with ${paddle ? "Paddle" : "Stripe"}. ` : ""}
-          {cryptoPay ? "Crypto (USDT, USDC, BTC, ETH, SOL…) is prepaid: nothing renews by itself." : ""}
+          {cardPay ? `Secure card payment with ${paddle ? "Paddle" : "Stripe"}. Plans renew automatically until you cancel.` : ""}
         </p>
         <p>
           14-day money-back guarantee. By paying you agree to our{" "}

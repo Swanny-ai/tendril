@@ -133,6 +133,55 @@
   --sidebar-ring: #49f264;
 }
 
+/* Light theme for the signed-in app (Settings → Appearance): white and green. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --ink: #111814;
+  --paper: #ffffff;
+  --plum: #16a34a;
+  --sage: #16a34a;
+  --sage-text: #15803d;
+  --persimmon-text: #c2410c;
+  --background: #f6f8f6;
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: #16a34a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef3ef;
+  --secondary-foreground: var(--ink);
+  --muted: #f0f4f1;
+  --muted-foreground: #5c6b61;
+  --accent: #e8f5ec;
+  --accent-foreground: var(--ink);
+  --destructive: #dc2626;
+  --border: #dfe6e1;
+  --input: #d4ddd7;
+  --ring: #16a34a;
+  --chart-1: #16a34a;
+  --chart-2: #2563eb;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: #16a34a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3f6e8;
+  --sidebar-accent-foreground: #14532d;
+  --sidebar-border: #e4ebe6;
+  --sidebar-ring: #16a34a;
+  /* Light status text (red, amber, sky…) is made for black; on white it needs the darker shades. */
+  --color-red-300: #b91c1c;
+  --color-red-400: #dc2626;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-yellow-400: #a16207;
+  --color-orange-400: #c2410c;
+  --color-sky-400: #0369a1;
+  --color-emerald-400: #047857;
+  --color-green-400: #15803d;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

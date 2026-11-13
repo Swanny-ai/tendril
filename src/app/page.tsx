@@ -602,7 +602,6 @@ export default function LandingPage() {
                 ]}
               />
               <PlanCard
-                highlight
                 name="Pro"
                 price={`$${PLAN_PRICES_USD.PRO.monthly}`}
                 note={`per month, or $${PLAN_PRICES_USD.PRO.yearly}/year`}
@@ -620,6 +619,7 @@ export default function LandingPage() {
                 ]}
               />
               <PlanCard
+                highlight
                 name="Business"
                 price={`$${PLAN_PRICES_USD.BUSINESS.monthly}`}
                 note={`per month, or $${PLAN_PRICES_USD.BUSINESS.yearly}/year`}

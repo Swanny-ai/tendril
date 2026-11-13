@@ -28,7 +28,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${bricolage.variable} ${fraunces.variable} h-full antialiased`}>
+    // The signed-in app sets data-theme on <html> before React loads (Settings → Appearance).
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${bricolage.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
       </body>
