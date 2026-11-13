@@ -1,13 +1,17 @@
 // Pure plan rules (no DB), shared by server enforcement and client UI hints.
 // Server code must always enforce through lib/plans.ts.
 
-export type PlanName = "FREE" | "PRO" | "BUSINESS";
+export type PlanName = "FREE" | "PRO" | "BUSINESS" | "AGENCY";
 /** The plans people pay for. */
 export type PaidPlan = Exclude<PlanName, "FREE">;
 
-export const PAID_PLANS: PaidPlan[] = ["PRO", "BUSINESS"];
+export const PAID_PLANS: PaidPlan[] = ["PRO", "BUSINESS", "AGENCY"];
 export const isPaid = (plan: PlanName): plan is PaidPlan => plan !== "FREE";
-export const PLAN_LABEL: Record<PlanName, string> = { FREE: "Free", PRO: "Pro", BUSINESS: "Business" };
+export const PLAN_LABEL: Record<PlanName, string> = { FREE: "Free", PRO: "Pro", BUSINESS: "Business", AGENCY: "Agency" };
+/** A paid plan from untrusted input (a form, a request body), or Pro when it isn't one. */
+export const toPaidPlan = (value: unknown): PaidPlan => (PAID_PLANS as unknown[]).includes(value) ? (value as PaidPlan) : "PRO";
+/** The top plan: nothing to upgrade to. */
+export const TOP_PLAN: PaidPlan = "AGENCY";
 
 // Deep links come in two kinds: classic Deeplinks and Two-Steps (a deep link with its own page).
 // maxSmartLinks caps both together; maxLinksPerKind caps each kind.
@@ -54,6 +58,21 @@ export const PLAN_LIMITS = {
     customWarningText: true,
     templatePages: true,
   },
+  // For agencies running many creators: five times Business.
+  AGENCY: {
+    maxBlocks: 200,
+    maxSmartLinks: 100,
+    maxLinksPerKind: 50,
+    maxPages: 50,
+    customDomains: 50,
+    analyticsDays: 365,
+    breakdowns: true,
+    customTheme: true,
+    verifiedBadge: true,
+    removeBadge: true,
+    customWarningText: true,
+    templatePages: true,
+  },
 } as const satisfies Record<PlanName, Record<string, number | boolean>>;
 
 export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "breakdowns" | "verifiedBadge" | "templatePages";
@@ -62,6 +81,7 @@ export type Capability = "customTheme" | "removeBadge" | "customWarningText" | "
 export const PLAN_PRICES_USD: Record<PaidPlan, { monthly: number; yearly: number }> = {
   PRO: { monthly: 8, yearly: 80 },
   BUSINESS: { monthly: 25, yearly: 250 },
+  AGENCY: { monthly: 49, yearly: 490 },
 };
 /** Pro's prices (kept for the places that only talk about Pro). */
 export const PRICES_USD = PLAN_PRICES_USD.PRO;
@@ -128,7 +148,7 @@ export function countLimitError(plan: PlanName, key: "maxPages" | "customDomains
   const next = upgradeFor(plan, key);
   const what = key === "maxPages" ? `bio page${max === 1 ? "" : "s"}` : `custom domain${max === 1 ? "" : "s"}`;
   const upsell = next ? ` Upgrade to ${PLAN_LABEL[next]} for up to ${PLAN_LIMITS[next][key]}.` : "";
-  return max === 0 ? `Custom domains are part of Pro and Business.${upsell}` : `Your ${PLAN_LABEL[plan]} plan includes ${max} ${what}.${upsell}`;
+  return max === 0 ? `Custom domains are part of the paid plans.${upsell}` : `Your ${PLAN_LABEL[plan]} plan includes ${max} ${what}.${upsell}`;
 }
 
 /** Why a new link of this kind can't be added under the plan, or null when it can. */

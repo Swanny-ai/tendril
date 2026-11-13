@@ -4,7 +4,8 @@
 
 import type { PlanName } from "@/lib/plan-rules";
 
-export const HEALTH_CHECKS_PER_DAY: Record<PlanName, number> = { FREE: 10, PRO: 50, BUSINESS: 200 };
+/** Link checks a day by plan. Free has none: Link Health is a paid feature. */
+export const HEALTH_CHECKS_PER_DAY: Record<PlanName, number> = { FREE: 0, PRO: 5, BUSINESS: 20, AGENCY: 100 };
 
 /** Marks our own checks, so they never count as visits in analytics. */
 export const HEALTH_UA_TAG = "ViewLinkHealth/1.0";

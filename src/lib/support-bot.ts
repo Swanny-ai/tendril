@@ -9,9 +9,9 @@ export const BOT_TOPICS: BotTopic[] = [
   {
     id: "plans",
     label: "Plans & pricing",
-    keywords: ["plan", "price", "pricing", "cost", "pro", "business", "free", "upgrade", "how much", "subscription"],
+    keywords: ["plan", "price", "pricing", "cost", "pro", "business", "agency", "free", "upgrade", "how much", "subscription"],
     answer:
-      "We have 3 plans:\n• Free: 1 smart link, 1 bio page, 30 days of analytics.\n• Pro ($8/month or $80/year): 3 smart links, 3 bio pages, 1 custom domain, 1 year of analytics, themes and the verified badge.\n• Business ($25/month or $250/year): 20 smart links, 10 bio pages, 10 custom domains.\nYou can upgrade from Dashboard → Pricing.",
+      "We have 4 plans:\n• Free: 1 smart link, 1 bio page, 30 days of analytics.\n• Pro ($8/month or $80/year): 3 smart links, 3 bio pages, 1 custom domain, 1 year of analytics, themes and the verified badge.\n• Business ($25/month or $250/year): 20 smart links, 10 bio pages, 10 custom domains.\nYou can upgrade from Dashboard → Pricing.",
   },
   {
     id: "trial",
@@ -25,7 +25,7 @@ export const BOT_TOPICS: BotTopic[] = [
     label: "Custom domain",
     keywords: ["domain", "dns", "cname", "custom domain", "my own domain", "connect domain", "verify domain"],
     answer:
-      "To connect your domain: Dashboard → Custom domains → add your domain, then add the DNS record we show at your domain provider (GoDaddy, Namecheap, Cloudflare…). It verifies by itself once the DNS updates, which can take from a few minutes up to a few hours. Custom domains are on Pro and Business.",
+      "To connect your domain: Dashboard → Custom domains → add your domain, then add the DNS record we show at your domain provider (GoDaddy, Namecheap, Cloudflare…). It verifies by itself once the DNS updates, which can take from a few minutes up to a few hours. Custom domains are on the paid plans.",
   },
   {
     id: "links",
@@ -53,7 +53,7 @@ export const BOT_TOPICS: BotTopic[] = [
     label: "Analytics",
     keywords: ["analytics", "stats", "views", "clicks", "visitors", "traffic"],
     answer:
-      "Your views, clicks and visitors are in Dashboard → Analytics. Free keeps 30 days of history; Pro and Business keep a full year with country and device breakdowns.",
+      "Your views, clicks and visitors are in Dashboard → Analytics. Free keeps 30 days of history; the paid plans keep a full year with country and device breakdowns.",
   },
 ];
 

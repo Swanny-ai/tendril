@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { changePaddlePlan, paddleConfigured, paddlePriceIds } from "@/lib/paddle";
-import type { PaidPlan } from "@/lib/plan-rules";
+import { toPaidPlan } from "@/lib/plan-rules";
 
-// Switches a card subscription (Paddle) between Pro and Business, or monthly and yearly. Paddle
+// Switches a card subscription (Paddle) between the paid plans, or monthly and yearly. Paddle
 // charges or credits the difference right away; its webhook then updates the account's plan.
 export async function POST(request: NextRequest) {
   const userId = (await auth())?.user?.id;
@@ -12,9 +12,10 @@ export async function POST(request: NextRequest) {
   if (!paddleConfigured()) return NextResponse.json({ error: "Card payments aren't set up yet." }, { status: 503 });
 
   const body = (await request.json().catch(() => ({}))) as { plan?: string; interval?: string };
-  const plan: PaidPlan = body.plan === "BUSINESS" ? "BUSINESS" : "PRO";
+  const plan = toPaidPlan(body.plan);
   const interval = body.interval === "year" ? "year" : "month";
   const priceId = paddlePriceIds()[plan][interval];
+  if (!priceId) return NextResponse.json({ error: "This plan can't be paid by card yet." }, { status: 409 });
 
   const sub = await db.subscription.findUnique({ where: { userId }, select: { paddleSubscriptionId: true, paddlePriceId: true, status: true } });
   if (!sub?.paddleSubscriptionId || !["active", "trialing", "past_due"].includes(sub.status)) {

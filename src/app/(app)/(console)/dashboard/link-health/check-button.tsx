@@ -81,7 +81,7 @@ const MARK: Record<Outcome, { icon: typeof Check; tone: string }> = {
  * Runs (or re-runs) a Link Health check, going through each part of it with what we found.
  * The loads run together on our server; the list walks through their real results one by one.
  */
-export function CheckButton({ kind, id, label, checked, disabled }: { kind: "link" | "page"; id: string; label: string; checked: boolean; disabled: boolean }) {
+export function CheckButton({ kind, id, label, checked, disabled, reason }: { kind: "link" | "page"; id: string; label: string; checked: boolean; disabled: boolean; /** Why it's disabled. */ reason?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(0);
@@ -128,7 +128,7 @@ export function CheckButton({ kind, id, label, checked, disabled }: { kind: "lin
 
   return (
     <>
-      <Button size="sm" variant={checked ? "outline" : "default"} disabled={open || disabled} title={disabled ? "No checks left today" : undefined} onClick={start}>
+      <Button size="sm" variant={checked ? "outline" : "default"} disabled={open || disabled} title={disabled ? (reason ?? "No checks left today") : undefined} onClick={start}>
         {open ? <Loader2 className="animate-spin" /> : checked ? <RefreshCw /> : <Stethoscope />}
         {open ? "Checking…" : checked ? "Re-check" : "Check"}
       </Button>

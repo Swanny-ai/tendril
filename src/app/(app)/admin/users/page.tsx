@@ -5,7 +5,7 @@ import { CountryFlag } from "@/components/country-flag";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
+import { PAID_PLANS, PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { FilterTabs, Header, Pager, Pill, SearchBox, Table, ago, fmt, listParams } from "../ui";
 
 export const instant = false;
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Users" };
 /** Accounts on Pro right now (same rules as planFromSubscription). */
 const proWhere = (): Prisma.UserWhereInput => ({
   subscription: {
-    plan: { in: ["PRO", "BUSINESS"] },
+    plan: { in: PAID_PLANS },
     OR: [{ status: { in: ["active", "trialing", "past_due"] } }, { status: "prepaid", currentPeriodEnd: { gt: new Date() } }],
   },
 });

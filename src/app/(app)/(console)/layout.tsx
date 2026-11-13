@@ -40,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           used={links.length}
           limit={PLAN_LIMITS[plan].maxSmartLinks}
           active={links.filter((l) => l.enabled).length}
-          canUpgrade={plan !== "BUSINESS"}
+          canUpgrade={plan !== "AGENCY"}
         />
         <div className="mt-2 flex items-end gap-2">
           <div className="min-w-0 flex-1 rounded-xl border bg-card p-3 text-sm">

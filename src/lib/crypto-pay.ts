@@ -3,10 +3,10 @@ import { appUrl } from "@/config/brand";
 import { creditReferral } from "@/lib/affiliate";
 import { db } from "@/lib/db";
 import { invalidatePageFromRoute } from "@/lib/pages";
-import { extendPrepaid, PLAN_LABEL, PLAN_PRICES_USD, type PaidPlan } from "@/lib/plan-rules";
+import { extendPrepaid, PLAN_LABEL, PLAN_PRICES_USD, toPaidPlan, type PaidPlan } from "@/lib/plan-rules";
 import { invalidateUserSmartLinksFromRoute } from "@/lib/smart-links";
 
-// Pro or Business paid in crypto through NOWPayments (hosted invoice page; the buyer picks the coin
+// A paid plan paid in crypto through NOWPayments (hosted invoice page; the buyer picks the coin
 // there). Crypto can't renew by itself, so each payment adds a prepaid month or year of the plan.
 //   NOWPAYMENTS_API_KEY      API key (Store settings → API keys)
 //   NOWPAYMENTS_IPN_SECRET   IPN secret key (Store settings → Instant payment notifications)
@@ -88,7 +88,7 @@ export async function applyCryptoIpn(body: IpnBody): Promise<"paid" | "updated" 
     // Same plan: the time is added on top. Another plan: it starts today.
     const sameStillRunning = sub?.status === "prepaid" && sub.plan === payment.plan ? sub.currentPeriodEnd : null;
     const end = extendPrepaid(sameStillRunning, payment.interval === "year" ? "year" : "month", now);
-    const plan = payment.plan === "BUSINESS" ? "BUSINESS" : "PRO";
+    const plan = toPaidPlan(payment.plan);
     await tx.subscription.upsert({
       where: { userId: payment.userId },
       create: { userId: payment.userId, plan, status: "prepaid", currentPeriodEnd: end, cancelAtPeriodEnd: true },

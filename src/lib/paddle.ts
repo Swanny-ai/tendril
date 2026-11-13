@@ -1,7 +1,7 @@
 import "server-only";
 import { PAID_PLANS, type PaidPlan } from "@/lib/plan-rules";
 
-// Card payments through Paddle, the merchant of record: Paddle sells the Pro and Business plans, handles tax and
+// Card payments through Paddle, the merchant of record: Paddle sells the paid plans, handles tax and
 // pays out. Checkout opens with Paddle.js on the billing page; the webhook (/api/paddle/webhook)
 // keeps our Subscription row in sync. Sandbox or live follows the client token ("test_..." = sandbox).
 
@@ -18,10 +18,12 @@ export function paddleSandbox(): boolean {
 }
 
 // Live price IDs (Catalog → Products in Paddle). They aren't secret; the env variables override
-// them, e.g. with sandbox prices for testing.
+// them, e.g. with sandbox prices for testing. Agency has no built-in prices: create them in Paddle
+// and set PADDLE_PRICE_AGENCY_MONTHLY / _YEARLY. Until then Agency can only be paid in crypto.
 const LIVE_PRICES: PaddlePrices = {
   PRO: { month: "pri_01m5rdbr99wemrnq6eczct1c27", year: "pri_01m5rdcjes0edkk3m3yhtn7g0a" },
   BUSINESS: { month: "pri_01m5rg86ryhad396r3hj7t5tcb", year: "pri_01m5rg90nedane1cjmgevk5mtd" },
+  AGENCY: { month: "", year: "" },
 };
 
 export function paddlePriceIds(): PaddlePrices {
@@ -36,6 +38,10 @@ export function paddlePriceIds(): PaddlePrices {
       month: env.PADDLE_PRICE_BUSINESS_MONTHLY || (live ? LIVE_PRICES.BUSINESS.month : ""),
       year: env.PADDLE_PRICE_BUSINESS_YEARLY || (live ? LIVE_PRICES.BUSINESS.year : ""),
     },
+    AGENCY: {
+      month: env.PADDLE_PRICE_AGENCY_MONTHLY || (live ? LIVE_PRICES.AGENCY.month : ""),
+      year: env.PADDLE_PRICE_AGENCY_YEARLY || (live ? LIVE_PRICES.AGENCY.year : ""),
+    },
   };
 }
 
@@ -43,7 +49,7 @@ export function paddlePriceIds(): PaddlePrices {
 export function planForPaddlePrice(priceId: string | null | undefined): PaidPlan | null {
   if (!priceId) return null;
   const prices = paddlePriceIds();
-  return PAID_PLANS.find((p) => prices[p].month === priceId || prices[p].year === priceId) ?? null;
+  return PAID_PLANS.find((p) => (prices[p].month && prices[p].month === priceId) || (prices[p].year && prices[p].year === priceId)) ?? null;
 }
 
 /** What the billing page needs to open the checkout in the browser (no secrets). */

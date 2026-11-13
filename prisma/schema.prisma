@@ -254,6 +254,7 @@ enum Plan {
   FREE
   PRO
   BUSINESS
+  AGENCY
 }
 
 model Subscription {

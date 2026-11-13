@@ -1,9 +1,11 @@
 // Paddle's checkout, drawn inside our own popup (Paddle "inline" mode). Paddle.js loads on first use.
 
+import type { PaidPlan } from "@/lib/plan-rules";
+
 export type PaddleClient = {
   token: string;
   sandbox: boolean;
-  prices: Record<"PRO" | "BUSINESS", { month: string; year: string }>;
+  prices: Record<PaidPlan, { month: string; year: string }>;
   email: string;
   userId: string;
 };
@@ -82,7 +84,7 @@ async function frameReady(): Promise<void> {
  * country (the email is filled in from the account). After paying, Paddle sends the visitor to
  * the billing page, which then waits for the webhook to switch the account to the plan.
  */
-export async function openInlineCheckout(cfg: PaddleClient, plan: "PRO" | "BUSINESS", interval: "month" | "year", onEvent: (e: PaddleEvent) => void) {
+export async function openInlineCheckout(cfg: PaddleClient, plan: PaidPlan, interval: "month" | "year", onEvent: (e: PaddleEvent) => void) {
   const paddle = await loadPaddle(cfg);
   await frameReady();
   listener = onEvent;

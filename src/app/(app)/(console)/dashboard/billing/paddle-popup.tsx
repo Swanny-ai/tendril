@@ -8,8 +8,9 @@ import { PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
 import { closeInlineCheckout, openInlineCheckout, PADDLE_FRAME_CLASS, type PaddleClient } from "./paddle-checkout";
 
 const HIGHLIGHTS: Record<PaidPlan, string[]> = {
-  PRO: ["3 links: Two-Steps or Deeplinks", "3 bio pages and 1 custom domain", "Verified badge, all themes and colors", "A year of analytics"],
-  BUSINESS: ["10 Two-Steps + 10 Deeplinks", "10 bio pages and 10 custom domains", "Verified badge, all themes and colors", "A year of analytics"],
+  PRO: ["3 links: Two-Steps or Deeplinks", "3 bio pages and 1 custom domain", "5 link checks a day", "A year of analytics"],
+  BUSINESS: ["10 Two-Steps + 10 Deeplinks", "10 bio pages and 10 custom domains", "20 link checks a day", "A year of analytics"],
+  AGENCY: ["50 Two-Steps + 50 Deeplinks", "50 bio pages and 50 custom domains", "100 link checks a day", "A year of analytics"],
 };
 
 /** ViewLink's own popup around Paddle's card form: plan summary on the left, payment on the right. */

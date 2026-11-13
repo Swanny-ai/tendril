@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { createCryptoInvoice, cryptoConfigured } from "@/lib/crypto-pay";
 import { db } from "@/lib/db";
+import { toPaidPlan } from "@/lib/plan-rules";
 
-// Starts a crypto payment for one month or year of Pro or Business and returns the NOWPayments invoice page.
+// Starts a crypto payment for one month or year of a paid plan and returns the NOWPayments invoice page.
 export async function POST(request: NextRequest) {
   const userId = (await auth())?.user?.id;
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as { interval?: string; plan?: string };
   try {
-    const url = await createCryptoInvoice(userId, body.plan === "BUSINESS" ? "BUSINESS" : "PRO", body.interval === "year" ? "year" : "month");
+    const url = await createCryptoInvoice(userId, toPaidPlan(body.plan), body.interval === "year" ? "year" : "month");
     return NextResponse.json({ url });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

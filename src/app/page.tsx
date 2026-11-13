@@ -73,7 +73,7 @@ const STEPS = [
 const FAQ = [
   [
     "Is it really free?",
-    "Yes. The free plan covers one bio page and one deep link, with 18+ warning pages and 30 days of analytics. Pro ($8/month) adds 3 links, 3 pages, a custom domain and a year of history; Business ($25/month) goes up to 10 Two-Steps, 10 Deeplinks, 10 pages and 10 domains.",
+    "Yes. The free plan covers one bio page and one deep link, with 18+ warning pages and 30 days of analytics. Pro ($8/month) adds 3 links, 3 pages, a custom domain and a year of history; Business ($25/month) goes up to 10 Two-Steps, 10 Deeplinks, 10 pages and 10 domains; Agency ($49/month) goes up to 50 of each.",
   ],
   [
     'What does "opens in the real browser" mean?',
@@ -588,7 +588,7 @@ export default function LandingPage() {
             <p className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-[var(--plum)]/30 bg-[var(--plum)]/10 px-4 py-1.5 text-sm font-medium text-[var(--plum)]">
               <Sparkles className="size-4" aria-hidden /> Every new account starts with 5 days of Pro, free — no card needed.
             </p>
-            <Reveal className="mt-10 grid gap-5 md:grid-cols-3">
+            <Reveal className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               <PlanCard
                 name="Free"
                 price="$0"
@@ -610,6 +610,7 @@ export default function LandingPage() {
                 features={[
                   "3 links: Two-Steps or Deeplinks",
                   "3 bio pages and 1 custom domain",
+                  "5 Link Health checks a day",
                   "Two-Steps pages (Escape Meta Bot)",
                   "Verified badge",
                   "All templates plus custom colors and fonts",
@@ -628,6 +629,25 @@ export default function LandingPage() {
                   "10 Deeplinks",
                   "10 bio pages",
                   "10 custom domains",
+                  "20 Link Health checks a day",
+                  "Verified badge",
+                  "All templates plus custom colors and fonts",
+                  'Remove the "Made with" badge',
+                  "Custom warning text",
+                  "A year of analytics: referrers, countries, devices",
+                ]}
+              />
+              <PlanCard
+                name="Agency"
+                price={`$${PLAN_PRICES_USD.AGENCY.monthly}`}
+                note={`per month, or $${PLAN_PRICES_USD.AGENCY.yearly}/year`}
+                cta="Go Agency"
+                features={[
+                  "50 Two-Steps pages (Escape Meta Bot)",
+                  "50 Deeplinks",
+                  "50 bio pages",
+                  "50 custom domains",
+                  "100 Link Health checks a day",
                   "Verified badge",
                   "All templates plus custom colors and fonts",
                   'Remove the "Made with" badge',

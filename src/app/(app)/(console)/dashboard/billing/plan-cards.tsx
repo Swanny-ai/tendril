@@ -18,6 +18,7 @@ const FEATURES: Record<PlanName, string[]> = {
     "3 links: Two-Steps or Deeplinks",
     "3 bio pages",
     "1 custom domain",
+    "5 Link Health checks a day",
     "Two-Steps pages (Escape Meta Bot)",
     "Verified blue badge",
     "All themes, custom colors and fonts",
@@ -30,6 +31,19 @@ const FEATURES: Record<PlanName, string[]> = {
     "10 Deeplinks",
     "10 bio pages",
     "10 custom domains",
+    "20 Link Health checks a day",
+    "Verified blue badge",
+    "All themes, custom colors and fonts",
+    "Remove the “Made with” badge",
+    "Custom 18+ wording and colors",
+    "A year of analytics: countries, devices, platforms",
+  ],
+  AGENCY: [
+    "50 Two-Steps pages (Escape Meta Bot)",
+    "50 Deeplinks",
+    "50 bio pages",
+    "50 custom domains",
+    "100 Link Health checks a day",
     "Verified blue badge",
     "All themes, custom colors and fonts",
     "Remove the “Made with” badge",
@@ -40,11 +54,12 @@ const FEATURES: Record<PlanName, string[]> = {
 const TAGLINE: Record<PlanName, string> = {
   FREE: "Everything you need to start.",
   PRO: "For creators growing their audience.",
-  BUSINESS: "For agencies and creators with many pages.",
+  BUSINESS: "For creators with many pages and brands.",
+  AGENCY: "For agencies running many creators.",
 };
 
 type Interval = "month" | "year";
-const RANK: Record<PlanName, number> = { FREE: 0, PRO: 1, BUSINESS: 2 };
+const RANK: Record<PlanName, number> = { FREE: 0, PRO: 1, BUSINESS: 2, AGENCY: 3 };
 
 async function post(path: string, body: object) {
   const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -57,7 +72,7 @@ const perMonthOf = (plan: PaidPlan, interval: Interval) =>
   interval === "year" ? (PLAN_PRICES_USD[plan].yearly / 12).toFixed(2).replace(/\.00$/, "") : String(PLAN_PRICES_USD[plan].monthly);
 const priceOf = (plan: PaidPlan, interval: Interval) => (interval === "year" ? PLAN_PRICES_USD[plan].yearly : PLAN_PRICES_USD[plan].monthly);
 
-/** Free, Pro and Business side by side, with a Monthly / Yearly switch and the ways to pay. */
+/** Free and the paid plans side by side, with a Monthly / Yearly switch and the ways to pay. */
 export function PlanCards({
   plan,
   cardPay,
@@ -144,7 +159,7 @@ export function PlanCards({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {/* Free */}
         <div className="flex flex-col rounded-2xl border bg-card p-6">
           <div className="flex items-center justify-between">
@@ -168,10 +183,12 @@ export function PlanCards({
           const onThisCard = cardSub?.plan === p && cardSub.interval === interval;
           // Prepaid (crypto) plans can add time or move to the other plan with crypto.
           const canCrypto = cryptoPay && !cardSub && (plan === "FREE" || prepaid);
-          // Upgrades only (Free → Pro or Business, Pro → Business) for accounts without a card plan;
-          // card plans switch instead. Stripe (the fallback when Paddle isn't set up) only has Pro prices.
-          const canCard = cardPay && !cardSub && RANK[p] > RANK[plan] && (p === "PRO" || !!paddle);
-          const canSwitch = !!cardSub && !onThisCard && !!paddle;
+          // Upgrades only (to a higher plan) for accounts without a card plan; card plans switch instead.
+          // Stripe (the fallback when Paddle isn't set up) only has Pro prices, and a plan needs its
+          // Paddle price set up (Agency's are added in Paddle by hand).
+          const hasPrice = !paddle || !!paddle.prices[p][interval];
+          const canCard = cardPay && !cardSub && RANK[p] > RANK[plan] && (p === "PRO" || !!paddle) && hasPrice;
+          const canSwitch = !!cardSub && !onThisCard && !!paddle && hasPrice;
           return (
             <div
               key={p}

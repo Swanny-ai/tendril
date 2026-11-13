@@ -15,6 +15,7 @@ export async function runHealthCheckAction(kind: "link" | "page", id: string): P
   if (kind !== "link" && kind !== "page") return { ok: false, error: "Unknown link." };
   if (!rateLimit(`health:${userId}`, 6, 60_000)) return { ok: false, error: "Too many checks at once. Try again in a minute." };
   const quota = await healthQuota(userId);
+  if (quota.limit === 0) return { ok: false, error: "Link Health is part of the paid plans. Upgrade to Pro to check your links." };
   if (quota.left <= 0) return { ok: false, error: `You've used all ${quota.limit} checks for today. They reset at midnight UTC.` };
   const run = await runHealthCheck(userId, kind, id);
   if (!run) return { ok: false, error: "That link no longer exists." };

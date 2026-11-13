@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
-import { PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
+import { PAID_PLANS, PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { paddlePriceIds } from "@/lib/paddle";
 import { FilterTabs, Header, Pager, Pill, Stat, Table, day, fmt, listParams, money } from "../ui";
 
@@ -14,7 +14,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
   const { page, skip, one } = await listParams(props.searchParams);
   const tab = one("tab") || "plans";
   const [subs, cryptoTotal, cryptoCount, crypto, finished] = await Promise.all([
-    db.subscription.findMany({ where: { OR: [{ plan: { in: ["PRO", "BUSINESS"] } }, { stripeSubscriptionId: { not: null } }, { paddleSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
+    db.subscription.findMany({ where: { OR: [{ plan: { in: PAID_PLANS } }, { stripeSubscriptionId: { not: null } }, { paddleSubscriptionId: { not: null } }] }, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, email: true } } } }),
     db.cryptoPayment.count(),
     db.cryptoPayment.count({ where: { status: "finished" } }),
     tab === "crypto"
@@ -25,7 +25,7 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
   const active = subs.filter((s) => planFromSubscription(s) !== "FREE");
   const yearly = process.env.STRIPE_PRICE_PRO_YEARLY;
   const paddlePrices = paddlePriceIds();
-  const yearlyPaddle = new Set([paddlePrices.PRO.year, paddlePrices.BUSINESS.year]);
+  const yearlyPaddle = new Set(PAID_PLANS.map((p) => paddlePrices[p].year).filter(Boolean));
   const how = (s: (typeof subs)[number]) =>
     s.paddleSubscriptionId
       ? `Card (Paddle) · ${s.paddlePriceId && yearlyPaddle.has(s.paddlePriceId) ? "yearly" : "monthly"}`
@@ -37,9 +37,9 @@ export default async function AdminPayments(props: PageProps<"/admin/payments">)
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <Header title="Payments" intro="Pro and Business plans and crypto payments. Card payments themselves live in Paddle (or Stripe)." />
+      <Header title="Payments" intro="Paid plans and crypto payments. Card payments themselves live in Paddle (or Stripe)." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Paying right now" value={fmt(active.length)} hint={`${active.filter((s) => s.plan === "BUSINESS").length} Business`} tone="good" />
+        <Stat label="Paying right now" value={fmt(active.length)} hint={`${active.filter((s) => s.plan === "BUSINESS").length} Business · ${active.filter((s) => s.plan === "AGENCY").length} Agency`} tone="good" />
         <Stat label="Paying by card" value={fmt(active.filter((s) => s.stripeSubscriptionId || s.paddleSubscriptionId).length)} hint="Paddle or Stripe" />
         <Stat label="Crypto received" value={money(finished._sum.amountCents ?? 0)} hint={`${cryptoCount} finished payments`} />
         <Stat label="Ended or canceled" value={fmt(subs.length - active.length)} />

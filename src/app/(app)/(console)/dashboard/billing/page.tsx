@@ -33,7 +33,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   const prepaid = sub?.status === "prepaid";
   const limits = PLAN_LIMITS[plan];
   const date = (d: Date) => d.toLocaleDateString("en-US", { dateStyle: "long" });
-  // A running Paddle card plan can switch between Pro and Business, monthly and yearly.
+  // A running Paddle card plan can switch between the paid plans, monthly and yearly.
   const cardPlan = sub?.paddleSubscriptionId && ["active", "trialing", "past_due"].includes(sub.status) ? planForPaddlePrice(sub.paddlePriceId) : null;
   const cardSub = cardPlan && paddle ? { plan: cardPlan, interval: paddle.prices[cardPlan].year === sub?.paddlePriceId ? ("year" as const) : ("month" as const) } : null;
 

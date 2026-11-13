@@ -8,7 +8,7 @@ import { deleteAccountAnalytics } from "@/lib/analytics/purge";
 import { wwwOf } from "@/lib/domain-names";
 import { removeHostedDomain } from "@/lib/domains";
 import { expireUsername, invalidatePageFromAction, invalidatePageFromRoute } from "@/lib/pages";
-import { extendPrepaid, PLAN_LABEL, type PaidPlan } from "@/lib/plan-rules";
+import { extendPrepaid, PLAN_LABEL, toPaidPlan, type PaidPlan } from "@/lib/plan-rules";
 import { freeNamesForDomainRemoval } from "@/lib/copy-names";
 import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smartLinkTag } from "@/lib/smart-links";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
@@ -29,14 +29,14 @@ async function done(message: string): Promise<AdminResult> {
 // ---------- Users ----------
 
 /**
- * Pro or Business for a month or a year (added on top of time left on the same plan), with no end,
+ * A paid plan for a month or a year (added on top of time left on the same plan), with no end,
  * or back to Free.
  */
 export async function setPlanAction(form: FormData): Promise<AdminResult> {
   await requireAdmin();
   const userId = id(form);
   const mode = id(form, "mode");
-  const plan: PaidPlan = id(form, "plan") === "BUSINESS" ? "BUSINESS" : "PRO";
+  const plan: PaidPlan = toPaidPlan(id(form, "plan"));
   const label = PLAN_LABEL[plan];
   const sub = await db.subscription.findUnique({ where: { userId } });
   if ((sub?.stripeSubscriptionId || sub?.paddleSubscriptionId) && ["active", "trialing", "past_due"].includes(sub.status)) {

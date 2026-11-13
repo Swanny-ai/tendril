@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { allowedLinkIds, clampAnalyticsDays, countLimitError, linkLimitError, planFromSubscription, visibleBlockIds, PLAN_LIMITS } from "@/lib/plan-rules";
+import { allowedLinkIds, clampAnalyticsDays, countLimitError, linkLimitError, planFromSubscription, toPaidPlan, visibleBlockIds, PLAN_LIMITS, PLAN_PRICES_USD } from "@/lib/plan-rules";
+import { HEALTH_CHECKS_PER_DAY } from "@/lib/link-health-rules";
 
 describe("planFromSubscription", () => {
   it("is FREE without a subscription", () => expect(planFromSubscription(null)).toBe("FREE"));
@@ -71,7 +72,36 @@ describe("page and domain limits", () => {
     expect(countLimitError("PRO", "maxPages", 3)).toMatch(/3 bio pages.*Business for up to 10/);
     expect(countLimitError("PRO", "customDomains", 1)).toMatch(/1 custom domain\..*Business/);
     expect(countLimitError("BUSINESS", "customDomains", 9)).toBeNull();
-    expect(countLimitError("BUSINESS", "customDomains", 10)).toMatch(/10 custom domains\.$/);
+    expect(countLimitError("BUSINESS", "customDomains", 10)).toMatch(/10 custom domains\..*Agency for up to 50/);
     expect(countLimitError("FREE", "customDomains", 0)).toMatch(/Upgrade to Pro for up to 1/);
+  });
+
+  it("Agency has 50 of each and is the top plan", () => {
+    expect(countLimitError("AGENCY", "maxPages", 49)).toBeNull();
+    expect(countLimitError("AGENCY", "customDomains", 50)).toMatch(/50 custom domains\.$/);
+    const many = Array.from({ length: 120 }, (_, i) => ({ id: `l${i}`, twoSteps: i < 60 }));
+    expect(allowedLinkIds("AGENCY", many).size).toBe(100);
+    expect(linkLimitError("AGENCY", { twoSteps: 50, classic: 10 }, true)).toMatch(/50 Two-Steps/);
+  });
+});
+
+describe("paid plans", () => {
+  const now = new Date("2026-10-25T00:00:00Z");
+
+  it("Agency costs $49 a month and lasts while active", () => {
+    expect(PLAN_PRICES_USD.AGENCY).toEqual({ monthly: 49, yearly: 490 });
+    expect(planFromSubscription({ plan: "AGENCY", status: "active" }, now)).toBe("AGENCY");
+    expect(planFromSubscription({ plan: "AGENCY", status: "canceled" }, now)).toBe("FREE");
+  });
+
+  it("only trusts known paid plans from input", () => {
+    expect(toPaidPlan("AGENCY")).toBe("AGENCY");
+    expect(toPaidPlan("BUSINESS")).toBe("BUSINESS");
+    expect(toPaidPlan("FREE")).toBe("PRO");
+    expect(toPaidPlan("ENTERPRISE")).toBe("PRO");
+  });
+
+  it("gives Link Health checks only on paid plans", () => {
+    expect(HEALTH_CHECKS_PER_DAY).toEqual({ FREE: 0, PRO: 5, BUSINESS: 20, AGENCY: 100 });
   });
 });

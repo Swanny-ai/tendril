@@ -6,7 +6,7 @@ import { PLAN_PRICES_USD } from "@/lib/plan-rules";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: `The rules for using ${brand.name}: accounts, acceptable use, the Pro and Business plans, payments through Paddle, and our responsibilities.`,
+  description: `The rules for using ${brand.name}: accounts, acceptable use, the paid plans, payments through Paddle, and our responsibilities.`,
   alternates: { canonical: "/terms" },
 };
 
@@ -54,10 +54,11 @@ export default function TermsPage() {
         suspend or close the account, with or without notice depending on how serious it is.
       </p>
 
-      <h2>5. Free, Pro and Business plans</h2>
+      <h2>5. Free and paid plans</h2>
       <p>
-        {brand.name} has a free plan and two paid plans: Pro (currently US${PLAN_PRICES_USD.PRO.monthly} per month or US${PLAN_PRICES_USD.PRO.yearly} per year) and
-        Business (US${PLAN_PRICES_USD.BUSINESS.monthly} per month or US${PLAN_PRICES_USD.BUSINESS.yearly} per year). Depending on your country, sales tax or VAT
+        {brand.name} has a free plan and three paid plans: Pro (currently US${PLAN_PRICES_USD.PRO.monthly} per month or US${PLAN_PRICES_USD.PRO.yearly} per year),
+        Business (US${PLAN_PRICES_USD.BUSINESS.monthly} per month or US${PLAN_PRICES_USD.BUSINESS.yearly} per year) and Agency (US${PLAN_PRICES_USD.AGENCY.monthly} per
+        month or US${PLAN_PRICES_USD.AGENCY.yearly} per year). Depending on your country, sales tax or VAT
         is included in or added to the price, as shown at checkout. What each plan includes is shown on the <Link href="/#pricing">pricing</Link> and billing pages. We may change features or prices in the future; a
         price change for an existing subscription applies from your next renewal, and we tell you before it does.
       </p>

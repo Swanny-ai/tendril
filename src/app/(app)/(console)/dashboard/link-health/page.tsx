@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Gauge, HeartPulse, Link2, Monitor, TriangleAlert, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, ChevronDown, ExternalLink, Gauge, Globe, HeartPulse, Link2, Lock, Monitor, Power, Smartphone, TriangleAlert, X } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +9,8 @@ import { countryName } from "@/lib/analytics/global";
 import { db } from "@/lib/db";
 import { smartLinkUrl } from "@/lib/domains";
 import { healthQuota, latestHealthChecks } from "@/lib/link-health";
-import { CLIENTS, type HealthResult, type HealthStatus, type Outcome } from "@/lib/link-health-rules";
+import { CLIENTS, HEALTH_CHECKS_PER_DAY, type HealthResult, type HealthStatus, type Outcome } from "@/lib/link-health-rules";
+import { PAID_PLANS, PLAN_LABEL } from "@/lib/plan-rules";
 import { parseLanding } from "@/lib/link-landing";
 import { pageUrl } from "@/lib/link-targets";
 import { requireAccount } from "@/lib/session";
@@ -25,11 +25,11 @@ const bare = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "")
 const ICON_LABEL = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", safari: "Safari", chrome: "Chrome", desktop: "" } as const;
 const KIND_LABEL = { "two-steps": "Two-Steps", deeplink: "Deeplink", page: "Bio page" } as const;
 
-const STATUS: Record<HealthStatus | "unchecked", { label: string; tone: string }> = {
-  healthy: { label: "Healthy", tone: "bg-primary/15 text-primary" },
-  warning: { label: "Needs attention", tone: "bg-amber-500/15 text-amber-400" },
-  down: { label: "Down", tone: "bg-red-500/15 text-red-400" },
-  unchecked: { label: "Not checked", tone: "bg-muted text-muted-foreground" },
+const STATUS: Record<HealthStatus | "unchecked", { label: string; tone: string; dot: string }> = {
+  healthy: { label: "Healthy", tone: "bg-primary/15 text-primary", dot: "bg-primary" },
+  warning: { label: "Needs attention", tone: "bg-amber-500/15 text-amber-400", dot: "bg-amber-400" },
+  down: { label: "Down", tone: "bg-red-500/15 text-red-400", dot: "bg-red-400" },
+  unchecked: { label: "Not checked", tone: "bg-muted text-muted-foreground", dot: "bg-muted-foreground/40" },
 };
 
 const checkedAt = (iso: string) =>
@@ -58,23 +58,42 @@ export default async function LinkHealthPage() {
     rows.map((r) => r.id),
   );
 
+  const paid = quota.limit > 0;
+  const perPlan = PAID_PLANS.map((p) => `${PLAN_LABEL[p]} ${HEALTH_CHECKS_PER_DAY[p]}`).join(" · ");
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <HeartPulse className="size-6 text-primary" aria-hidden /> Link Health
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            We open each link the way Instagram, Facebook, TikTok and phone browsers do, check that it sends people to their real browser, test where it leads, and
-            check your country rules.
+            We open each link like Instagram, Facebook, TikTok and phone browsers do, check it sends people to their real browser, and test where it leads.
           </p>
         </div>
-        <div className="rounded-full border bg-card px-4 py-2 text-sm" title="Checks reset every day at midnight UTC">
-          <span className="font-semibold tabular-nums">{quota.left}</span>
-          <span className="text-muted-foreground"> / {quota.limit} checks left today</span>
-        </div>
+        {paid ? (
+          <div className="rounded-full border bg-card px-4 py-2 text-sm" title="Checks reset every day at midnight UTC">
+            <span className="font-semibold tabular-nums">{quota.left}</span>
+            <span className="text-muted-foreground"> / {quota.limit} checks left today</span>
+          </div>
+        ) : null}
       </div>
+
+      {paid ? null : (
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+            <Lock className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Link checks are part of the paid plans</p>
+            <p className="text-sm text-muted-foreground">Checks a day: {perPlan}.</p>
+          </div>
+          <Link href="/dashboard/billing" className={buttonVariants({ size: "sm" })}>
+            Upgrade
+          </Link>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <Card>
@@ -88,126 +107,156 @@ export default async function LinkHealthPage() {
           </CardContent>
         </Card>
       ) : (
-        rows.map((r) => {
-          const last = latest.get(r.id);
-          const s = STATUS[last?.status ?? "unchecked"];
-          return (
-            <Card key={r.id}>
-              <CardContent className="space-y-1">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-                  <div className="min-w-0">
-                    <a href={r.url} target="_blank" rel="noreferrer" className="block truncate font-mono text-[15px] font-medium hover:underline">
+        <div className="space-y-3">
+          {rows.map((r) => {
+            const last = latest.get(r.id);
+            const s = STATUS[last?.status ?? "unchecked"];
+            return (
+              <section key={r.id} aria-label={bare(r.url)} className="rounded-xl border bg-card p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={cn("size-2.5 shrink-0 rounded-full", s.dot)} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <a href={r.url} target="_blank" rel="noreferrer" className="block truncate font-mono text-sm font-medium hover:underline">
                       {bare(r.url)}
                     </a>
                     <p className="truncate text-xs text-muted-foreground">
                       {KIND_LABEL[r.type]}
                       {r.note ? ` · ${r.note}` : ""}
+                      {last ? ` · Checked ${checkedAt(last.checkedAt)}` : ""}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", s.tone)}>{s.label}</span>
-                    <CheckButton kind={r.kind} id={r.id} label={bare(r.url)} checked={!!last} disabled={quota.left <= 0} />
-                  </div>
+                  <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", s.tone)}>{s.label}</span>
+                  <CheckButton
+                    kind={r.kind}
+                    id={r.id}
+                    label={bare(r.url)}
+                    checked={!!last}
+                    disabled={quota.left <= 0}
+                    reason={paid ? undefined : "Link checks are part of the paid plans"}
+                  />
                 </div>
                 {last ? (
-                  <Report result={last.result} checked={last.checkedAt} />
+                  <Report result={last.result} />
                 ) : (
-                  <p className="border-t pt-3 text-sm text-muted-foreground">Run a check to see how this link opens in each app and browser.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{paid ? "Run a check to see how this link opens in each app and browser." : "Not checked yet."}</p>
                 )}
-              </CardContent>
-            </Card>
-          );
-        })
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );
 }
 
-function Report({ result: r, checked }: { result: HealthResult; checked: string }) {
-  const okDest = r.destinations.filter((d) => d.outcome !== "fail").length;
+const WORST: Outcome[] = ["fail", "warn", "ok"];
+const worst = (xs: Outcome[]): Outcome => WORST.find((o) => xs.includes(o)) ?? "ok";
+
+/** The latest check, small: six tiles, then what needs a look, then the full detail on demand. */
+function Report({ result: r }: { result: HealthResult }) {
+  const appsOk = r.clients.filter((c) => c.outcome === "ok").length;
+  const destOk = r.destinations.filter((d) => d.outcome !== "fail").length;
+  const firstBadDest = r.destinations.find((d) => d.outcome !== "ok");
+  const blocked = r.countries.filter((c) => !c.ok).length + r.otherBlocked;
+  const speed = r.speedMs == null ? null : r.speedMs / 1000;
+
+  const tiles: { label: string; icon: typeof Check; value: string; outcome: Outcome; title?: string }[] = [
+    { label: "Status", icon: Power, value: r.live.outcome === "ok" ? "On" : "Off", outcome: r.live.outcome, title: r.live.note },
+    { label: "Apps", icon: Smartphone, value: `${appsOk}/${r.clients.length} open`, outcome: worst(r.clients.map((c) => c.outcome)) },
+    { label: "In-app", icon: ExternalLink, value: r.inApp.outcome === "ok" ? "Works" : "Check", outcome: r.inApp.outcome, title: r.inApp.note },
+    { label: "Countries", icon: Globe, value: blocked ? `${blocked} blocked` : "All open", outcome: blocked ? "warn" : "ok", title: r.rules.join(" · ") || undefined },
+    {
+      label: r.kind === "page" ? "Buttons" : "Destination",
+      icon: Link2,
+      value: r.destinations.length === 0 ? "None yet" : r.kind === "page" ? `${destOk}/${r.destinations.length} work` : (firstBadDest?.note ?? "Works"),
+      outcome: r.destinations.length === 0 ? "warn" : worst(r.destinations.map((d) => d.outcome)),
+    },
+    { label: "Speed", icon: Gauge, value: speed == null ? "No load" : `${speed.toFixed(2)} s`, outcome: speed == null ? "fail" : speed < 2.5 ? "ok" : "warn" },
+  ];
+
+  const issues = [
+    ...(r.live.outcome !== "ok" ? [{ outcome: r.live.outcome, text: r.live.note }] : []),
+    ...r.clients
+      .filter((c) => c.outcome !== "ok")
+      .map((c) => ({ outcome: c.outcome, text: `${CLIENTS.find((x) => x.key === c.key)?.label ?? c.key}: ${c.note ?? "didn't open"}` })),
+    ...(r.inApp.outcome !== "ok" ? [{ outcome: r.inApp.outcome, text: r.inApp.note }] : []),
+    ...r.destinations.filter((d) => d.outcome !== "ok").map((d) => ({ outcome: d.outcome, text: `${bare(d.url).replace(/^www\./, "")}: ${d.note}` })),
+  ];
+
   return (
-    <div>
-      <Row label="Status">
-        <Item outcome={r.live.outcome}>{r.live.note}</Item>
-      </Row>
-      <Row label="Opens in">
-        {r.clients.map((c) => {
-          const client = CLIENTS.find((x) => x.key === c.key);
-          if (!client) return null;
-          return (
-            <Item key={c.key} outcome={c.outcome} title={c.note ?? `Loaded in ${c.ms} ms`}>
-              {client.icon === "desktop" ? (
-                <span className="grid size-6 place-items-center rounded-md bg-muted text-muted-foreground" aria-hidden>
-                  <Monitor className="size-3.5" />
+    <div className="mt-3 space-y-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {tiles.map((t) => (
+          <div key={t.label} title={t.title} className={cn("rounded-lg border px-3 py-2", TILE[t.outcome])}>
+            <p className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+              <t.icon className="size-3.5" aria-hidden /> {t.label}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold">
+              <Mark outcome={t.outcome} /> <span className="truncate">{t.value}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {issues.length ? (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Needs a look">
+          {issues.map((i) => (
+            <li
+              key={i.text}
+              className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs", i.outcome === "fail" ? "bg-red-500/10 text-red-300" : "bg-amber-500/10 text-amber-300")}
+            >
+              <Mark outcome={i.outcome} /> {i.text}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <details className="group text-sm">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" aria-hidden /> Details
+        </summary>
+        <div className="mt-2 space-y-2 rounded-lg bg-muted/40 p-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {r.clients.map((c) => {
+              const client = CLIENTS.find((x) => x.key === c.key);
+              if (!client) return null;
+              return (
+                <span key={c.key} className="inline-flex items-center gap-1.5 text-xs" title={c.note ?? `Loaded in ${c.ms} ms`}>
+                  {client.icon === "desktop" ? <Monitor className="size-3.5 text-muted-foreground" aria-hidden /> : <PlatformIcon label={ICON_LABEL[client.icon]} />}
+                  {client.label}
+                  <Mark outcome={c.outcome} />
                 </span>
-              ) : (
-                <PlatformIcon label={ICON_LABEL[client.icon]} />
-              )}
-              {client.label}
-            </Item>
-          );
-        })}
-      </Row>
-      <Row label="In-app">
-        <Item outcome={r.inApp.outcome}>{r.inApp.note}</Item>
-      </Row>
-      <Row label="Countries">
-        {r.countries.map((c) => (
-          <Item key={c.code} outcome={c.ok ? "ok" : "fail"} title={c.ok ? `Open in ${countryName(c.code)}` : `Blocked in ${countryName(c.code)} by your settings`}>
-            <CountryFlag code={c.code} size="sm" />
-            {c.code === "GB" ? "UK" : countryName(c.code)}
-          </Item>
-        ))}
-        {r.otherBlocked ? <span className="text-sm text-muted-foreground">+{r.otherBlocked} more blocked by your settings</span> : null}
-        {r.rules.map((rule) => (
-          <span key={rule} className="text-sm text-muted-foreground">
-            {rule}
-          </span>
-        ))}
-      </Row>
-      <Row label={r.kind === "page" ? "Buttons" : "Destination"}>
-        {r.destinations.length === 0 ? (
-          <span className="text-sm text-muted-foreground">No buttons with a link yet</span>
-        ) : (
-          <>
-            {r.kind === "page" ? (
-              <span className="text-sm text-muted-foreground">
-                {okDest} of {r.destinations.length} work
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {r.countries.map((c) => (
+              <span key={c.code} className="inline-flex items-center gap-1.5 text-xs" title={c.ok ? `Open in ${countryName(c.code)}` : `Blocked in ${countryName(c.code)} by your settings`}>
+                <CountryFlag code={c.code} size="sm" />
+                {c.code === "GB" ? "UK" : countryName(c.code)}
+                <Mark outcome={c.ok ? "ok" : "fail"} />
               </span>
-            ) : null}
-            {r.destinations.map((d) => (
-              <Item key={d.url} outcome={d.outcome} title={`${d.url} · ${d.status ? `answered ${d.status}` : "no answer"} · ${d.ms} ms`}>
-                <span className="max-w-[240px] truncate">{bare(d.url).replace(/^www\./, "")}</span>
-                <span className="text-xs text-muted-foreground">{d.note}</span>
-              </Item>
             ))}
-          </>
-        )}
-      </Row>
-      <Row label="Speed">
-        {r.speedMs == null ? (
-          <span className="text-sm text-muted-foreground">Didn&apos;t load</span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-sm">
-            <Gauge className="size-4 text-muted-foreground" aria-hidden />
-            Loads in {(r.speedMs / 1000).toFixed(2)} s
-            <span className="text-xs text-muted-foreground">({r.speedMs < 1000 ? "fast" : r.speedMs < 2500 ? "okay" : "slow"})</span>
-          </span>
-        )}
-      </Row>
-      <p className="pt-3 text-xs text-muted-foreground">Checked {checkedAt(checked)}</p>
+            {r.otherBlocked ? <span className="text-xs text-muted-foreground">+{r.otherBlocked} more blocked by your settings</span> : null}
+          </div>
+          {r.destinations.length ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {r.destinations.map((d) => (
+                <span key={d.url} className="inline-flex max-w-full items-center gap-1.5 text-xs" title={`${d.url} · ${d.status ? `answered ${d.status}` : "no answer"} · ${d.ms} ms`}>
+                  <span className="truncate">{bare(d.url).replace(/^www\./, "")}</span>
+                  <span className="text-muted-foreground">{d.note}</span>
+                  <Mark outcome={d.outcome} />
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2 border-t py-3 sm:flex-row sm:items-center">
-      <span className="w-32 shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">{children}</div>
-    </div>
-  );
-}
+const TILE: Record<Outcome, string> = { ok: "border-border", warn: "border-amber-500/30 bg-amber-500/5", fail: "border-red-500/30 bg-red-500/5" };
 
 const MARK: Record<Outcome, { icon: typeof Check; tone: string; label: string }> = {
   ok: { icon: Check, tone: "text-primary", label: "Works" },
@@ -215,12 +264,7 @@ const MARK: Record<Outcome, { icon: typeof Check; tone: string; label: string }>
   fail: { icon: X, tone: "text-red-400", label: "Doesn't work" },
 };
 
-function Item({ outcome, title, children }: { outcome: Outcome; title?: string; children: ReactNode }) {
+function Mark({ outcome }: { outcome: Outcome }) {
   const m = MARK[outcome];
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm" title={title}>
-      {children}
-      <m.icon className={cn("size-4", m.tone)} strokeWidth={2.5} aria-label={m.label} />
-    </span>
-  );
+  return <m.icon className={cn("size-3.5 shrink-0", m.tone)} strokeWidth={2.5} aria-label={m.label} />;
 }
