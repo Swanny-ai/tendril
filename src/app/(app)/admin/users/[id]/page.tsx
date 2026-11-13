@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { signInMethods } from "@/lib/sign-in-methods";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Ban, CalendarPlus, Crown, ExternalLink, LogOut, MailCheck, Trash2, UserMinus } from "lucide-react";
+import { ArrowLeft, Ban, CalendarPlus, Crown, ExternalLink, Eye, LogOut, MailCheck, Trash2, UserMinus } from "lucide-react";
 import { appUrl } from "@/config/brand";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
@@ -13,6 +13,7 @@ import { PAID_PLANS, PLAN_LABEL, planFromSubscription } from "@/lib/plan-rules";
 import { ActionButton } from "../../action-button";
 import { deleteUserAction, setPlanAction, signOutUserAction, suspendUserAction, verifyEmailAction } from "../../actions";
 import { LinkRowActions, PageRowActions } from "../../row-actions";
+import { startViewAsAction } from "../../view-as-actions";
 import { Pill, Table, ago, day, daysAgo, fmt, money } from "../../ui";
 
 export const instant = false;
@@ -73,6 +74,15 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">ID {user.id}</p>
         </div>
+        {self ? null : (
+          // Opens their dashboard exactly as they see it, view-only (see lib/view-as.ts).
+          <form action={startViewAsAction}>
+            <input type="hidden" name="id" value={user.id} />
+            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+              <Eye className="size-4" /> View as this user
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

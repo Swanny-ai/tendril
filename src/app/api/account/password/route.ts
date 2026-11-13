@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { NextResponse, type NextRequest } from "next/server";
-import { auth, signIn } from "@/lib/auth";
+import { signIn } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { passwordSchema } from "@/lib/validation";
@@ -9,7 +10,7 @@ import { passwordSchema } from "@/lib/validation";
 // device a fresh session cookie. This is a route handler rather than a server action so
 // the new cookie is applied before anything re-renders with the old one.
 export async function POST(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   if (!rateLimit(`pw-change:${userId}`, 10, 15 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { createTicket, listTickets, SUPPORT_MAX_LEN, userUnreadCount } from "@/lib/support";
 
@@ -7,7 +7,7 @@ import { createTicket, listTickets, SUPPORT_MAX_LEN, userUnreadCount } from "@/l
 // GET lists their tickets (open and resolved) with the unread count; GET ?peek=1 returns only the
 // count, for the launcher badge. POST starts a new ticket with its first message.
 export async function GET(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId();
   if (!userId) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   const unread = await userUnreadCount(userId);
   if (request.nextUrl.searchParams.get("peek")) return NextResponse.json({ unread });
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   if (!rateLimit(`support:${userId}`, 30, 10 * 60_000)) {
     return NextResponse.json({ error: "Too many messages. Please wait a few minutes." }, { status: 429 });

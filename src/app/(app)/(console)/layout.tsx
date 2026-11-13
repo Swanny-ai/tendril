@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
 import { PLAN_LABEL, PLAN_LIMITS } from "@/lib/plan-rules";
 import { isAdmin } from "@/lib/admin";
-import { requireAccount } from "@/lib/session";
+import { requireAccount, requireRealUserId } from "@/lib/session";
+import { ViewAsBanner } from "./dashboard/view-as-banner";
 import { DashboardNav } from "./dashboard/nav";
 import { UserMenu } from "./dashboard/user-menu";
 import { VerifyBanner } from "./dashboard/verify-banner";
@@ -21,10 +22,12 @@ export const instant = false;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId, page } = await requireAccount();
+  // An admin looking at this account ("View as user"): show who, and the way back.
+  const viewing = (await requireRealUserId()) !== userId;
   const [plan, user, admin, sub, supportUnread, links] = await Promise.all([
     getPlan(userId),
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true, name: true } }),
-    isAdmin(userId),
+    viewing ? true : isAdmin(userId),
     db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } }),
     userUnreadCount(userId),
     db.smartLink.findMany({ where: { userId }, select: { enabled: true } }),
@@ -65,9 +68,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </header>
         {/* Only ask for confirmation when the site can actually send the email. */}
-        {!user.emailVerified && canSendEmail() ? <VerifyBanner email={user.email} /> : null}
+        {viewing ? <ViewAsBanner email={user.email} /> : null}
+        {!viewing && !user.emailVerified && canSendEmail() ? <VerifyBanner email={user.email} /> : null}
         <TrialBanner {...trial} />
-        <TrialPopup {...trial} />
+        {viewing ? null : <TrialPopup {...trial} />}
         <div className="border-b px-2 md:hidden">
           <DashboardNav horizontal />
         </div>

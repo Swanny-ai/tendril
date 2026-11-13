@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { appUrl } from "@/config/brand";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getPlan } from "@/lib/plans";
 import { getStripe, priceIdFor, stripeConfigured, type Interval } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!stripeConfigured()) return NextResponse.json({ error: "Billing isn't set up yet. Add Stripe test keys to .env." }, { status: 503 });
   if ((await getPlan(userId)) !== "FREE") return NextResponse.json({ error: "You already have a paid plan." }, { status: 409 });

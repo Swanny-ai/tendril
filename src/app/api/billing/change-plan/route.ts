@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { changePaddlePlan, paddleConfigured, paddlePriceIds } from "@/lib/paddle";
 import { toPaidPlan } from "@/lib/plan-rules";
@@ -7,7 +7,7 @@ import { toPaidPlan } from "@/lib/plan-rules";
 // Switches a card subscription (Paddle) between the paid plans, or monthly and yearly. Paddle
 // charges or credits the difference right away; its webhook then updates the account's plan.
 export async function POST(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!paddleConfigured()) return NextResponse.json({ error: "Card payments aren't set up yet." }, { status: 503 });
 

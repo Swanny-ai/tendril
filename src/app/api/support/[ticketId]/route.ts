@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { rateLimit } from "@/lib/rate-limit";
 import { escalateTicket, getTicketView, markTyping, sendToTicket, setTicketStatusByUser } from "@/lib/support";
 
@@ -9,14 +9,14 @@ type Ctx = { params: Promise<{ ticketId: string }> };
 const notFound = () => NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 
 export async function GET(_request: NextRequest, ctx: Ctx) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId();
   if (!userId) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   const view = await getTicketView(userId, (await ctx.params).ticketId);
   return view ? NextResponse.json(view) : notFound();
 }
 
 export async function POST(request: NextRequest, ctx: Ctx) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   const { ticketId } = await ctx.params;
   const body = (await request.json().catch(() => ({}))) as { body?: unknown; action?: unknown };

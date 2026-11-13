@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { appUrl } from "@/config/brand";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { paddleConfigured, paddlePortalUrl } from "@/lib/paddle";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 
 // "Manage subscription": Paddle's customer portal for card plans paid through Paddle, else Stripe's.
 export async function POST() {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId({ write: true });
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const user = await db.user.findUnique({
     where: { id: userId },

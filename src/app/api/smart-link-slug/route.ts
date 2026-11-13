@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { linkNameTaken } from "@/lib/link-targets";
 import { smartLinkSlugSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
-  const userId = (await auth())?.user?.id;
+  const userId = await apiUserId();
   if (!userId) return NextResponse.json({ available: false, error: "Not signed in" }, { status: 401 });
   const parsed = smartLinkSlugSchema.safeParse(request.nextUrl.searchParams.get("s") ?? "");
   if (!parsed.success) return NextResponse.json({ available: false, error: parsed.error.issues[0].message });

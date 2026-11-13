@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { apiUserId } from "@/lib/session";
 import { getAnalytics, parseRange } from "@/lib/analytics/queries";
 import { getCurrentPage } from "@/lib/current-page";
 import { getPlan } from "@/lib/plans";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const viewerId = await apiUserId();
+  const userId = viewerId;
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const page = await getCurrentPage(userId);
   if (!page) return NextResponse.json({ error: "No page" }, { status: 404 });
