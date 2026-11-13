@@ -59,6 +59,8 @@ const TAGLINE: Record<PlanName, string> = {
 };
 
 type Interval = "month" | "year";
+/** The plan buttons: the action on one line, the price under it, never spilling out of the card. */
+const TWO_LINE = "h-auto min-h-12 w-full flex-col gap-0 py-2 whitespace-normal text-center";
 const RANK: Record<PlanName, number> = { FREE: 0, PRO: 1, BUSINESS: 2, AGENCY: 3 };
 
 async function post(path: string, body: object) {
@@ -209,14 +211,25 @@ export function PlanCards({
                     Your plan
                   </Button>
                 ) : null}
+                {/* Two lines (action, then price) so the text fits in narrow cards. */}
                 {canSwitch ? (
-                  <Button size="lg" variant={popular ? "default" : "outline"} className="w-full" disabled={!!busy} onClick={() => switchTo(p)}>
-                    {busy === `switch-${p}` ? <Loader2 className="animate-spin" /> : <ArrowLeftRight />} Switch to {PLAN_LABEL[p]} · ${priceOf(p, interval)}/{yearly ? "year" : "month"}
+                  <Button size="lg" variant={popular ? "default" : "outline"} className={TWO_LINE} disabled={!!busy} onClick={() => switchTo(p)}>
+                    <span className="flex items-center gap-2">
+                      {busy === `switch-${p}` ? <Loader2 className="animate-spin" /> : <ArrowLeftRight />} Switch to {PLAN_LABEL[p]}
+                    </span>
+                    <span className="text-xs font-normal opacity-75">
+                      ${priceOf(p, interval)} / {yearly ? "year" : "month"}
+                    </span>
                   </Button>
                 ) : null}
                 {canCard ? (
-                  <Button size="lg" variant={popular ? "default" : "outline"} className="w-full" disabled={!!busy} onClick={() => payCard(p)}>
-                    {busy === `card-${p}` ? <Loader2 className="animate-spin" /> : <CreditCard />} Get {PLAN_LABEL[p]} · ${priceOf(p, interval)}/{yearly ? "year" : "month"}
+                  <Button size="lg" variant={popular ? "default" : "outline"} className={TWO_LINE} disabled={!!busy} onClick={() => payCard(p)}>
+                    <span className="flex items-center gap-2">
+                      {busy === `card-${p}` ? <Loader2 className="animate-spin" /> : <CreditCard />} Get {PLAN_LABEL[p]}
+                    </span>
+                    <span className="text-xs font-normal opacity-75">
+                      ${priceOf(p, interval)} / {yearly ? "year" : "month"}
+                    </span>
                   </Button>
                 ) : null}
                 {mine && !cardSub ? (
@@ -225,7 +238,7 @@ export function PlanCards({
                   </Button>
                 ) : null}
                 {!onThisCard && !canSwitch && !canCard && !mine ? (
-                  <Button size="lg" variant="outline" className="w-full" disabled>
+                  <Button size="lg" variant="outline" className="h-auto min-h-10 w-full py-2 whitespace-normal" disabled>
                     {cardPay ? "Not available with your current plan" : `Get ${PLAN_LABEL[p]}`}
                   </Button>
                 ) : null}
