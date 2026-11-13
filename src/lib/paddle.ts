@@ -97,3 +97,53 @@ export async function paddlePortalUrl(customerId: string, subscriptionId?: strin
 export async function cancelPaddleSubscription(subscriptionId: string): Promise<void> {
   await paddleApi(`/subscriptions/${subscriptionId}/cancel`, { method: "POST", body: { effective_from: "immediately" } });
 }
+
+/** "Cancel subscription": the plan stays on until the end of the period already paid for, then stops. */
+export async function cancelPaddleAtPeriodEnd(subscriptionId: string): Promise<void> {
+  await paddleApi(`/subscriptions/${subscriptionId}/cancel`, { method: "POST", body: { effective_from: "next_billing_period" } });
+}
+
+/** "Keep my plan": takes back a cancellation that hasn't happened yet, so it renews again. */
+export async function resumePaddleSubscription(subscriptionId: string): Promise<void> {
+  await paddleApi(`/subscriptions/${subscriptionId}`, { method: "PATCH", body: { scheduled_change: null } });
+}
+
+/** What the customer pays with, in plain words for the billing page. */
+export type PaymentMethod = { kind: "card"; brand: string; last4: string; expMonth: number | null; expYear: number | null } | { kind: "paypal"; email: string | null } | { kind: "other"; label: string };
+
+type MethodDetails = { type?: string; card?: { type?: string; last4?: string; expiry_month?: number; expiry_year?: number } | null; paypal?: { email?: string } | null };
+
+function describe(m: MethodDetails | null | undefined): PaymentMethod | null {
+  if (!m?.type) return null;
+  if (m.type === "card" && m.card?.last4) {
+    return { kind: "card", brand: m.card.type ?? "card", last4: m.card.last4, expMonth: m.card.expiry_month ?? null, expYear: m.card.expiry_year ?? null };
+  }
+  if (m.type === "paypal") return { kind: "paypal", email: m.paypal?.email ?? null };
+  return { kind: "other", label: m.type.replace(/_/g, " ") };
+}
+
+/**
+ * The payment method a subscription is charged with: the one used for its latest paid
+ * transaction, else the customer's saved one. Null when Paddle can't tell us.
+ */
+export async function paddlePaymentMethod(customerId: string, subscriptionId: string | null): Promise<PaymentMethod | null> {
+  if (subscriptionId) {
+    const txs = await paddleApi<{ payments?: { status?: string; method_details?: MethodDetails }[] }[]>(
+      `/transactions?subscription_id=${subscriptionId}&status=completed,paid&order_by=billed_at[DESC]&per_page=1`,
+    );
+    const paid = txs[0]?.payments?.find((p) => p.status === "captured") ?? txs[0]?.payments?.[0];
+    const found = describe(paid?.method_details);
+    if (found) return found;
+  }
+  const saved = await paddleApi<MethodDetails[]>(`/customers/${customerId}/payment-methods?per_page=5`);
+  return describe(saved[0]);
+}
+
+/** Paddle's own page for changing the card a subscription is charged with. */
+export async function paddleUpdatePaymentUrl(customerId: string, subscriptionId: string): Promise<string> {
+  const data = await paddleApi<{ urls: { general: { overview: string }; subscriptions?: { id: string; update_subscription_payment_method?: string }[] } }>(
+    `/customers/${customerId}/portal-sessions`,
+    { method: "POST", body: { subscription_ids: [subscriptionId] } },
+  );
+  return data.urls.subscriptions?.find((s) => s.id === subscriptionId)?.update_subscription_payment_method ?? data.urls.general.overview;
+}

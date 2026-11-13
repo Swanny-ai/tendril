@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { PLAN_LABEL, PLAN_LIMITS } from "@/lib/plan-rules";
+import { PLAN_LABEL, PLAN_LIMITS, PLAN_PRICES_USD } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
 import { trialInfo } from "@/lib/trial";
 import { stripeConfigured } from "@/lib/stripe";
-import { paddleClientConfig, planForPaddlePrice } from "@/lib/paddle";
+import { paddleClientConfig, paddlePaymentMethod, planForPaddlePrice } from "@/lib/paddle";
 import { CheckoutStatus, ManageButton } from "./billing-actions";
 import { PlanCards } from "./plan-cards";
+import { SubscriptionPanel } from "./subscription-panel";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Pricing" };
@@ -34,6 +35,14 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   // A running Paddle card plan can switch between the paid plans, monthly and yearly.
   const cardPlan = sub?.paddleSubscriptionId && ["active", "trialing", "past_due"].includes(sub.status) ? planForPaddlePrice(sub.paddlePriceId) : null;
   const cardSub = cardPlan && paddle ? { plan: cardPlan, interval: paddle.prices[cardPlan].year === sub?.paddlePriceId ? ("year" as const) : ("month" as const) } : null;
+  // The card it's charged to (from Paddle). The page still loads if Paddle doesn't answer.
+  const method =
+    cardSub && user?.paddleCustomerId
+      ? await paddlePaymentMethod(user.paddleCustomerId, sub?.paddleSubscriptionId ?? null).catch((e) => {
+          console.error("[billing] payment method lookup failed", e);
+          return null;
+        })
+      : null;
 
   const label = PLAN_LABEL[plan];
   const trial = trialInfo(sub);
@@ -81,8 +90,19 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
           <Usage label="Links" used={links} max={limits.maxSmartLinks} />
           <Usage label="Domains" used={domains} max={limits.customDomains} />
         </div>
-        {(user?.paddleCustomerId && paddle) || (user?.stripeCustomerId && stripeOn) ? <ManageButton /> : null}
+        {!cardSub && ((user?.paddleCustomerId && paddle) || (user?.stripeCustomerId && stripeOn)) ? <ManageButton /> : null}
       </div>
+
+      {cardSub && sub ? (
+        <SubscriptionPanel
+          planLabel={PLAN_LABEL[cardSub.plan]}
+          price={cardSub.interval === "year" ? `$${PLAN_PRICES_USD[cardSub.plan].yearly}/yr` : `$${PLAN_PRICES_USD[cardSub.plan].monthly}/mo`}
+          periodEnd={sub.currentPeriodEnd ? sub.currentPeriodEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null}
+          cancelAtPeriodEnd={sub.cancelAtPeriodEnd}
+          pastDue={sub.status === "past_due"}
+          method={method}
+        />
+      ) : null}
 
       <PlanCards
         plan={plan}
