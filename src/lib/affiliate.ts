@@ -52,7 +52,7 @@ export async function recordCommission(invoice: Stripe.Invoice) {
 }
 
 /**
- * A payment by `userId` (card or crypto) earns whoever referred them a commission at their current
+ * A payment by `userId` (card) earns whoever referred them a commission at their current
  * level. `paymentId` makes it count once, however many times the payment is reported.
  */
 export async function creditReferral(userId: string, paidCents: number, paymentId: string, paidAt: Date) {

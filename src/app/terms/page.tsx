@@ -76,10 +76,6 @@ export default function TermsPage() {
         <li>Monthly and yearly card plans renew automatically until you cancel. You can cancel any time from Pricing → Manage subscription; the plan then stays on until the end of the period you paid for.</li>
         <li>If a renewal payment fails, the paid plan may stop until the payment goes through.</li>
         <li>
-          You can also pay in cryptocurrency through NOWPayments. Crypto payments are prepaid: each payment adds one month or one year of the plan and never renews by
-          itself.
-        </li>
-        <li>
           Refunds are explained in our <Link href="/refund">Refund Policy</Link>.
         </li>
       </ul>
@@ -100,7 +96,7 @@ export default function TermsPage() {
       <h2>9. Availability and changes</h2>
       <p>
         We work to keep {brand.name} online and fast, but we can’t promise it will never be interrupted or free of errors. We may add, change or remove features. If we
-        ever close the Service, we will tell paying users in advance and refund any unused prepaid time.
+        ever close the Service, we will tell paying users in advance and refund any unused time you paid for.
       </p>
 
       <h2>10. Disclaimer and limitation of liability</h2>

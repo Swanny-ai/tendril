@@ -5,7 +5,6 @@ import { PLAN_LABEL, PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
 import { requireAccount } from "@/lib/session";
 import { trialInfo } from "@/lib/trial";
-import { cryptoConfigured } from "@/lib/crypto-pay";
 import { stripeConfigured } from "@/lib/stripe";
 import { paddleClientConfig, planForPaddlePrice } from "@/lib/paddle";
 import { CheckoutStatus, ManageButton } from "./billing-actions";
@@ -29,7 +28,6 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
   const paddle = paddleClientConfig();
   const stripeOn = stripeConfigured();
   const configured = !!paddle || stripeOn;
-  const cryptoOn = cryptoConfigured();
   const prepaid = sub?.status === "prepaid";
   const limits = PLAN_LIMITS[plan];
   const date = (d: Date) => d.toLocaleDateString("en-US", { dateStyle: "long" });
@@ -45,7 +43,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
       : trial.expired
         ? "Your free Pro trial has ended. Pick a plan to turn Pro back on."
         : plan !== "FREE" && prepaid && sub?.currentPeriodEnd
-          ? `${label} until ${date(sub.currentPeriodEnd)}, paid with crypto.`
+          ? `${label} until ${date(sub.currentPeriodEnd)}.`
           : plan !== "FREE" && sub?.currentPeriodEnd
             ? `${sub.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${date(sub.currentPeriodEnd)}.`
             : plan !== "FREE"
@@ -61,9 +59,9 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
 
       <CheckoutStatus state={typeof checkout === "string" ? checkout : null} plan={plan} />
 
-      {!configured && !cryptoOn ? (
+      {!configured ? (
         <p role="note" className="rounded-lg border border-[var(--persimmon)]/40 bg-[var(--persimmon)]/10 px-4 py-3 text-sm">
-          Payments aren&apos;t configured on this server. Add Paddle, Stripe or NOWPayments keys to <code>.env</code> (see README) to enable upgrades.
+          Payments aren&apos;t configured on this server. Add Paddle or Stripe keys to <code>.env</code> (see README) to enable upgrades.
         </p>
       ) : null}
 
@@ -89,8 +87,6 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
       <PlanCards
         plan={plan}
         cardPay={configured}
-        cryptoPay={cryptoOn}
-        prepaid={prepaid}
         paddle={paddle ? { ...paddle, email: user?.email ?? "", userId } : null}
         cardSub={cardSub}
       />

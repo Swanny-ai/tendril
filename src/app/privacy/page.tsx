@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Billing:</strong> your plan, its status and renewal date. Card details are entered on Paddle’s checkout and never reach our servers; we only receive
-          the payment result. For crypto payments we keep the amount, coin and payment status.
+          the payment result.
         </li>
         <li>
           <strong>Affiliate program:</strong> who referred you, your referral code, the payout email you give us, and the commissions you earn.
@@ -100,9 +100,6 @@ export default function PrivacyPage() {
             Paddle’s privacy notice
           </a>
           );
-        </li>
-        <li>
-          <strong>NOWPayments</strong> (crypto payments);
         </li>
         <li>
           <strong>Google</strong> (only if you choose “Sign in with Google”);

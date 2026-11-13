@@ -5,7 +5,7 @@ import { brand } from "@/config/brand";
 
 export const metadata: Metadata = {
   title: "Refund Policy",
-  description: `${brand.name} Pro comes with a 14-day money-back guarantee. How to cancel, how to ask for a refund, and how card and crypto refunds work.`,
+  description: `${brand.name} Pro comes with a 14-day money-back guarantee. How to cancel, how to ask for a refund, and how card refunds work.`,
   alternates: { canonical: "/refund" },
 };
 
@@ -31,23 +31,18 @@ export default function RefundPage() {
           </a>{" "}
           using the email on your receipt, or email us at <a href={`mailto:${brand.supportEmail}`}>{brand.supportEmail}</a> and we will arrange it with Paddle.
         </li>
-        <li>
-          <strong>Crypto payments</strong>: email <a href={`mailto:${brand.supportEmail}`}>{brand.supportEmail}</a> from your account’s email with the payment date,
-          and the wallet address to refund. We refund the US dollar amount you paid, in the same coin when possible; network fees are taken from the refund.
-        </li>
       </ul>
       <p>We answer refund requests within 2 business days.</p>
 
       <h2>3. When you get the money</h2>
       <p>
-        Card refunds go back to the card or payment method you used. Banks usually show them within 5–10 business days. Crypto refunds are sent once the wallet address
-        is confirmed.
+        Card refunds go back to the card or payment method you used. Banks usually show them within 5–10 business days.
       </p>
 
       <h2>4. Cancelling</h2>
       <p>
         You can cancel a card plan at any time in <Link href="/dashboard/billing">Pricing</Link> → Manage subscription. Cancelling stops future renewals; Pro stays on
-        until the end of the period you already paid for. Crypto payments never renew, so there is nothing to cancel.
+        until the end of the period you already paid for.
       </p>
 
       <h2>5. After 14 days</h2>

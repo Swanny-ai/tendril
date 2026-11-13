@@ -52,10 +52,7 @@ export function CheckoutStatus({
   plan: PlanName;
 }) {
   const router = useRouter();
-  const crypto = state === "crypto";
-  const [waiting, setWaiting] = useState(
-    (state === "success" || crypto) && plan === "FREE",
-  );
+  const [waiting, setWaiting] = useState(state === "success" && plan === "FREE");
 
   useEffect(() => {
     if (!waiting) return;
@@ -66,17 +63,17 @@ export function CheckoutStatus({
         const res = await fetch("/api/billing/status")
           .then((r) => r.json())
           .catch(() => null);
-        if ((res?.plan && res.plan !== "FREE") || tries >= (crypto ? 180 : 10)) {
+        if ((res?.plan && res.plan !== "FREE") || tries >= 10) {
           clearInterval(timer);
           setWaiting(false);
           router.replace("/dashboard/billing");
           router.refresh();
         }
       },
-      crypto ? 3000 : 1000,
+      1000,
     );
     return () => clearInterval(timer);
-  }, [waiting, router, crypto]);
+  }, [waiting, router]);
 
   if (state === "canceled")
     return (
@@ -91,12 +88,10 @@ export function CheckoutStatus({
         className="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
       >
         <Loader2 className="size-4 animate-spin" />{" "}
-        {crypto
-          ? "Waiting for your crypto payment to confirm. This can take a few minutes; this page updates by itself."
-          : "Confirming your upgrade…"}
+        Confirming your upgrade…
       </p>
     );
-  if ((state === "success" || crypto) && plan !== "FREE")
+  if (state === "success" && plan !== "FREE")
     return (
       <p className="rounded-lg border border-[var(--sage)]/50 bg-[var(--sage)]/10 px-4 py-3 text-sm">
         You&apos;re on {PLAN_LABEL[plan]}. Enjoy!

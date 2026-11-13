@@ -335,3 +335,55 @@ export async function getOverview(userId: string, sources: Source[], range: numb
 
   return { days, totals, previous, series, top, breakdowns };
 }
+
+export type TrafficPatterns = {
+  /** How many days the averages cover. */
+  days: number;
+  views: number;
+  /** Average views on each weekday, Monday first. */
+  byDay: { day: string; avg: number }[];
+  /** Average views in each hour of the day (0–23), per day. */
+  byHour: { hour: number; avg: number }[];
+  /** The busiest weekday + hour slots, best first. */
+  bestSlots: { day: string; hour: number; views: number; share: number }[];
+};
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+/**
+ * When visitors come, over the last `days` days in the chosen time zone: average views per
+ * weekday and per hour, and the busiest weekday + hour (the best time to post).
+ */
+export async function getTrafficPatterns(userId: string, tz: string, days: number, now = new Date()): Promise<TrafficPatterns> {
+  const to = now;
+  const from = new Date(to.getTime() - days * 86_400_000);
+  const rows = await db.$queryRaw<{ d: number; h: number; n: bigint }[]>`
+    WITH v AS (${viewRows(userId, from, to)}), t AS (SELECT (ts AT TIME ZONE 'UTC') AT TIME ZONE ${tz} AS lt FROM v)
+    SELECT EXTRACT(ISODOW FROM lt)::int AS d, EXTRACT(HOUR FROM lt)::int AS h, COUNT(*)::bigint AS n FROM t GROUP BY 1, 2`;
+
+  // How many of each weekday the window holds, in the chosen time zone.
+  const dayKeys = bucketKeys(from, to, tz, "day");
+  const weekdayCount = Array(7).fill(0) as number[];
+  for (const k of dayKeys) weekdayCount[(new Date(`${k}T00:00:00Z`).getUTCDay() + 6) % 7]++;
+
+  const perDay = Array(7).fill(0) as number[];
+  const perHour = Array(24).fill(0) as number[];
+  let views = 0;
+  for (const r of rows) {
+    const c = n(r.n);
+    perDay[r.d - 1] += c;
+    perHour[r.h] += c;
+    views += c;
+  }
+  const round = (x: number) => Math.round(x * 10) / 10;
+  return {
+    days: dayKeys.length,
+    views,
+    byDay: WEEKDAYS.map((day, i) => ({ day, avg: weekdayCount[i] ? round(perDay[i] / weekdayCount[i]) : 0 })),
+    byHour: perHour.map((total, hour) => ({ hour, avg: round(total / Math.max(1, dayKeys.length)) })),
+    bestSlots: rows
+      .map((r) => ({ day: WEEKDAYS[r.d - 1], hour: r.h, views: n(r.n), share: views ? n(r.n) / views : 0 }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 3),
+  };
+}

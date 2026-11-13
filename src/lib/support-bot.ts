@@ -37,9 +37,9 @@ export const BOT_TOPICS: BotTopic[] = [
   {
     id: "payment",
     label: "Payments",
-    keywords: ["pay", "payment", "card", "crypto", "paddle", "invoice", "receipt", "cancel"],
+    keywords: ["pay", "payment", "card", "paddle", "invoice", "receipt", "cancel"],
     answer:
-      "You can pay by card (through Paddle) or with crypto, monthly or yearly (yearly = 2 months free). To change or cancel your plan, go to Dashboard → Pricing. If a payment failed or you were charged wrongly, tap \"Talk to a real person\".",
+      "You can pay by card (through Paddle), monthly or yearly (yearly = 2 months free). To change or cancel your plan, go to Dashboard → Pricing. If a payment failed or you were charged wrongly, tap \"Talk to a real person\".",
   },
   {
     id: "email",
