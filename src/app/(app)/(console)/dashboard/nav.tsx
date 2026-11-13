@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, BarChart3, CreditCard, Gift, Globe, HeartPulse, LayoutDashboard, LayoutTemplate, Link2, List, Settings, Unlink } from "lucide-react";
+import { Loader2, BarChart3, CreditCard, Gift, Globe, HeartPulse, LayoutDashboard, LayoutTemplate, Link2, List, ScanSearch, Settings, Unlink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Item = { href: string; label: string; icon: typeof Loader2; also?: string[] };
@@ -34,6 +34,8 @@ const groups: { label?: string; items: Item[] }[] = [
       { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
       // Checks each link opens in the apps and browsers and leads somewhere that works.
       { href: "/dashboard/link-health", label: "Link Health", icon: HeartPulse },
+      // Every outside link in an Instagram data download, read in the browser.
+      { href: "/dashboard/link-history", label: "IG Link History", icon: ScanSearch },
     ],
   },
   {
