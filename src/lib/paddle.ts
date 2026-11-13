@@ -18,12 +18,11 @@ export function paddleSandbox(): boolean {
 }
 
 // Live price IDs (Catalog → Products in Paddle). They aren't secret; the env variables override
-// them, e.g. with sandbox prices for testing. Agency has no built-in prices: create them in Paddle
-// and set PADDLE_PRICE_AGENCY_MONTHLY / _YEARLY. Until then Agency can only be paid in crypto.
+// them, e.g. with sandbox prices for testing.
 const LIVE_PRICES: PaddlePrices = {
   PRO: { month: "pri_01m5rdbr99wemrnq6eczct1c27", year: "pri_01m5rdcjes0edkk3m3yhtn7g0a" },
   BUSINESS: { month: "pri_01m5rg86ryhad396r3hj7t5tcb", year: "pri_01m5rg90nedane1cjmgevk5mtd" },
-  AGENCY: { month: "", year: "" },
+  AGENCY: { month: "pri_01m79b8cnfjxxvckfem8n3nfkq", year: "pri_01m79ba6ds74hx0jqd5f3x5ham" },
 };
 
 export function paddlePriceIds(): PaddlePrices {
