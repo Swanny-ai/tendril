@@ -354,11 +354,15 @@ const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
  * When visitors come, over the last `days` days in the chosen time zone: average views per
  * weekday and per hour, and the busiest weekday + hour (the best time to post).
  */
-export async function getTrafficPatterns(userId: string, tz: string, days: number, now = new Date()): Promise<TrafficPatterns> {
-  const to = now;
-  const from = new Date(to.getTime() - days * 86_400_000);
+export function getTrafficPatterns(userId: string, tz: string, days: number, now = new Date()): Promise<TrafficPatterns> {
+  return getTrafficPatternsBetween(userId, tz, new Date(now.getTime() - days * 86_400_000), now);
+}
+
+/** Same, between two instants, for everything or one bio page / deep link (`sourceId`). */
+export async function getTrafficPatternsBetween(userId: string, tz: string, from: Date, to: Date, sourceId?: string | null): Promise<TrafficPatterns> {
+  const only = sourceId ? Prisma.sql`WHERE src = ${sourceId}` : Prisma.empty;
   const rows = await db.$queryRaw<{ d: number; h: number; n: bigint }[]>`
-    WITH v AS (${viewRows(userId, from, to)}), t AS (SELECT (ts AT TIME ZONE 'UTC') AT TIME ZONE ${tz} AS lt FROM v)
+    WITH v AS (${viewRows(userId, from, to)}), t AS (SELECT (ts AT TIME ZONE 'UTC') AT TIME ZONE ${tz} AS lt FROM v ${only})
     SELECT EXTRACT(ISODOW FROM lt)::int AS d, EXTRACT(HOUR FROM lt)::int AS h, COUNT(*)::bigint AS n FROM t GROUP BY 1, 2`;
 
   // How many of each weekday the window holds, in the chosen time zone.

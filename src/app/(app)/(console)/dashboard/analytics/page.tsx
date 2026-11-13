@@ -12,6 +12,7 @@ import { requireAccount } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { StatCard, ViewsClicksChart } from "./charts";
 import { parseLanding } from "@/lib/link-landing";
+import { Insights } from "./insights";
 import { BreakdownGrid, delta, fmt, LinkReport, pct, periodText, UpgradeCard } from "./report";
 
 export const instant = false;
@@ -116,9 +117,9 @@ export default async function AnalyticsPage(props: PageProps<"/dashboard/analyti
       {!selected ? (
         <AllReport userId={userId} sources={sources} win={win} plan={plan} href={href} />
       ) : selected.kind === "page" ? (
-        <PageReport pageId={selected.id} win={win} plan={plan} />
+        <PageReport userId={userId} pageId={selected.id} win={win} plan={plan} />
       ) : (
-        <DeepLinkReport linkId={selected.id} win={win} plan={plan} />
+        <DeepLinkReport userId={userId} linkId={selected.id} win={win} plan={plan} />
       )}
     </div>
   );
@@ -157,6 +158,8 @@ async function AllReport({
           <ViewsClicksChart data={data.series} />
         </CardContent>
       </Card>
+
+      <Insights userId={userId} sourceId={null} win={win} series={data.series} />
 
       <Card>
         <CardHeader>
@@ -208,7 +211,7 @@ async function AllReport({
   );
 }
 
-async function PageReport({ pageId, win, plan }: { pageId: string; win: DayWindow; plan: PlanName }) {
+async function PageReport({ userId, pageId, win, plan }: { userId: string; pageId: string; win: DayWindow; plan: PlanName }) {
   const data = await getAnalytics(pageId, win, plan);
   return (
     <>
@@ -229,6 +232,8 @@ async function PageReport({ pageId, win, plan }: { pageId: string; win: DayWindo
           <ViewsClicksChart data={data.series} />
         </CardContent>
       </Card>
+
+      <Insights userId={userId} sourceId={pageId} win={win} series={data.series} />
 
       <Card>
         <CardHeader>
@@ -273,7 +278,12 @@ async function PageReport({ pageId, win, plan }: { pageId: string; win: DayWindo
   );
 }
 
-async function DeepLinkReport({ linkId, win, plan }: { linkId: string; win: DayWindow; plan: PlanName }) {
+async function DeepLinkReport({ userId, linkId, win, plan }: { userId: string; linkId: string; win: DayWindow; plan: PlanName }) {
   const [link, data] = await Promise.all([db.smartLink.findUnique({ where: { id: linkId }, select: { adultWarning: true, landingPage: true } }), getLinkAnalytics(linkId, win, plan)]);
-  return <LinkReport data={data} adultWarning={link?.adultWarning ?? false} twoSteps={!!parseLanding(link?.landingPage)?.enabled} />;
+  return (
+    <>
+      <LinkReport data={data} adultWarning={link?.adultWarning ?? false} twoSteps={!!parseLanding(link?.landingPage)?.enabled} />
+      <Insights userId={userId} sourceId={linkId} win={win} series={data.series} noun="visits" />
+    </>
+  );
 }

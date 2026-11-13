@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, BarChart3, CalendarDays, Clock, Eye, Globe2, Link2, Lock, Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, BarChart3, Eye, Globe2, Link2, Lock, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { CountryFlag } from "@/components/country-flag";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +15,7 @@ import { DashboardToolbar } from "./dashboard-toolbar";
 import { LiveNumber } from "./live-number";
 import { LivePanels } from "./live-panels";
 import { PerformanceChart } from "./performance-chart";
-import { DayChart, HourChart } from "./traffic-charts";
-import { hourLabel } from "@/lib/analytics/hour-label";
+import { TrafficCards } from "./traffic-cards";
 import { WelcomeCelebration } from "./welcome-celebration";
 import { WorldMap } from "./world-map";
 import { attributeReferral } from "@/lib/affiliate";
@@ -44,10 +43,6 @@ function Kpi({ icon: Icon, label, value, note, tone }: { icon: typeof Eye; label
       </CardContent>
     </Card>
   );
-}
-
-function NotEnough() {
-  return <p className="py-10 text-center text-sm text-muted-foreground">Not enough visits yet. This fills in as people visit your links.</p>;
 }
 
 function ProLock({ what }: { what: string }) {
@@ -80,9 +75,6 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
     getLiveStats(owner, sources, limits.breakdowns),
     getTrafficPatterns(userId, tz, patternDays, now),
   ]);
-  const enoughForPatterns = patterns.views >= 20;
-  const busiestDay = patterns.byDay.reduce((a, b) => (b.avg > a.avg ? b : a));
-  const busiestHour = patterns.byHour.reduce((a, b) => (b.avg > a.avg ? b : a));
   const { totals } = stats;
   const tzLabel = TIMEZONE_OPTIONS.find((o) => o.tz === tz)?.label ?? tz;
   const countries = stats.countries?.filter((c) => c.code !== "??") ?? [];
@@ -261,74 +253,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
             </Card>
         }
       />
-      <section aria-label="When people visit" className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="size-4" /> Avg traffic by day
-            </CardTitle>
-            <CardDescription>
-              Average views on each weekday · last {patterns.days} days, {tzLabel}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>{enoughForPatterns ? <DayChart data={patterns.byDay} /> : <NotEnough />}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="size-4" /> Avg traffic by time
-            </CardTitle>
-            <CardDescription>
-              Average views in each hour of the day · last {patterns.days} days, {tzLabel}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>{enoughForPatterns ? <HourChart data={patterns.byHour} /> : <NotEnough />}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="size-4" /> Best time to post
-            </CardTitle>
-            <CardDescription>When your visitors are most active · {tzLabel}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {enoughForPatterns ? (
-              <div className="space-y-4" data-testid="best-time">
-                <div className="rounded-xl bg-primary/10 p-4">
-                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Best slot</p>
-                  <p className="font-heading text-2xl font-semibold">
-                    {patterns.bestSlots[0].day} · {hourLabel(patterns.bestSlots[0].hour)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Post a little before this, so your link is fresh when people look.</p>
-                </div>
-                <dl className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Busiest day</dt>
-                    <dd className="font-semibold">{busiestDay.day}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Busiest hour</dt>
-                    <dd className="font-semibold">{hourLabel(busiestHour.hour)}</dd>
-                  </div>
-                </dl>
-                <ol className="space-y-1.5 text-sm">
-                  {patterns.bestSlots.map((s, i) => (
-                    <li key={`${s.day}-${s.hour}`} className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
-                        <span className="w-5 text-center">{MEDALS[i]}</span>
-                        {s.day} · {hourLabel(s.hour)}
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{Math.round(s.share * 100)}% of views</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : (
-              <NotEnough />
-            )}
-          </CardContent>
-        </Card>
-      </section>
+      <TrafficCards patterns={patterns} period={`last ${patterns.days} days, ${tzLabel}`} tzLabel={tzLabel} />
 
       {/* Ranges that end now keep updating in the background; past ranges can't change. */}
       <AutoRefresh enabled={range.to.getTime() > now.getTime() - 120_000} />
