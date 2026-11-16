@@ -47,6 +47,8 @@ model User {
   supportTickets   SupportTicket[]
   deletedSources   DeletedSource[]
   healthChecks     LinkHealthCheck[]
+  // The newest announcement this user has seen (its popup stays closed until a newer one is sent).
+  announcementSeenAt DateTime?
 
   @@index([referredById])
 }
@@ -538,4 +540,19 @@ model LinkHealthCheck {
 
   @@index([userId, createdAt])
   @@index([sourceId, createdAt])
+}
+
+// A message from the site owner to every user: shown once as a popup on the dashboard, and kept in
+// the support messenger. Turned-off ones are hidden everywhere.
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  // Optional button: its text and where it goes.
+  linkLabel String?
+  linkUrl   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active, createdAt])
 }

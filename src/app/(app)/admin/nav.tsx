@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, CreditCard, Flag, Gift, Globe, Headset, LayoutDashboard, LayoutTemplate, Link2, Loader2, Users } from "lucide-react";
+import { Activity, CreditCard, Flag, Gift, Globe, Headset, LayoutDashboard, LayoutTemplate, Link2, Loader2, Megaphone, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -11,6 +11,7 @@ const items = [
   { href: "/admin/pages", label: "Bio pages", icon: LayoutTemplate },
   { href: "/admin/links", label: "Links", icon: Link2 },
   { href: "/admin/support", label: "Support", icon: Headset },
+  { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/domains", label: "Domains", icon: Globe },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },

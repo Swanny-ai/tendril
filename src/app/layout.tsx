@@ -30,7 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // The signed-in app sets data-theme on <html> before React loads (Settings → Appearance).
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${bricolage.variable} ${fraunces.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
       </body>
     </html>

@@ -15,6 +15,8 @@ import { UsageMeter } from "./dashboard/usage-meter";
 import { trialInfo } from "@/lib/trial";
 import { userUnreadCount } from "@/lib/support";
 import { canSendEmail } from "@/lib/mailer";
+import { announcementsFor } from "@/lib/announcements";
+import { AnnouncementPopup } from "./dashboard/announcement-popup";
 
 // Shared by /dashboard/... and the editing screens at /edit/..., so moving between them keeps
 // one sidebar and header (two copies of this layout would briefly render both).
@@ -24,13 +26,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { userId, page } = await requireAccount();
   // An admin looking at this account ("View as user"): show who, and the way back.
   const viewing = (await requireRealUserId()) !== userId;
-  const [plan, user, admin, sub, supportUnread, links] = await Promise.all([
+  const [plan, user, admin, sub, supportUnread, links, announcements] = await Promise.all([
     getPlan(userId),
     db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailVerified: true, name: true } }),
     viewing ? true : isAdmin(userId),
     db.subscription.findUnique({ where: { userId }, select: { status: true, currentPeriodEnd: true } }),
     userUnreadCount(userId),
     db.smartLink.findMany({ where: { userId }, select: { enabled: true } }),
+    announcementsFor(userId),
   ]);
   const trial = { ...trialInfo(sub), userId };
 
@@ -72,13 +75,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
         {!viewing && !user.emailVerified && canSendEmail() ? <VerifyBanner email={user.email} /> : null}
         <TrialBanner {...trial} />
         {viewing ? null : <TrialPopup {...trial} />}
+        {viewing ? null : <AnnouncementPopup announcement={announcements.popup} />}
         <div className="border-b px-2 md:hidden">
           <DashboardNav horizontal />
         </div>
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
       <LinkCreatedHost />
-      <SupportWidget initialUnread={supportUnread} firstName={user.name?.trim().split(/\s+/)[0] || null} />
+      <SupportWidget initialUnread={supportUnread} firstName={user.name?.trim().split(/\s+/)[0] || null} announcements={announcements.list} />
     </div>
   );
 }

@@ -35,6 +35,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   blockIconHtml,
+  blockIconLabel,
+  FANVUE_ICON_KEYS,
   cardAspect,
   defaultIntroSection,
   profileOf,
@@ -76,6 +78,7 @@ export function LandingEditor({
   styleOpen,
   onStyleOpen,
   step = 2,
+  gate = false,
 }: {
   value: LandingPage;
   onChange: (patch: Partial<LandingPage>) => void;
@@ -88,6 +91,8 @@ export function LandingEditor({
   onStyleOpen: (id: string | null) => void;
   /** The step shown in the preview: its sections are the ones edited here. */
   step?: 1 | 2;
+  /** Two-Steps 18+: Step 1's button opens the 18+ page, not a Step 2 page. */
+  gate?: boolean;
 }) {
   // Step 1 and Step 2 each have their own sections, cover, name, username and bio.
   const prof = profileOf(p, step);
@@ -232,9 +237,13 @@ export function LandingEditor({
           <div className="min-w-0">
             <p className="text-sm font-semibold">Step 1: shown inside Instagram, TikTok, Facebook…</p>
             <p className="text-xs text-muted-foreground">
-              {list.length
-                ? "Visitors in a social app see this page first; its button opens Step 2. In Safari or Chrome they go straight to Step 2."
-                : "Off: add a button to turn Step 1 on. Everyone goes straight to Step 2."}
+              {gate
+                ? list.length
+                  ? "Visitors in a social app see this page first; its button opens the 18+ page in the phone browser. In Safari or Chrome they go straight to the 18+ page."
+                  : "Off: add a button to turn Step 1 on. Everyone goes straight to the 18+ page."
+                : list.length
+                  ? "Visitors in a social app see this page first; its button opens Step 2. In Safari or Chrome they go straight to Step 2."
+                  : "Off: add a button to turn Step 1 on. Everyone goes straight to Step 2."}
             </p>
           </div>
           {list.length ? null : (
@@ -432,7 +441,7 @@ export function LandingEditor({
             ))}
           </SortableContext>
         </DndContext>
-        {step === 1 && list[0]?.kind === "link" && !list[0].url ? <p className="text-xs text-muted-foreground">Leave the link empty to open Step 2.</p> : null}
+        {step === 1 && list[0]?.kind === "link" && !list[0].url ? <p className="text-xs text-muted-foreground">{gate ? "Leave the link empty to open the 18+ page, then your destination." : "Leave the link empty to open Step 2."}</p> : null}
         {step === 1 ? (
           list.length ? null : (
             <Button variant="outline" size="sm" onClick={() => add("link")}>
@@ -918,7 +927,7 @@ function IconPicker({
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const options = [...(canAuto ? ["auto"] : []), "none", ...SIMPLE_ICON_KEYS, ...LANDING_SOCIALS];
+  const options = [...(canAuto ? ["auto"] : []), "none", ...SIMPLE_ICON_KEYS, ...FANVUE_ICON_KEYS, ...LANDING_SOCIALS];
   const preview = (key: string) => {
     const html = blockIconHtml(key, url, 16);
     return html ? <span className="grid place-items-center" dangerouslySetInnerHTML={{ __html: html }} /> : null;
@@ -951,7 +960,7 @@ function IconPicker({
               type="button"
               role="radio"
               aria-checked={value === key}
-              title={key === "auto" ? "Auto (from the link)" : key === "none" ? "No icon" : key}
+              title={key === "auto" ? "Auto (from the link)" : key === "none" ? "No icon" : blockIconLabel(key)}
               onClick={() => {
                 onChange(key);
                 setOpen(false);

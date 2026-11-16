@@ -66,6 +66,9 @@ export type LandingSocial = { network: SocialNetwork; handle: string };
 
 export type LandingPage = {
   enabled: boolean;
+  /** What a visitor sees after Step 1, in the phone browser: the designed page ("page", Two-Steps)
+   *  or the 18+ warning, then the destination ("warning", Two-Steps 18+). */
+  step2: "page" | "warning";
   name: string;
   nameStyle: "normal" | "wide";
   /** Font of the name ("" = the page font); keys of NAME_FONTS. */
@@ -108,6 +111,7 @@ export type LandingPage = {
 
 export const DEFAULT_LANDING: LandingPage = {
   enabled: false,
+  step2: "page",
   name: "",
   nameStyle: "wide",
   nameFont: "",
@@ -241,6 +245,7 @@ export function parseLanding(value: unknown): LandingPage | null {
     .filter((s): s is LandingSocial => !!s);
   return {
     enabled: v.enabled === true,
+    step2: v.step2 === "warning" ? "warning" : "page",
     name: str(v.name, 60),
     nameStyle: oneOf(v.nameStyle, ["normal", "wide"] as const, DEFAULT_LANDING.nameStyle),
     nameFont: typeof v.nameFont === "string" && v.nameFont in NAME_FONTS ? v.nameFont : "",
@@ -340,7 +345,6 @@ function onColor(hex: string): string {
 
 // Filled icons for blocks (24x24, solid shapes), next to the network logos.
 const SIMPLE_ICONS: Record<string, string> = {
-  hand: "M10 2a2 2 0 0 1 2 2v6.4l1-.2a2 2 0 0 1 2.3 1.5l.1.2.8-.2a2 2 0 0 1 2.4 1.5l.1.3.5-.1a2 2 0 0 1 2.3 2V17a6 6 0 0 1-6 6h-2.3a6 6 0 0 1-4.8-2.4L4.3 16a1.8 1.8 0 0 1 2.7-2.4l1 1V4a2 2 0 0 1 2-2Z",
   heart: "M12 21s-7.5-4.6-9.5-9.2C1.2 8.7 3.2 4.5 7 4.5c2 0 3.3 1 5 2.8 1.7-1.8 3-2.8 5-2.8 3.8 0 5.8 4.2 4.5 7.3C19.5 16.4 12 21 12 21Z",
   star: "m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z",
   crown: "M3 7.5l4.6 4L12 4l4.4 7.5L21 7.5 19 19H5Z",
@@ -356,14 +360,53 @@ const SIMPLE_ICONS: Record<string, string> = {
   music: "M21 3v12.5a3.5 3.5 0 1 1-2-3.2V7l-8 1.6v9.4a3.5 3.5 0 1 1-2-3.2V5Z",
   bag: "M7 7a5 5 0 0 1 10 0h3l-1 14H5L4 7Zm2 0h6a3 3 0 0 0-6 0Z",
 };
-export const SIMPLE_ICON_KEYS = Object.keys(SIMPLE_ICONS);
+// Emoji icons: the phone's own emoji (Apple's on iPhone, Google's on Android).
+const EMOJI_ICONS: Record<string, string> = { hand: "👆" };
+
+// The Fanvue logo (24x24), in several looks: the mark in a color, or on an app-style tile / circle.
+const FANVUE_PATH = "M13.78 3.54Q14.35 3.48 18.29 3.48Q22.24 3.48 22.55 3.67Q22.87 3.86 22.94 4.31Q23 4.75 22.55 5.13Q22.11 5.51 19.18 5.9Q16.26 6.28 15.18 6.72Q14.1 7.17 13.84 7.49Q13.59 7.8 13.59 8.31Q13.59 8.82 13.72 9.08Q13.84 9.33 14.48 9.77Q15.12 10.22 16.51 10.66Q17.91 11.11 18.04 11.24Q18.17 11.36 18.17 11.75Q18.17 12.13 17.66 12.51Q17.15 12.89 15.5 13.27Q13.84 13.65 12.76 14.1Q11.68 14.54 10.6 15.43Q9.52 16.32 8.5 17.85Q7.49 19.38 7.04 19.82Q6.6 20.27 6.09 20.39Q5.58 20.52 5.26 20.27Q4.94 20.01 4.94 19.57Q4.94 19.12 5.26 18.04Q5.58 16.96 5.58 16.2Q5.58 15.43 5.45 15.18Q5.32 14.92 4.94 14.54Q4.56 14.16 4.05 13.91Q3.54 13.65 2.46 13.34Q1.38 13.02 1.19 12.83Q1 12.64 1 12.25Q1 11.87 1.45 11.49Q1.89 11.11 3.54 10.73Q5.2 10.35 6.4 9.84Q7.61 9.33 8.69 8.38Q9.77 7.42 10.98 5.77Q12.19 4.12 12.7 3.86Q13.21 3.61 13.78 3.54Z";
+const FANVUE_GREEN = "#49f264";
+const FANVUE_ICONS: Record<string, { label: string; mark: string; bg?: string; shape?: "tile" | "circle" }> = {
+  fanvue: { label: "Fanvue (green)", mark: FANVUE_GREEN },
+  "fanvue-app": { label: "Fanvue app icon", mark: "#0b1f12", bg: FANVUE_GREEN, shape: "tile" },
+  "fanvue-circle": { label: "Fanvue (green circle)", mark: "#0b1f12", bg: FANVUE_GREEN, shape: "circle" },
+  "fanvue-dark": { label: "Fanvue (dark tile)", mark: FANVUE_GREEN, bg: "#0b1f12", shape: "tile" },
+  "fanvue-text": { label: "Fanvue (text color)", mark: "currentColor" },
+  "fanvue-white": { label: "Fanvue (white)", mark: "#ffffff" },
+  "fanvue-black": { label: "Fanvue (black)", mark: "#000000" },
+  "fanvue-pink": { label: "Fanvue (pink)", mark: "#ff4fa3" },
+};
+
+function fanvueSvg(key: string, size: number): string {
+  const v = FANVUE_ICONS[key];
+  const bg = v.shape === "circle" ? `<circle cx="12" cy="12" r="12" fill="${v.bg}"/>` : v.shape === "tile" ? `<rect width="24" height="24" rx="5.5" fill="${v.bg}"/>` : "";
+  // On a tile or circle the mark is drawn smaller so it has room around it.
+  const mark = bg ? `<path d="${FANVUE_PATH}" fill="${v.mark}" transform="translate(4.8 4.8) scale(.6)"/>` : `<path d="${FANVUE_PATH}" fill="${v.mark}"/>`;
+  return `<svg class="lp-bi" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${bg}${mark}</svg>`;
+}
+
+export const SIMPLE_ICON_KEYS = [...Object.keys(EMOJI_ICONS), ...Object.keys(SIMPLE_ICONS)];
+export const FANVUE_ICON_KEYS = Object.keys(FANVUE_ICONS);
+/** A readable name for an icon key (picker tooltips). */
+export const blockIconLabel = (key: string) => FANVUE_ICONS[key]?.label ?? (key === "hand" ? "Pointing up 👆" : key);
 export const isBlockIcon = (v: unknown): v is string =>
-  typeof v === "string" && (v === "auto" || v === "none" || v in SIMPLE_ICONS || (SOCIAL_NETWORKS as readonly string[]).includes(v));
+  typeof v === "string" &&
+  (v === "auto" || v === "none" || v in SIMPLE_ICONS || v in EMOJI_ICONS || v in FANVUE_ICONS || (SOCIAL_NETWORKS as readonly string[]).includes(v));
+
+function isFanvueUrl(url: string): boolean {
+  try {
+    return /(^|.)fanvue.com$/.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
 
 /** The icon shown left of a block's text ("" when none). */
 export function blockIconHtml(icon: string | undefined, url: string | undefined, size = 20): string {
-  const key = icon === "auto" || icon === undefined ? (url ? networkOfUrl(url) : null) : icon;
+  const key = icon === "auto" || icon === undefined ? (url ? (isFanvueUrl(url) ? "fanvue" : networkOfUrl(url)) : null) : icon;
   if (!key || key === "none") return "";
+  if (key in EMOJI_ICONS) return `<span class="lp-bi lp-emoji" style="font-size:${Math.round(size * 0.95)}px;line-height:1" aria-hidden="true">${EMOJI_ICONS[key]}</span>`;
+  if (key in FANVUE_ICONS) return fanvueSvg(key, size);
   if (key in SIMPLE_ICONS)
     return `<svg class="lp-bi" viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="${SIMPLE_ICONS[key]}"/></svg>`;
   return (SOCIAL_NETWORKS as readonly string[]).includes(key) ? glyph(key as SocialNetwork, size, "currentColor").replace("<svg ", '<svg class="lp-bi" ') : "";
@@ -417,7 +460,7 @@ export const LANDING_CSS = `.lp{position:relative;min-height:100%;width:100%;dis
 .lp-cd{display:flex;flex-direction:column;align-items:center;gap:.6rem;padding:.25rem 0}.lp-cd b{font-size:.95rem}.lp-cdb{display:flex;align-items:center;gap:.6rem;padding:.75rem 1.4rem;border-radius:var(--r2);background:var(--chip);border:1px solid var(--line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}.lp-cdb span{display:flex;flex-direction:column;align-items:center;min-width:3.2rem;font-size:2rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.lp-cdb small{margin-top:.35rem;font-size:.6rem;font-weight:600;letter-spacing:.08em;color:var(--muted)}.lp-cdb i{font-style:normal;font-size:1.6rem;font-weight:800;margin-top:-1rem}
 .lp-btn.z-s{min-height:2.6rem;padding:.5rem 1rem;font-size:.9rem}.lp-btn.z-l{min-height:4.25rem;font-size:1.2rem}.lp-card.z-s{aspect-ratio:16/7}.lp-card.z-l{aspect-ratio:1/1}.lp-card.sm.z-s{aspect-ratio:1/1}.lp-card.sm.z-l{aspect-ratio:2/3}.lp-card.z-l .lp-ct{font-size:1.4rem}
 .lp-text.z-s{padding:.65rem .9rem}.lp-text.z-s b{font-size:.85rem}.lp-text.z-s p{font-size:.8rem}.lp-text.z-l{padding:1.4rem}.lp-text.z-l b{font-size:1.2rem}.lp-text.z-l p{font-size:1.02rem}.lp-cd.z-s .lp-cdb span{min-width:2.4rem;font-size:1.4rem}.lp-cd.z-s .lp-cdb i{font-size:1.1rem;margin-top:-.7rem}.lp-cd.z-l .lp-cdb span{min-width:4rem;font-size:2.7rem}.lp-cd.z-l .lp-cdb i{font-size:2.1rem}
-.lp-btn{gap:.55rem}.lp-bi{flex-shrink:0}
+.lp-btn{gap:.55rem}.lp-bi{flex-shrink:0}.lp-emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-style:normal}
 /* Icons sit inside the text and are sized from it, so they line up with the letters at every text size. */
 .lp-btn .lp-bi,.lp-ct .lp-bi,.lp-text b .lp-bi{display:inline-block;width:1.2em;height:1.2em;margin-right:.45em;vertical-align:-.24em}
 .lp-it{animation:lp-in .6s cubic-bezier(.2,.8,.2,1) both}.lp-it:nth-child(2){animation-delay:.08s}.lp-it:nth-child(3){animation-delay:.16s}.lp-it:nth-child(4){animation-delay:.24s}.lp-it:nth-child(5){animation-delay:.32s}.lp-it:nth-child(6){animation-delay:.4s}.lp-it:nth-child(n+7){animation-delay:.48s}.lp.pv .lp-it{animation:none}

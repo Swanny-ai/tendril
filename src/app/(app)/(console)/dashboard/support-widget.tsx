@@ -10,6 +10,7 @@ import {
   House,
   LifeBuoy,
   Loader2,
+  Megaphone,
   MessageCircle,
   RotateCcw,
   Search,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { BOT_TOPICS } from "@/lib/support-bot";
+import type { AnnouncementView } from "@/lib/announcements";
 
 // The help messenger: a launcher in the bottom-right of every dashboard page that opens a panel
 // with Home, Messages (the creator's tickets, open and resolved) and Help (instant answers).
@@ -39,7 +41,16 @@ const LIST_POLL_MS = 5000;
 const CLOSED_POLL_MS = 15_000;
 const TYPING_PING_MS = 3000;
 
-export function SupportWidget({ initialUnread, firstName }: { initialUnread: number; firstName: string | null }) {
+export function SupportWidget({
+  initialUnread,
+  firstName,
+  announcements = [],
+}: {
+  initialUnread: number;
+  firstName: string | null;
+  /** The latest announcements from ViewLink, newest first (shown on the Home tab). */
+  announcements?: AnnouncementView[];
+}) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("home");
   const [screen, setScreen] = useState<Screen>({ kind: "tabs" });
@@ -170,6 +181,7 @@ export function SupportWidget({ initialUnread, firstName }: { initialUnread: num
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {tab === "home" ? (
                   <HomeTab
+                    announcements={announcements}
                     firstName={firstName}
                     recent={recent}
                     onNew={() => openTicket(null)}
@@ -302,6 +314,7 @@ export function SupportWidget({ initialUnread, firstName }: { initialUnread: num
 // ---------- Tabs ----------
 
 function HomeTab({
+  announcements,
   firstName,
   recent,
   onNew,
@@ -309,6 +322,7 @@ function HomeTab({
   onArticle,
   onAllHelp,
 }: {
+  announcements: AnnouncementView[];
   firstName: string | null;
   recent: Summary | null;
   onNew: () => void;
@@ -327,6 +341,24 @@ function HomeTab({
         <p className="text-2xl font-bold">How can we help?</p>
       </div>
       <div className="-mt-10 space-y-3 px-4">
+        {announcements.map((a) => (
+          <div key={a.id} className="rounded-2xl border border-primary/40 bg-card p-4 shadow-sm">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <Megaphone className="size-3.5" aria-hidden /> Announcement · {ago(a.createdAt)}
+            </p>
+            <p className="text-sm font-semibold break-words">{a.title}</p>
+            <p className="mt-1 text-xs whitespace-pre-line text-muted-foreground">{a.body}</p>
+            {a.linkUrl ? (
+              <a
+                href={a.linkUrl}
+                className="mt-2 inline-flex text-xs font-semibold text-primary hover:underline"
+                {...(a.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+              >
+                {a.linkLabel || "Learn more"} →
+              </a>
+            ) : null}
+          </div>
+        ))}
         {recent ? (
           <button type="button" onClick={() => onOpenTicket(recent.id)} className="block w-full rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50">
             <p className="mb-2 text-xs font-semibold text-muted-foreground">Recent message</p>

@@ -10,6 +10,7 @@ import { parseAccess } from "@/lib/link-access";
 import { parseWarningColors } from "@/warning-templates/colors";
 import { SmartLinkForm } from "./smart-link-form";
 import { TemplateUpsell } from "./template-upsell";
+import { LIST_HREF } from "./new-link-screen";
 
 /** The deep link editor (opened at /edit/<its link>). */
 export async function LinkEditScreen({ userId, link }: { userId: string; link: SmartLink & { domain: Pick<Domain, "hostname"> | null } }) {
@@ -21,7 +22,7 @@ export async function LinkEditScreen({ userId, link }: { userId: string; link: S
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="min-w-0">
-        <Link href={mode === "template" ? "/dashboard/links" : "/dashboard/deeplinks"} className="text-sm text-muted-foreground hover:text-foreground">
+        <Link href={LIST_HREF[mode]} className="text-sm text-muted-foreground hover:text-foreground">
           ← {mode === "template" ? "Customize template" : "Deeplinks"}
         </Link>
         <h1 className="mt-1 truncate text-2xl font-semibold">Edit {url.replace(/^https?:\/\//, "")}</h1>

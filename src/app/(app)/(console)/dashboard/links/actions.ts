@@ -29,8 +29,12 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   const data = parsed.data;
   // Template on: the destination is optional (the first section link stands in for it).
   const landing = parseLanding(data.landingPage);
-  const firstLink = landing?.enabled ? landing.sections.find((s) => s.kind === "link" && s.url)?.url : undefined;
-  if (landing?.enabled && !firstLink && !data.destinationUrl) return { error: { ok: false as const, error: "Add at least one link to your page." } };
+  // Two-Steps 18+: no Step 2 page, so the destination is required and the 18+ warning is always on.
+  const gate = !!landing?.enabled && landing.step2 === "warning";
+  if (gate && !data.destinationUrl) return { error: { ok: false as const, error: "Add where the link goes after the 18+ page.", field: "destinationUrl" } };
+  if (gate && !landing?.introSections.length) return { error: { ok: false as const, error: "Add the Step 1 button." } };
+  const firstLink = landing?.enabled && !gate ? landing.sections.find((s) => s.kind === "link" && s.url)?.url : undefined;
+  if (landing?.enabled && !gate && !firstLink && !data.destinationUrl) return { error: { ok: false as const, error: "Add at least one link to your page." } };
   const dest = normalizeDestinationUrl(landing?.enabled && firstLink ? data.destinationUrl || firstLink : data.destinationUrl, appHost);
   if (!dest.ok) return { error: { ok: false as const, error: dest.error, field: "destinationUrl" } };
   if (!isWarningTemplateKey(data.warningTemplate)) return { error: { ok: false as const, error: "Pick a warning design.", field: "warningTemplate" } };
@@ -39,7 +43,7 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
   const limits = PLAN_LIMITS[plan];
   const customText = Boolean(data.warningTitle || data.warningMessage || data.warningButton);
   if (customText && !limits.customWarningText) return { error: { ok: false as const, error: "Custom warning text is part of Pro." } };
-  if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: "Two-Steps (Escape Meta Bot) is part of Pro." } };
+  if (landing?.enabled && !limits.templatePages) return { error: { ok: false as const, error: gate ? "Two-Steps 18+ is part of Pro." : "Two-Steps (Escape Meta Bot) is part of Pro." } };
   const access = parseAccess(data.access);
   const accessProblem = accessError(access);
   if (accessProblem) return { error: { ok: false as const, error: accessProblem } };
@@ -60,7 +64,8 @@ async function validate(userId: string, input: SmartLinkInput, linkId?: string) 
       destinationUrl: dest.url,
       label: data.label ?? "",
       // Template on = its links carry their own 18+ popups; the full-page check is off.
-      adultWarning: landing?.enabled ? false : data.adultWarning,
+      // Two-Steps 18+ always shows the 18+ warning after Step 1.
+      adultWarning: gate ? true : landing?.enabled ? false : data.adultWarning,
       warningTemplate: data.warningTemplate,
       warningTitle: data.warningTitle || null,
       warningMessage: data.warningMessage || null,

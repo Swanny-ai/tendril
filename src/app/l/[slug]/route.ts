@@ -48,7 +48,15 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
   // Custom domains: the proxy sends a visitor's first request here (marked as the entry), and the
   // 18+ or "open in browser" page is rendered at the link's own clean address in this response.
   // Profile page first (rendered here, at the link's own address), then the usual steps.
-  if (link.landing && !confirmed && !escaped && !pastLanding) return landingStep(headers, link, slug, request.nextUrl.searchParams.get("step") === "2");
+  if (link.landing && !confirmed && !escaped && !pastLanding) {
+    const step2 = request.nextUrl.searchParams.get("step") === "2";
+    // Two-Steps 18+: Step 1 only inside a social app; after it (or straight away in a real browser)
+    // the 18+ warning, then the destination.
+    if (link.landing.step2 === "warning" && (step2 || !link.landing.introSections.length || !detectInAppBrowser(headers.get("user-agent") ?? ""))) {
+      return warningStep(headers, link, slug, !step2);
+    }
+    return landingStep(headers, link, slug, step2);
+  }
 
   if (!confirmed && !escaped && isLinkEntry(headers)) {
     if (link.adultWarning) return warningStep(headers, link, slug, !pastLanding);

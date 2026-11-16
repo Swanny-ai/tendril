@@ -14,6 +14,7 @@ import { invalidateSmartLinkFromAction, invalidateUserSmartLinksFromRoute, smart
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { cancelPaddleSubscription, paddleConfigured } from "@/lib/paddle";
 import { adminReply, markReadByAdmin, setTicketStatusByAdmin } from "@/lib/support";
+import { ANNOUNCEMENT_LIMITS, cleanAnnouncementUrl } from "@/lib/announcements";
 
 // Every admin action checks the admin again (actions are public endpoints) and refreshes /admin.
 
@@ -262,4 +263,43 @@ export async function setSupportStatusAction(form: FormData): Promise<AdminResul
   const status = id(form, "status") === "resolved" ? "resolved" : "open";
   if (!(await setTicketStatusByAdmin(id(form, "ticketId"), status))) return { error: "Conversation not found." };
   return done(status === "resolved" ? "Marked as resolved." : "Conversation reopened.");
+}
+
+// ---------- Announcements ----------
+
+/** Send an announcement to every user: a popup on their dashboard, kept in their support messenger. */
+export async function sendAnnouncementAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const text = (k: string) => String(form.get(k) ?? "").trim();
+  const title = text("title");
+  const body = text("body");
+  const linkLabel = text("linkLabel");
+  const linkUrl = cleanAnnouncementUrl(text("linkUrl"));
+  if (!title) return { error: "Add a title." };
+  if (!body) return { error: "Add a message." };
+  if (title.length > ANNOUNCEMENT_LIMITS.title || body.length > ANNOUNCEMENT_LIMITS.body || linkLabel.length > ANNOUNCEMENT_LIMITS.linkLabel) {
+    return { error: "That's too long." };
+  }
+  if (linkUrl === null) return { error: "That link doesn't look right." };
+  if (linkLabel && !linkUrl) return { error: "Add where the button goes, or remove its text." };
+  await db.announcement.create({ data: { title, body, linkLabel: linkUrl ? linkLabel || "Learn more" : null, linkUrl: linkUrl || null } });
+  revalidatePath("/dashboard", "layout");
+  return done("Announcement sent to every user.");
+}
+
+/** Hide an announcement everywhere, or show it again (it doesn't pop up again for people who closed it). */
+export async function setAnnouncementActiveAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  const active = id(form, "active") === "1";
+  const { count } = await db.announcement.updateMany({ where: { id: id(form) }, data: { active } });
+  if (!count) return { error: "Announcement not found." };
+  revalidatePath("/dashboard", "layout");
+  return done(active ? "Announcement turned back on." : "Announcement turned off.");
+}
+
+export async function deleteAnnouncementAction(form: FormData): Promise<AdminResult> {
+  await requireAdmin();
+  await db.announcement.deleteMany({ where: { id: id(form) } });
+  revalidatePath("/dashboard", "layout");
+  return done("Announcement deleted.");
 }

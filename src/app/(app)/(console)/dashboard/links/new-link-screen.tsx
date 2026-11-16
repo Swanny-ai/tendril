@@ -11,23 +11,28 @@ import type { LinkMode } from "./links-list";
 import { SmartLinkForm } from "./smart-link-form";
 import { TemplateUpsell } from "./template-upsell";
 
+export const LIST_HREF = { template: "/dashboard/links", classic: "/dashboard/deeplinks" } as const;
+const LIST_NAME = { template: "Customize template", classic: "Deeplinks" } as const;
+const NEW_TITLE = { template: "New template page", classic: "New deep link" } as const;
+
 /** Create a deep link: a template page (Customize template) or a classic deep link (Deeplinks). */
 export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
-  const listHref = mode === "template" ? "/dashboard/links" : "/dashboard/deeplinks";
+  const listHref = LIST_HREF[mode];
+  const twoSteps = mode !== "classic";
   const { userId } = await requireAccount();
   const plan = await getPlan(userId);
   const limits = PLAN_LIMITS[plan];
   const domains = await db.domain.findMany({ where: { userId, verifiedAt: { not: null } }, select: { id: true, hostname: true }, orderBy: { createdAt: "asc" } });
-  const limitError = linkLimitError(plan, await linkKindCounts(userId), mode === "template");
+  const limitError = linkLimitError(plan, await linkKindCounts(userId), twoSteps);
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div>
         <Link href={listHref} className="text-sm text-muted-foreground hover:text-foreground">
-          ← {mode === "template" ? "Customize template" : "Deeplinks"}
+          ← {LIST_NAME[mode]}
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold">{mode === "template" ? "New template page" : "New deep link"}</h1>
+        <h1 className="mt-1 text-2xl font-semibold">{NEW_TITLE[mode]}</h1>
       </div>
-      {mode === "template" && !limits.templatePages ? (
+      {twoSteps && !limits.templatePages ? (
         <TemplateUpsell />
       ) : limitError ? (
         <p className="rounded-lg border px-4 py-3 text-sm">
@@ -55,7 +60,7 @@ export async function NewLinkScreen({ mode }: { mode: LinkMode }) {
             warningMessage: "",
             warningButton: "",
             warningColors: {},
-            landingPage: { ...DEFAULT_LANDING, enabled: mode === "template", introSections: mode === "template" ? [defaultIntroSection()] : [] },
+            landingPage: { ...DEFAULT_LANDING, enabled: twoSteps, introSections: twoSteps ? [defaultIntroSection()] : [] },
             showBadge: true,
             enabled: true,
           }}

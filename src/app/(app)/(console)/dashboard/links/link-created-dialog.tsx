@@ -77,7 +77,7 @@ export function LinkCreatedDialog({ link, onClose }: { link: CreatedLink; onClos
   ];
 
   const details: [string, string][] = [
-    ["Type", link.twoSteps ? "Two-Steps" : "Deeplink"],
+    ["Type", link.twoSteps ? (link.adultWarning ? "Two-Steps · 18+ warning" : "Two-Steps") : "Deeplink"],
     ["Status", link.enabled ? "Active" : "Paused"],
     ["Goes to", bare(link.destination)],
     ...(link.twoSteps ? [] : ([["18+ age check", link.adultWarning ? "On" : "Off"]] as [string, string][])),

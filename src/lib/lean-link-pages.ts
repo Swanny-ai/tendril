@@ -42,6 +42,10 @@ type DocOptions = {
 // app's "Open in Safari?" prompt appears over the visible Step 1, not over a blank page.
 const GO_NOW_JS = `(function(u){var done=0;function go(){if(done)return;done=1;location.href=u}function later(){setTimeout(go,150)}requestAnimationFrame(function(){requestAnimationFrame(function(){var el=document.querySelector(".lp-hi"),m=el&&/url\\(["']?(.*?)["']?\\)/.exec(getComputedStyle(el).backgroundImage);if(m){var im=new Image();im.onload=im.onerror=later;im.src=m[1]}else later();setTimeout(go,1200)})})})`;
 
+// Step 1's button opens "<link>?step=2" (so a visitor who opens it inside the app again doesn't loop back
+// to Step 1). Once Step 2 is showing, the address bar goes back to the clean link, without reloading.
+const CLEAN_URL_JS = `try{var u=new URL(location.href);if(u.searchParams.has("step")){u.searchParams.delete("step");history.replaceState(null,"",u.pathname+u.search+u.hash)}}catch(e){}`;
+
 function goNowScript(url: string): string {
   return `<script>${GO_NOW_JS}(${JSON.stringify(url).replace(/</g, "\\u003c")})</script>`;
 }
@@ -70,7 +74,7 @@ function documentHtml({ lang = "en", host, css, body, config, goNow, meta }: Doc
   return (
     `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">` +
     head +
-    `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body>${body}${script}${goNow ? goNowScript(goNow) : ""}</body></html>`
+    `<link rel="icon" href="/icon.svg" type="image/svg+xml"><style>${BASE_CSS}${css}</style></head><body><script>${CLEAN_URL_JS}</script>${body}${script}${goNow ? goNowScript(goNow) : ""}</body></html>`
   );
 }
 

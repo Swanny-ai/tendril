@@ -144,7 +144,9 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                         {overLimit ? <div className="text-xs text-destructive">Inactive: over your plan&apos;s limit</div> : null}
                       </td>
                       <td className="py-3 pr-4">
-                        {mode === "template" ? (
+                        {mode === "template" && parseLanding(l.landingPage)?.step2 === "warning" ? (
+                          <span className="text-[var(--persimmon-text)]">Step 1 → 18+ · {getWarningTemplate(l.warningTemplate).name}</span>
+                        ) : mode === "template" ? (
                           <span className="text-primary">Template · {parseLanding(l.landingPage)?.sections.length ?? 0} sections</span>
                         ) : l.adultWarning ? (
                           <span className="text-[var(--persimmon-text)]">18+ · {getWarningTemplate(l.warningTemplate).name}</span>
@@ -155,8 +157,8 @@ export async function LinksList({ mode }: { mode: LinkMode }) {
                       {mode === "template" ? (
                         <>
                           <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "hit"))}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "step2"))}</td>
-                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, "tap"))}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, l.adultWarning ? "view" : "step2"))}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">{fmt.format(count(l.id, l.adultWarning ? "confirm" : "tap"))}</td>
                           <td className="py-3 pr-4 text-right font-medium tabular-nums text-primary">{fmt.format(reached.get(l.id) ?? 0)}</td>
                         </>
                       ) : (

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, ChevronsUpDown, Copy, EyeOff, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronsUpDown, Copy, EyeOff, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { QrCodeButton } from "@/components/qr-code-button";
 import { Button } from "@/components/ui/button";
@@ -145,7 +145,11 @@ export function SmartLinkForm({
   const hasCard = template.layout === "card" || template.layout === "split";
   const customColors = Object.keys(v.warningColors).length > 0;
   const lp = v.landingPage;
-  const showPage = lp.enabled;
+  // Two-Steps whose Step 2 is the 18+ warning (not a custom page): Step 1, then the warning, then the destination.
+  const gate = mode === "template" && lp.enabled && lp.step2 === "warning";
+  const [step, setStep] = useState<1 | 2>(mode === "classic" ? 2 : 1);
+  // The phone shows the page (Step 1 / Step 2) or, on Two-Steps 18+'s Step 2, the 18+ warning.
+  const showPage = lp.enabled && !(gate && step === 2);
   const dirty = JSON.stringify(v) !== JSON.stringify(initial);
   const setLanding = (patch: Partial<LandingPage>) => set({ landingPage: { ...v.landingPage, ...patch } });
   // Preview: the 18+ popup of a section, and a clock for countdowns (set after mount, so server and client render alike).
@@ -153,7 +157,6 @@ export function SmartLinkForm({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [styleOpen, setStyleOpen] = useState<string | null>(null);
   // Customize template starts on Step 1 (what visitors from Instagram, TikTok... see first).
-  const [step, setStep] = useState<1 | 2>(mode === "template" ? 1 : 2);
   const [now, setNow] = useState(0);
   const hasCountdown = lp.enabled && lp.sections.some((s) => s.kind === "countdown");
   useEffect(() => {
@@ -163,6 +166,15 @@ export function SmartLinkForm({
     tick();
     return () => clearInterval(t);
   }, [hasCountdown]);
+
+  // Creating a Two-Steps 18+ link is a two-part flow: Step 1, then "Next: Step 2", then Create link.
+  const onStep1 = gate && !id && step === 1;
+  const goStep = (n: 1 | 2) => {
+    setStep(n);
+    setSelectedSection(null);
+    setStyleOpen(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   async function save() {
     setSaving(true);
@@ -185,7 +197,7 @@ export function SmartLinkForm({
     if (!id && res.url) {
       // New link: its address, QR code and sharing show in a popup over the links list.
       celebrate();
-      showLinkCreated({ url: res.url, destination: res.destination ?? v.destinationUrl, twoSteps: lp.enabled, adultWarning: !lp.enabled && v.adultWarning, openInBrowser: v.openInBrowser, enabled: v.enabled });
+      showLinkCreated({ url: res.url, destination: res.destination ?? v.destinationUrl, twoSteps: lp.enabled, adultWarning: (gate || !lp.enabled) && v.adultWarning, openInBrowser: v.openInBrowser, enabled: v.enabled });
       setV(initial); // the router keeps this page alive: start clean next time
     } else {
       toast.success(id ? "Link saved" : "Link created 🎉");
@@ -335,17 +347,62 @@ export function SmartLinkForm({
             {/* The template's settings, inside the Template card: one block each, indented under it. */}
             {lp.enabled ? (
               <div className="border-t pt-4">
-                <div className="ml-1 border-l-2 border-primary/30 pl-3 sm:ml-3 sm:pl-5">
-                  <LandingEditor
-                    value={lp}
-                    onChange={setLanding}
-                    fallbackName="Name"
-                    selected={selectedSection}
-                    onSelect={setSelectedSection}
-                    styleOpen={styleOpen}
-                    onStyleOpen={setStyleOpen}
-                    step={step}
-                  />
+                <div className="ml-1 space-y-4 border-l-2 border-primary/30 pl-3 sm:ml-3 sm:pl-5">
+                  {/* What Step 2 is: a custom page, or the 18+ warning and then the destination. */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Step 2 in the phone browser</p>
+                    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Step 2">
+                      {(
+                        [
+                          ["page", "Custom page", "Your own page with links, photos and a countdown."],
+                          ["warning", "18+ warning", "An 18+ warning page, then your destination."],
+                        ] as const
+                      ).map(([key, title, hint]) => {
+                        const selected = lp.step2 === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => {
+                              set({ landingPage: { ...lp, step2: key }, adultWarning: key === "warning" });
+                              setPopupFor(null);
+                              setSelectedSection(null);
+                              setStyleOpen(null);
+                            }}
+                            className={cn(
+                              "flex items-start gap-2.5 rounded-xl border p-3 text-left transition-colors",
+                              selected ? "border-primary bg-primary/10" : "hover:bg-muted",
+                            )}
+                          >
+                            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary [&_svg]:size-4">
+                              {key === "page" ? <UserRound /> : <ShieldCheck />}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold">{title}</span>
+                              <span className="block text-xs text-muted-foreground">{hint}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {gate && step === 2 ? (
+                    <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">Set up the 18+ warning and your destination below.</p>
+                  ) : (
+                    <LandingEditor
+                      value={lp}
+                      onChange={setLanding}
+                      fallbackName="Name"
+                      selected={selectedSection}
+                      onSelect={setSelectedSection}
+                      styleOpen={styleOpen}
+                      onStyleOpen={setStyleOpen}
+                      step={step}
+                      gate={gate}
+                    />
+                  )}
                 </div>
               </div>
             ) : null}
@@ -354,7 +411,7 @@ export function SmartLinkForm({
 
         {/* Two-Steps: hide the "Made with ViewLink" badge on the template page (Pro). With Template off,
             the same setting sits in the 18+ age check below. */}
-        {mode === "template" && lp.enabled ? (
+        {mode === "template" && lp.enabled && !gate ? (
           <ToggleSection
             icon={<EyeOff />}
             title="Hide “Made with ViewLink”"
@@ -369,13 +426,16 @@ export function SmartLinkForm({
           />
         ) : null}
 
-        {/* 5. 18+ age check (hidden while Template is on: links carry their own 18+ popups) */}
-        {lp.enabled ? null : (
+        {/* 5. 18+ age check (hidden while Template is on: links carry their own 18+ popups). Always on for Two-Steps 18+. */}
+        {(lp.enabled && !gate) || (gate && step === 1) ? null : (
           <ToggleSection
             icon={<ShieldCheck />}
-            title="18+ age check"
+            title={gate ? "Step 2 · 18+ warning" : "18+ age check"}
+            disabled={gate}
             hint={
-              v.adultWarning
+              gate
+                ? "In the phone browser, visitors confirm they're 18 or older, then go to your destination."
+                : v.adultWarning
                 ? "Visitors confirm they're 18 or older before they continue."
                 : lp.enabled
                   ? "Off while Template is on. Use the 18+ popup on each link instead."
@@ -390,7 +450,7 @@ export function SmartLinkForm({
             }
           >
             {/* Where the link goes (with Template on, each section has its own link instead). */}
-            {!lp.enabled ? (
+            {!lp.enabled || gate ? (
               <div className="space-y-1.5 border-t pt-4">
                 <Label htmlFor="destinationUrl" className="text-sm font-medium">
                   <ArrowUpRight className="size-4 text-primary" aria-hidden /> Destination
@@ -543,28 +603,54 @@ export function SmartLinkForm({
           data-testid="save-bar"
         >
           <p className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:block">
-            {id ? dirty ? <span className="text-foreground">You have unsaved changes</span> : "All changes saved" : "Ready when you are"}
+            {onStep1 ? (
+              <span className="text-foreground">Step 1 of 2 · next, the 18+ page</span>
+            ) : gate && !id && !v.destinationUrl ? (
+              <span className="text-foreground">Step 2 of 2 · add your destination</span>
+            ) : gate && !v.destinationUrl ? (
+              <span className="text-foreground">Add the destination in Step 2 · 18+</span>
+            ) : id ? (
+              dirty ? (
+                <span className="text-foreground">You have unsaved changes</span>
+              ) : (
+                "All changes saved"
+              )
+            ) : (
+              "Ready when you are"
+            )}
           </p>
-          <Link href={listHref} className="px-2 text-sm text-muted-foreground hover:text-foreground sm:order-none">
-            Cancel
-          </Link>
+          {gate && !id && step === 2 ? (
+            <button type="button" onClick={() => goStep(1)} className="flex items-center gap-1 px-2 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="size-4" aria-hidden /> Step 1
+            </button>
+          ) : (
+            <Link href={listHref} className="px-2 text-sm text-muted-foreground hover:text-foreground sm:order-none">
+              Cancel
+            </Link>
+          )}
+          {onStep1 ? (
+            <Button size="lg" className="flex-1 sm:flex-none" onClick={() => goStep(2)}>
+              Next: Step 2 · 18+ <ArrowRight />
+            </Button>
+          ) : (
           <Button
             size="lg"
             className="flex-1 sm:flex-none"
             onClick={save}
             disabled={
-              saving || (!v.atRoot && slugState === "bad") || !v.slug || (lp.enabled ? !lp.sections.some((x) => x.kind === "link" && x.url) : !v.destinationUrl)
+              saving || (!v.atRoot && slugState === "bad") || !v.slug || (lp.enabled && !gate ? !lp.sections.some((x) => x.kind === "link" && x.url) : !v.destinationUrl)
             }
           >
             {saving ? <Loader2 className="animate-spin" /> : null} {id ? "Save link" : "Create link"}
           </Button>
+          )}
         </div>
       </div>
 
       <div className="lg:sticky lg:top-20 lg:self-start">
         <div className="mb-3 flex h-8 items-center justify-center gap-3">
           <p className="text-sm font-medium text-muted-foreground">{showPage ? "Live preview · tap to edit" : "Live preview"}</p>
-          {showPage ? (
+          {lp.enabled ? (
             <div className="flex rounded-lg border bg-muted p-0.5 text-xs" role="tablist" aria-label="Step">
               {([1, 2] as const).map((n) => (
                 <button
@@ -583,7 +669,7 @@ export function SmartLinkForm({
                     step === n ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Step {n}
+                  {gate && n === 2 ? "Step 2 · 18+" : `Step ${n}`}
                 </button>
               ))}
             </div>
