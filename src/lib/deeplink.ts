@@ -18,7 +18,7 @@
 // iPhone, other apps (X, LinkedIn, Snapchat...): x-safari-https:// opens Safari on iOS 17+.
 // None of these are documented promises, so callers always offer a manual fallback.
 
-import { detectInAppBrowser } from "./in-app";
+import { detectInAppRequest } from "./in-app";
 
 export type MobilePlatform = "android" | "ios" | "other";
 
@@ -66,9 +66,10 @@ export function openInBrowserUrl(target: string, platform: MobilePlatform, userA
 /**
  * The "open in default browser" URL for `target`, but only for visitors inside a social
  * app's built-in browser on a phone. Everyone else gets null (use the normal link).
+ * `referer`: the request's Referer header (spots X, whose browser looks like Safari / Chrome).
  */
-export function inAppDeepLink(userAgent: string, target: string): string | null {
-  if (!detectInAppBrowser(userAgent)) return null;
+export function inAppDeepLink(userAgent: string, target: string, referer?: string | null): string | null {
+  if (!detectInAppRequest(userAgent, referer)) return null;
   return openInBrowserUrl(target, platformFromUserAgent(userAgent), userAgent);
 }
 

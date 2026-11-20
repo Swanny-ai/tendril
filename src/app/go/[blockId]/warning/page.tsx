@@ -33,7 +33,7 @@ export default async function WarningPage(props: PageProps<"/go/[blockId]/warnin
   after(() => recordWarningView({ headers: h }, target.pageId, target.blockId).catch(() => {}));
 
   // Inside Instagram/TikTok/...: confirming opens the destination in the default browser.
-  const deepLink = target.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/go/${target.blockId}?ok=1`) : null;
+  const deepLink = target.openInBrowser ? inAppDeepLink(h.get("user-agent") ?? "", `${appUrl}/go/${target.blockId}?ok=1`, h.get("referer")) : null;
   const continueHref = deepLink ?? `/go/${target.blockId}?ok=1`;
   const fallback = target.openInBrowser ? (
     <BrowserEscape target={`${appUrl}/go/${target.blockId}?ok=1`} stayHref={`/go/${target.blockId}?ok=1`} continueHref={continueHref} />

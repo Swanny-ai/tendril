@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { appHost, appUrl } from "@/config/brand";
 import { inAppDeepLink } from "@/lib/deeplink";
 import { isAppHost } from "@/lib/domain-names";
-import { detectInAppBrowser } from "@/lib/in-app";
+import { detectInAppRequest } from "@/lib/in-app";
 import { htmlResponse, leanLandingPage, leanLeftPage, leanNotFound, leanOpenPage, leanWarningPage } from "@/lib/lean-link-pages";
 import { ACCESS_MESSAGES, accessBlock, isDefaultAccess } from "@/lib/link-access";
 import { countryFromHeaders } from "@/lib/analytics/visitor";
@@ -56,7 +56,7 @@ export function warningStep(h: Headers, link: SmartLink, slug: string, entry: bo
   const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${hostOf(h)}`;
   const ua = h.get("user-agent") ?? "";
   const escapeTarget = `${origin}${base}?ok=1&ib=1`;
-  const deepLink = link.openInBrowser ? inAppDeepLink(ua, escapeTarget) : null;
+  const deepLink = link.openInBrowser ? inAppDeepLink(ua, escapeTarget, h.get("referer")) : null;
 
   let destinationHost = "";
   try {
@@ -93,14 +93,14 @@ export function landingStep(h: Headers, link: SmartLink, slug: string, step2 = f
   // Step 1 is only for visitors inside a social app (Instagram, TikTok...): in a real browser
   // (Safari, Chrome...) they get Step 2 straight away.
   const ua = h.get("user-agent") ?? "";
-  const inApp = !!detectInAppBrowser(ua);
+  const inApp = !!detectInAppRequest(ua, h.get("referer"));
   // Step 1 is on as soon as it has its button.
   const showStep1 = !!link.landing?.introSections.length && !step2 && inApp;
   // A visit is counted once (on the first page seen); every Step 2 shown counts as "Opened Step 2".
   track(h, link.id, [...(step2 ? [] : (["hit"] as const)), ...(showStep1 ? [] : (["step2"] as const))]);
   // From Step 1, the button opens Step 2 in the phone's browser when "Open in phone browser" is on.
   const origin = isAppHost(h.get("host"), appHost) ? appUrl : `https://${hostOf(h)}`;
-  const deepLink = link.openInBrowser && inApp ? inAppDeepLink(ua, `${origin}${base}?step=2`) : null;
+  const deepLink = link.openInBrowser && inApp ? inAppDeepLink(ua, `${origin}${base}?step=2`, h.get("referer")) : null;
   const step2Href = `${origin}${base}?step=2`;
   const lang = pickLang(h.get("accept-language"));
   const copy = WARNING_COPY[lang];

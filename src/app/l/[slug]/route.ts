@@ -1,7 +1,7 @@
 import { after, type NextRequest } from "next/server";
 import { clientIp } from "@/lib/analytics/visitor";
 import { appHost } from "@/config/brand";
-import { detectInAppBrowser } from "@/lib/in-app";
+import { detectInAppRequest } from "@/lib/in-app";
 import { isLinkEntry, linkHost, linkOpensHere } from "@/lib/link-paths";
 import { rateLimit } from "@/lib/rate-limit";
 import { accessDenied, landingStep, openStep, warningStep } from "@/lib/smart-link-steps";
@@ -34,6 +34,8 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
   const escaped = request.nextUrl.searchParams.get("ib") === "1";
   // lp=1: the visitor tapped the main button on the link's profile page ("Template").
   const pastLanding = request.nextUrl.searchParams.get("lp") === "1";
+  // Inside a social app's browser (X spotted by its t.co referrer: its browser looks like Safari / Chrome).
+  const inApp = !!detectInAppRequest(headers.get("user-agent") ?? "", headers.get("referer"));
   const log = (kinds: SmartLinkEventKind[]) => {
     if (!rateLimit(`smart:${clientIp(headers)}:${slug}:${kinds[0]}`, 30, 60_000)) return;
     after(async () => {
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
     const step2 = request.nextUrl.searchParams.get("step") === "2";
     // Two-Steps 18+: Step 1 only inside a social app; after it (or straight away in a real browser)
     // the 18+ warning, then the destination.
-    if (link.landing.step2 === "warning" && (step2 || !link.landing.introSections.length || !detectInAppBrowser(headers.get("user-agent") ?? ""))) {
+    if (link.landing.step2 === "warning" && (step2 || !link.landing.introSections.length || !inApp)) {
       return warningStep(headers, link, slug, !step2);
     }
     return landingStep(headers, link, slug, step2);
@@ -60,13 +62,13 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/l/[slug]">) 
 
   if (!confirmed && !escaped && isLinkEntry(headers)) {
     if (link.adultWarning) return warningStep(headers, link, slug, !pastLanding);
-    if (link.openInBrowser && detectInAppBrowser(headers.get("user-agent") ?? "")) return openStep(headers, link, slug, !pastLanding);
+    if (link.openInBrowser && inApp) return openStep(headers, link, slug, !pastLanding);
   }
 
   // Deep link: inside Instagram, TikTok, Facebook... links without an 18+ warning get a page
   // with an "Open in browser" button. Links with a warning show the warning here instead, and
   // its confirm button opens the destination in the default browser (see the warning page).
-  if (link.openInBrowser && !link.adultWarning && !confirmed && !escaped && detectInAppBrowser(headers.get("user-agent") ?? "")) {
+  if (link.openInBrowser && !link.adultWarning && !confirmed && !escaped && inApp) {
     if (!pastLanding) log(["hit"]);
     return new Response(null, { status: 302, headers: { ...NO_STORE, Location: `/l/${slug}/open` } });
   }
