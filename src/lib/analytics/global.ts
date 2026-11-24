@@ -23,7 +23,8 @@ export type Source = { id: string; kind: "page" | "link"; label: string; path: s
 export type GlobalStats = {
   /** clicks: every tap that sent someone on; reached: people sent to a destination, each counted once a day. */
   totals: { views: number; visitors: number; activeSources: number; totalSources: number; avgPerSource: number; previousViews: number; growth: number | null; clicks: number; reached: number };
-  series: { key: string; views: number; clicks: number }[];
+  /** reached: people sent on to a destination in that hour or day (each counted once per bucket). */
+  series: { key: string; views: number; clicks: number; reached: number }[];
   top: (Source & { views: number })[];
   /** null when the plan has no geographic breakdowns */
   countries: null | { code: string; numeric: string | null; name: string; views: number }[];
@@ -157,8 +158,8 @@ export async function getGlobalStats(
     db.$queryRaw<{ clicks: bigint; reached: bigint }[]>`
       WITH c AS (${clicks}), d AS (SELECT COUNT(*) AS c, COUNT(DISTINCT vh) AS u FROM c GROUP BY to_char(ts, 'YYYY-MM-DD'))
       SELECT COALESCE(SUM(c), 0)::bigint AS clicks, COALESCE(SUM(u), 0)::bigint AS reached FROM d`,
-    db.$queryRaw<{ k: string; clicks: bigint }[]>`
-      WITH c AS (${clicks}) SELECT ${bucketOf} AS k, COUNT(*)::bigint AS clicks FROM c GROUP BY 1`,
+    db.$queryRaw<{ k: string; clicks: bigint; reached: bigint }[]>`
+      WITH c AS (${clicks}) SELECT ${bucketOf} AS k, COUNT(*)::bigint AS clicks, COUNT(DISTINCT vh)::bigint AS reached FROM c GROUP BY 1`,
   ]);
 
   const views = n(totalRow[0]?.views);
@@ -167,6 +168,7 @@ export async function getGlobalStats(
   const activeSources = sourceViews.size;
   const bucketViews = new Map(byBucket.map((r) => [r.k, n(r.views)]));
   const bucketClicks = new Map(clickBuckets.map((r) => [r.k, n(r.clicks)]));
+  const bucketReached = new Map(clickBuckets.map((r) => [r.k, n(r.reached)]));
 
   return {
     totals: {
@@ -180,7 +182,7 @@ export async function getGlobalStats(
       clicks: n(clickTotal[0]?.clicks),
       reached: n(clickTotal[0]?.reached),
     },
-    series: bucketKeys(range.from, range.to, tz, range.bucket).map((key) => ({ key, views: bucketViews.get(key) ?? 0, clicks: bucketClicks.get(key) ?? 0 })),
+    series: bucketKeys(range.from, range.to, tz, range.bucket).map((key) => ({ key, views: bucketViews.get(key) ?? 0, clicks: bucketClicks.get(key) ?? 0, reached: bucketReached.get(key) ?? 0 })),
     top: sources
       .map((s) => ({ ...s, views: sourceViews.get(s.id) ?? 0 }))
       .filter((s) => s.views > 0)

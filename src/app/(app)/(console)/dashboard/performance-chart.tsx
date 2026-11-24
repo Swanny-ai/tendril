@@ -5,9 +5,16 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Eye, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
-const config = { views: { label: "Views", color: "var(--chart-1)" }, clicks: { label: "Clicks", color: "var(--chart-2)" } } satisfies ChartConfig;
+const config = {
+  views: { label: "Views", color: "var(--chart-1)" },
+  clicks: { label: "Clicks", color: "var(--chart-2)" },
+  reached: { label: "Reached", color: "var(--chart-3)" },
+} satisfies ChartConfig;
+
+type SeriesKey = keyof typeof config;
+const KEYS = Object.keys(config) as SeriesKey[];
 
 /** Bucket keys are already wall-clock times in the chosen zone, so format them as UTC. */
 function bucketDate(key: string) {
@@ -23,8 +30,28 @@ export function formatBucket(key: string, bucket: "hour" | "day", withDay: boole
 
 const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 
-export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: string; views: number; clicks: number }[]; bucket: "hour" | "day"; tzLabel: string }) {
+export function PerformanceChart({
+  series,
+  reached,
+  bucket,
+  tzLabel,
+}: {
+  series: { key: string; views: number; clicks: number; reached: number }[];
+  /** People sent on to a destination in the whole range (each counted once a day). */
+  reached: number;
+  bucket: "hour" | "day";
+  tzLabel: string;
+}) {
   const [legend, setLegend] = useState(true);
+  // Lines turned off by clicking their name in the legend (at least one always stays on).
+  const [hidden, setHidden] = useState<Set<SeriesKey>>(() => new Set());
+  const toggle = (k: SeriesKey) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else if (next.size < KEYS.length - 1) next.add(k);
+      return next;
+    });
   const total = series.reduce((s, p) => s + p.views, 0);
   const clicks = series.reduce((s, p) => s + p.clicks, 0);
   const average = series.length ? total / series.length : 0;
@@ -43,6 +70,10 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
           <div>
             <dt className="text-muted-foreground">Clicks</dt>
             <dd className="font-heading text-xl font-semibold tabular-nums">{clicks.toLocaleString("en-US")}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Reached</dt>
+            <dd className="font-heading text-xl font-semibold tabular-nums">{reached.toLocaleString("en-US")}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Avg views / {per}</dt>
@@ -74,16 +105,41 @@ export function PerformanceChart({ series, bucket, tzLabel }: { series: { key: s
               <stop offset="5%" stopColor="var(--color-clicks)" stopOpacity={0.25} />
               <stop offset="95%" stopColor="var(--color-clicks)" stopOpacity={0.02} />
             </linearGradient>
+            <linearGradient id="fill-global-reached" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--color-reached)" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="var(--color-reached)" stopOpacity={0.02} />
+            </linearGradient>
           </defs>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="key" tickLine={false} axisLine={false} tickMargin={8} minTickGap={32} tickFormatter={(k) => formatBucket(String(k), bucket, false)} />
           <YAxis tickLine={false} axisLine={false} width={36} allowDecimals={false} />
           <ChartTooltip content={<ChartTooltipContent labelFormatter={(_, p) => formatBucket(String(p?.[0]?.payload?.key ?? ""), bucket, true)} />} />
-          {legend ? <ChartLegend content={<ChartLegendContent />} /> : null}
-          <Area dataKey="views" type="monotone" stroke="var(--color-views)" fill="url(#fill-global-views)" strokeWidth={2} dot={false} />
-          <Area dataKey="clicks" type="monotone" stroke="var(--color-clicks)" fill="url(#fill-global-clicks)" strokeWidth={2} dot={false} />
+          {KEYS.map((k) => (
+            <Area key={k} dataKey={k} hide={hidden.has(k)} type="monotone" stroke={`var(--color-${k})`} fill={`url(#fill-global-${k})`} strokeWidth={2} dot={false} />
+          ))}
         </AreaChart>
       </ChartContainer>
+      {/* Legend: click a name to hide or show its line. */}
+      {legend ? (
+        <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label="Show or hide lines">
+          {KEYS.map((k) => {
+            const off = hidden.has(k);
+            return (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={!off}
+                onClick={() => toggle(k)}
+                title={off ? `Show ${config[k].label}` : `Hide ${config[k].label}`}
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted ${off ? "text-muted-foreground line-through opacity-60" : ""}`}
+              >
+                <span className="size-2 rounded-[2px]" style={{ background: off ? "var(--muted-foreground)" : config[k].color }} aria-hidden />
+                {config[k].label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

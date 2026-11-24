@@ -88,7 +88,8 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
     row.views += s.views;
     topByName.set(key, row);
   }
-  const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views).slice(0, 8);
+  // Every link, ranked; past 5 the list scrolls inside the card.
+  const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views);
   const countryTotal = stats.countries?.reduce((s, c) => s + c.views, 0) ?? 0;
   // New accounts (email sign-up sends ?welcome=1; Google sign-ups are just minutes old) get a welcome.
   const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
@@ -144,10 +145,10 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Performance overview</CardTitle>
-            <CardDescription>Views and clicks {range.bucket === "hour" ? "per hour" : "per day"}</CardDescription>
+            <CardDescription>Views, clicks and reached {range.bucket === "hour" ? "per hour" : "per day"}</CardDescription>
           </CardHeader>
           <CardContent>
-            <PerformanceChart series={stats.series} bucket={range.bucket} tzLabel={tzLabel} />
+            <PerformanceChart series={stats.series} reached={stats.totals.reached} bucket={range.bucket} tzLabel={tzLabel} />
           </CardContent>
         </Card>
         <Card>
@@ -157,7 +158,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
           </CardHeader>
           <CardContent>
             {topPerformers.length ? (
-              <ol className="space-y-2" data-testid="top-performers">
+              <ol className={`space-y-2 ${topPerformers.length > 5 ? "max-h-[18.25rem] overflow-y-auto overscroll-contain pr-1" : ""}`} data-testid="top-performers">
                 {topPerformers.map((s, i) => {
                   const share = totals.views ? s.views / totals.views : 0;
                   return (
