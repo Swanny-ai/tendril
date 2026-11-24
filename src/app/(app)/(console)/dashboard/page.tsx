@@ -156,9 +156,13 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
             <CardTitle>Top performers</CardTitle>
             <CardDescription>Most viewed links in this range</CardDescription>
           </CardHeader>
-          <CardContent>
+          {/* Wide screens: the list fills the card (as tall as the chart beside it) and scrolls inside it. */}
+          <CardContent className="relative min-h-0 flex-1">
             {topPerformers.length ? (
-              <ol className={`space-y-2 ${topPerformers.length > 5 ? "max-h-[18.25rem] overflow-y-auto overscroll-contain pr-1" : ""}`} data-testid="top-performers">
+              <ol
+                className={`space-y-2 ${topPerformers.length > 5 ? "max-h-[18.25rem] overflow-y-auto overscroll-contain pr-1 lg:absolute lg:inset-x-(--card-spacing) lg:inset-y-0 lg:max-h-none" : ""}`}
+                data-testid="top-performers"
+              >
                 {topPerformers.map((s, i) => {
                   const share = totals.views ? s.views / totals.views : 0;
                   return (
