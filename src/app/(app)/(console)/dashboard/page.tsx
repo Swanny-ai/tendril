@@ -160,7 +160,7 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
           <CardContent className="relative min-h-0 flex-1">
             {topPerformers.length ? (
               <ol
-                className={`space-y-2 ${topPerformers.length > 5 ? "max-h-[18.25rem] overflow-y-auto overscroll-contain pr-1 lg:absolute lg:inset-x-(--card-spacing) lg:inset-y-0 lg:max-h-none" : ""}`}
+                className={`space-y-2 ${topPerformers.length > 5 ? "no-scrollbar max-h-[18.25rem] overflow-y-auto overscroll-contain pb-6 [mask-image:linear-gradient(to_bottom,#000_calc(100%-2.5rem),transparent)] lg:absolute lg:inset-x-(--card-spacing) lg:inset-y-0 lg:max-h-none" : ""}`}
                 data-testid="top-performers"
               >
                 {topPerformers.map((s, i) => {

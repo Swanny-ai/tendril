@@ -231,3 +231,12 @@ html[data-theme="light"] {
 @media (prefers-reduced-motion: reduce) {
   .vl-float { animation: none; }
 }
+
+/* Scrolls, but without a visible scrollbar (e.g. the Top performers list). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

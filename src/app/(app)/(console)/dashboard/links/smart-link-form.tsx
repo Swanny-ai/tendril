@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronsUpDown, Copy, EyeOff, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Copy, EyeOff, Globe, Link2, Loader2, Lock, RotateCcw, ShieldCheck, Smartphone, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { QrCodeButton } from "@/components/qr-code-button";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { appHost } from "@/config/brand";
 import { defaultIntroSection, type LandingPage } from "@/lib/link-landing";
@@ -212,26 +213,48 @@ export function SmartLinkForm({
         {/* 1. Address */}
         <Section icon={<Link2 />} title="Link address">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Globe className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <select
-                id="domain"
-                aria-label="Domain"
+            <div className="min-w-0 flex-1">
+              <Select
                 value={v.domainId ?? ""}
-                onChange={(e) => {
-                  const domainId = e.target.value || null;
+                onValueChange={(value) => {
+                  const domainId = String(value ?? "") || null;
                   set({ domainId, atRoot: domainId ? v.atRoot : false });
                 }}
-                className="h-10 w-full cursor-pointer appearance-none rounded-lg border bg-background pr-9 pl-9 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                <option value="">{appHost}</option>
-                {domains.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.hostname}
-                  </option>
-                ))}
-              </select>
-              <ChevronsUpDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <SelectTrigger id="domain" aria-label="Domain" className="h-10 w-full gap-2.5 rounded-lg bg-background px-3 text-sm font-medium data-[size=default]:h-10">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
+                    <Globe className="size-3.5" />
+                  </span>
+                  <SelectValue>{() => domain?.hostname ?? appHost}</SelectValue>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} className="p-1">
+                  <SelectGroup>
+                    <SelectLabel>ViewLink address</SelectLabel>
+                    <SelectItem value="" className="py-2">
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium">{appHost}</span>
+                        <span className="text-xs text-muted-foreground">Free, always on</span>
+                      </span>
+                    </SelectItem>
+                  </SelectGroup>
+                  {domains.length ? (
+                    <>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel>Your domains</SelectLabel>
+                        {domains.map((d) => (
+                          <SelectItem key={d.id} value={d.id} className="py-2">
+                            <span className="flex min-w-0 flex-col">
+                              <span className="truncate font-medium">{d.hostname}</span>
+                              <span className="text-xs text-muted-foreground">Custom domain</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </>
+                  ) : null}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex h-10 shrink-0 rounded-lg border bg-muted p-0.5" role="radiogroup" aria-label="Link type">
               {(["root", "path"] as const).map((mode) => {
