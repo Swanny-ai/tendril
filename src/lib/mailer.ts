@@ -72,19 +72,58 @@ export async function sendEmail(email: Email): Promise<boolean> {
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-function layout(title: string, body: string, cta: { label: string; url: string }, footnote: string) {
+// Email-safe layout: tables and inline styles (Gmail, Outlook, Apple Mail). Images must be PNG on
+// the live site (email apps don't show SVG), so the logo is always loaded from https://<brand.domain>.
+const SITE = `https://${brand.domain}`;
+const LOGO = `${SITE}/icon-192.png`;
+
+function layout(title: string, body: string, cta: { label: string; url: string }, footnote: string, preheader: string) {
   const url = escape(cta.url);
-  return `<!doctype html><html><body style="margin:0;background:#f5f5f5;font-family:Inter,Arial,sans-serif;color:#1c1a24">
-<div style="max-width:480px;margin:0 auto;padding:32px 20px">
-<p style="font-weight:700;font-size:18px;margin:0 0 24px">${escape(brand.name)}</p>
-<div style="background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:28px">
-<h1 style="font-size:20px;margin:0 0 12px">${escape(title)}</h1>
-<p style="font-size:15px;line-height:1.55;margin:0 0 22px">${body}</p>
-<a href="${url}" style="display:inline-block;background:#49f264;color:#0a0a0a;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:999px">${escape(cta.label)}</a>
-<p style="font-size:13px;color:#5c5866;margin:22px 0 0;word-break:break-all">Or paste this link into your browser:<br>${url}</p>
-</div>
-<p style="font-size:12px;color:#5c5866;margin:18px 4px 0">${escape(footnote)}</p>
-</div></body></html>`;
+  const year = new Date().getFullYear();
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>${escape(title)}</title></head>
+<body style="margin:0;padding:0;background:#101510;-webkit-font-smoothing:antialiased">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escape(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#131e15;background-image:linear-gradient(180deg,#131e15 0%,#152418 45%,#101110 100%)" bgcolor="#131e15">
+<tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;font-family:Inter,'Segoe UI',Helvetica,Arial,sans-serif;color:#ffffff">
+
+<tr><td align="center" style="padding:0 0 22px">
+<a href="${SITE}" style="text-decoration:none;color:#ffffff">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="vertical-align:middle"><img src="${LOGO}" width="40" height="40" alt="${escape(brand.name)}" style="display:block;border:0;border-radius:10px"></td>
+<td style="vertical-align:middle;padding-left:10px;font-size:22px;font-weight:800;letter-spacing:-0.3px;color:#ffffff">View<span style="color:#49f264">Link</span></td>
+</tr></table></a>
+</td></tr>
+
+<tr><td style="background:#0e1610;border:1px solid #23392a;border-radius:18px;overflow:hidden" bgcolor="#0e1610">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="height:6px;background:#49f264;font-size:0;line-height:0">&nbsp;</td></tr>
+<tr><td style="padding:34px 34px 30px">
+<h1 style="margin:0 0 12px;font-size:24px;line-height:1.25;font-weight:800;letter-spacing:-0.3px;color:#ffffff">${escape(title)}</h1>
+<p style="margin:0 0 26px;font-size:15px;line-height:1.6;color:#c9cdca">${body}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td align="center" style="border-radius:999px;background:#49f264;box-shadow:0 10px 24px -8px rgba(73,242,100,.55)" bgcolor="#49f264">
+<a href="${url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#0a0a0a;text-decoration:none;border-radius:999px">${escape(cta.label)} &rarr;</a>
+</td></tr></table>
+<p style="margin:28px 0 6px;font-size:12px;color:#8a8f8b">Button not working? Paste this link into your browser:</p>
+<p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all"><a href="${url}" style="color:#49f264;text-decoration:underline">${url}</a></p>
+</td></tr>
+<tr><td style="padding:16px 34px;background:#0b120d;border-top:1px solid #1d2f22;font-size:12px;line-height:1.5;color:#8a8f8b" bgcolor="#0b120d">${escape(footnote)}</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:24px 12px 0;font-size:12px;line-height:1.6;color:#6f7470">
+<a href="${SITE}" style="color:#49f264;text-decoration:none;font-weight:600">${escape(brand.domain)}</a>
+&nbsp;&middot;&nbsp;
+<a href="mailto:${escape(brand.supportEmail)}" style="color:#a3a3a3;text-decoration:none">${escape(brand.supportEmail)}</a><br>
+${escape(brand.tagline)}<br>
+&copy; ${year} ${escape(brand.name)}. You got this email because of activity on your ${escape(brand.name)} account.
+</td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
 }
 
 export function passwordResetEmail(to: string, token: string): Email {
@@ -95,9 +134,10 @@ export function passwordResetEmail(to: string, token: string): Email {
     text: `Someone asked to reset the password for your ${brand.name} account.\n\nReset it here (the link works for 1 hour, once):\n${url}\n\nIf this wasn't you, you can ignore this email. Your password won't change.`,
     html: layout(
       "Reset your password",
-      `Someone asked to reset the password for your ${escape(brand.name)} account. The link works once, for 1 hour.`,
+      `We got a request to reset the password for your ${escape(brand.name)} account. Tap the button below to choose a new one. For your security, the link works <b style="color:#ffffff">once</b> and expires in <b style="color:#ffffff">1 hour</b>.`,
       { label: "Choose a new password", url },
-      "If this wasn't you, ignore this email. Your password won't change.",
+      "If you didn't ask for this, you can ignore this email. Your password won't change.",
+      "Choose a new password for your ViewLink account. The link works once, for 1 hour.",
     ),
   };
 }
@@ -110,9 +150,10 @@ export function verifyEmail(to: string, token: string): Email {
     text: `Welcome to ${brand.name}! Confirm your email address here (the link works for 24 hours):\n${url}\n\nIf you didn't create an account, you can ignore this email.`,
     html: layout(
       "Confirm your email",
-      `Welcome to ${escape(brand.name)}! Confirm this is your email so you can always get back into your account.`,
+      `Welcome to ${escape(brand.name)}! Confirm this is your email address so you can always get back into your account. The link works for <b style="color:#ffffff">24 hours</b>.`,
       { label: "Confirm email", url },
       "If you didn't create an account, you can ignore this email.",
+      "One click to confirm your email and secure your ViewLink account.",
     ),
   };
 }
