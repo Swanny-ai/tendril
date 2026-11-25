@@ -42,7 +42,7 @@ export function ReplyForm({ ticketId, onTyping, onSent }: { ticketId: string; on
   };
 
   return (
-    <div className="flex items-end gap-2 rounded-xl border bg-card p-3">
+    <div data-slot="card" className="flex items-end gap-2 rounded-xl border bg-card p-3">
       <textarea
         ref={ref}
         value={text}

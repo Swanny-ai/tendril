@@ -35,7 +35,7 @@ export function AnnouncementForm({ users }: { users: number }) {
   };
 
   return (
-    <section className="space-y-4 rounded-xl border bg-card p-5">
+    <section data-slot="card" className="space-y-4 rounded-xl border bg-card p-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold">
         <Megaphone className="size-4 text-primary" aria-hidden /> New announcement
       </h2>

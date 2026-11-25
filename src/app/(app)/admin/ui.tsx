@@ -51,12 +51,15 @@ export function Stat({ label, value, hint, href, tone }: { label: string; value:
     </>
   );
   const cls = "block rounded-xl border bg-card p-4";
+  const slot = { "data-slot": "card" } as const;
   return href ? (
-    <Link href={href} className={cn(cls, "transition-colors hover:border-primary/50")}>
+    <Link href={href} {...slot} className={cn(cls, "transition-colors hover:border-primary/50")}>
       {body}
     </Link>
   ) : (
-    <div className={cls}>{body}</div>
+    <div {...slot} className={cls}>
+      {body}
+    </div>
   );
 }
 
@@ -79,7 +82,7 @@ export function SearchBox({ placeholder, q, extra }: { placeholder: string; q: s
 /** A plain table in a card. */
 export function Table({ head, children, empty }: { head: React.ReactNode[]; children: React.ReactNode; empty?: boolean }) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div data-slot="card" className="overflow-x-auto rounded-xl border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
@@ -171,7 +174,7 @@ export function DayBars({ data, label }: { data: { day: string; value: number }[
   const max = Math.max(1, ...data.map((d) => d.value));
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div data-slot="card" className="rounded-xl border bg-card p-4">
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-medium">{label}</p>
         <p className="text-xs text-muted-foreground tabular-nums">{fmt(total)} in {data.length} days</p>

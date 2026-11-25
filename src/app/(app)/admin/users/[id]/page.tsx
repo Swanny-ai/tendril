@@ -86,7 +86,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="space-y-3 rounded-xl border bg-card p-5">
+        <section data-slot="card" className="space-y-3 rounded-xl border bg-card p-5">
           <h2 className="font-semibold">Plan</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             <dt className="text-muted-foreground">Status</dt>
@@ -141,7 +141,7 @@ export default async function AdminUser(props: PageProps<"/admin/users/[id]">) {
           )}
         </section>
 
-        <section className="space-y-3 rounded-xl border bg-card p-5">
+        <section data-slot="card" className="space-y-3 rounded-xl border bg-card p-5">
           <h2 className="font-semibold">Account</h2>
           <div className="flex flex-wrap gap-2">
             {!user.emailVerified ? (

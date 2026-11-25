@@ -62,7 +62,7 @@ export function LiveThread({ ticketId, who, initial }: { ticketId: string; who: 
 
   return (
     <>
-      <div ref={listRef} className="max-h-[60svh] space-y-3 overflow-y-auto rounded-xl border bg-card p-4">
+      <div ref={listRef} data-slot="card" className="max-h-[60svh] space-y-3 overflow-y-auto rounded-xl border bg-card p-4">
         {messages.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No messages yet.</p>
         ) : (

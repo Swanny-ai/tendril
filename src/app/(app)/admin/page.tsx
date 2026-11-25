@@ -131,7 +131,7 @@ export default async function AdminOverview() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">Where accounts sign up from</h2>
-        <div className="rounded-xl border bg-card p-4">
+        <div data-slot="card" className="rounded-xl border bg-card p-4">
           {knownCountries.length ? (
             <ul className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
               {knownCountries.slice(0, 20).map((c) => (
@@ -168,7 +168,7 @@ export default async function AdminOverview() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Newest accounts</h2>
-          <ul className="divide-y rounded-xl border bg-card">
+          <ul data-slot="card" className="divide-y rounded-xl border bg-card">
             {recentUsers.map((u) => (
               <li key={u.id}>
                 <Link href={`/admin/users/${u.id}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-muted/50">
@@ -186,7 +186,7 @@ export default async function AdminOverview() {
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Latest crypto payments</h2>
           {recentCrypto.length ? (
-            <ul className="divide-y rounded-xl border bg-card">
+            <ul data-slot="card" className="divide-y rounded-xl border bg-card">
               {recentCrypto.map((p) => (
                 <li key={p.id}>
                   <Link href={`/admin/users/${p.user.id}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-muted/50">
@@ -200,7 +200,7 @@ export default async function AdminOverview() {
               ))}
             </ul>
           ) : (
-            <p className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">No crypto payments yet.</p>
+            <p data-slot="card" className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">No crypto payments yet.</p>
           )}
         </section>
       </div>

@@ -139,7 +139,7 @@ function Breakdown({ title, rows }: { title: string; rows: { label: string; n: n
   return (
     <section className="space-y-2">
       <h2 className="font-semibold">{title}</h2>
-      <div className="space-y-2 rounded-xl border bg-card p-4">
+      <div data-slot="card" className="space-y-2 rounded-xl border bg-card p-4">
         {rows.length ? (
           rows.map((r) => (
             <div key={r.label} className="text-sm">

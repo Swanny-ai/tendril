@@ -5,12 +5,13 @@ import { Moon, Sparkles, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The signed-in app can be glow (the default: black with green glows and glass cards), dark
-// (plain green on black) or light (white and green). The choice is kept in this browser and
+// (plain green on black) or light (white and green with soft green glows). The choice is kept in this browser and
 // applied as <html data-theme="glow|light"> while the app is open; the public site and bio pages
 // keep their own look.
 
 export type AppTheme = "glow" | "dark" | "light";
-const KEY = "viewlink-theme";
+// v2: everyone moved to Glow when it became the default (the old "viewlink-theme" choice is dropped).
+const KEY = "viewlink-theme-v2";
 const EVENT = "viewlink-theme";
 
 /** Runs before the page paints (inline in the app layout), so a light page never flashes dark. */
