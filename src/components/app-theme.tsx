@@ -1,31 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sparkles, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// The signed-in app can be dark (the default, green on black) or light (white and green).
-// The choice is kept in this browser and applied as <html data-theme="light"> while the app is
-// open; the public site and bio pages keep their own look.
+// The signed-in app can be glow (the default: black with green glows and glass cards), dark
+// (plain green on black) or light (white and green). The choice is kept in this browser and
+// applied as <html data-theme="glow|light"> while the app is open; the public site and bio pages
+// keep their own look.
 
-export type AppTheme = "dark" | "light";
+export type AppTheme = "glow" | "dark" | "light";
 const KEY = "viewlink-theme";
 const EVENT = "viewlink-theme";
 
 /** Runs before the page paints (inline in the app layout), so a light page never flashes dark. */
-export const APP_THEME_SCRIPT = `try{if(localStorage.getItem("${KEY}")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
+export const APP_THEME_SCRIPT = `try{var t=localStorage.getItem("${KEY}");document.documentElement.dataset.theme=t==="light"?"light":t==="dark"?"dark":"glow"}catch(e){document.documentElement.dataset.theme="glow"}`;
+
+const asTheme = (v: unknown): AppTheme => (v === "light" ? "light" : v === "dark" ? "dark" : "glow");
 
 function stored(): AppTheme {
   try {
-    return localStorage.getItem(KEY) === "light" ? "light" : "dark";
+    return asTheme(localStorage.getItem(KEY));
   } catch {
-    return "dark";
+    return "glow";
   }
 }
 
 function apply(theme: AppTheme) {
-  if (theme === "light") document.documentElement.dataset.theme = "light";
-  else delete document.documentElement.dataset.theme;
+  document.documentElement.dataset.theme = theme;
 }
 
 export function setAppTheme(theme: AppTheme) {
@@ -38,14 +40,23 @@ export function setAppTheme(theme: AppTheme) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-const current = (): AppTheme => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
+/** Back to the default (Glow): called on the sign-in and sign-up forms, so every new sign-in starts on Glow. */
+export function resetAppTheme() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* private mode: nothing saved */
+  }
+}
+
+const current = (): AppTheme => asTheme(document.documentElement.dataset.theme);
 
 /**
- * The current app theme (dark while rendering on the server). Read again once on screen: parts of
- * the page that load later would otherwise keep the server's "dark".
+ * The current app theme (glow while rendering on the server). Read again once on screen: parts of
+ * the page that load later would otherwise keep the server's "glow".
  */
 export function useAppTheme(): AppTheme {
-  const [theme, setTheme] = useState<AppTheme>("dark");
+  const [theme, setTheme] = useState<AppTheme>("glow");
   useEffect(() => {
     const read = () => setTheme(current());
     const timer = setTimeout(read, 0);
@@ -71,10 +82,11 @@ export function AppThemeScope() {
   return null;
 }
 
-/** Dark / Light switch for Settings. */
+/** Glow / Dark / Light switch for Settings. */
 export function ThemeSwitch() {
   const theme = useAppTheme();
   const options = [
+    { value: "glow" as const, label: "Glow", icon: Sparkles },
     { value: "dark" as const, label: "Dark", icon: Moon },
     { value: "light" as const, label: "Light", icon: Sun },
   ];

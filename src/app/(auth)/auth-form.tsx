@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { resetAppTheme } from "@/components/app-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ export function AuthForm({
   fanvueEnabled?: boolean;
   username?: string;
 }) {
+  // Every sign-in starts on the default Glow theme (Settings can switch it again).
+  useEffect(() => resetAppTheme(), []);
   const [state, action, pending] = useActionState<AuthFormState, FormData>(mode === "login" ? loginAction : signupAction, undefined);
 
   return (

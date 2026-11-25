@@ -25,7 +25,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
-          <CardDescription>Dark (green on black) or Light (white and green). Saved on this device.</CardDescription>
+          <CardDescription>Glow (black with green glows, the default), Dark (plain green on black) or Light (white and green). Saved on this device.</CardDescription>
         </CardHeader>
         <CardContent>
           <ThemeSwitch />
