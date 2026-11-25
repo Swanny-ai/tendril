@@ -24,7 +24,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
     db.smartLink.count({ where: { userId } }),
     db.domain.count({ where: { userId } }),
   ]);
-  const { checkout } = await props.searchParams;
+  const { checkout, interval } = await props.searchParams;
   // Card payments: Paddle when it's set up, else Stripe.
   const paddle = paddleClientConfig();
   const stripeOn = stripeConfigured();
@@ -109,6 +109,7 @@ export default async function BillingPage(props: PageProps<"/dashboard/billing">
         cardPay={configured}
         paddle={paddle ? { ...paddle, email: user?.email ?? "", userId } : null}
         cardSub={cardSub}
+        initialInterval={interval === "year" ? "year" : undefined}
       />
     </div>
   );

@@ -8,7 +8,8 @@ import { countryName, getGlobalStats, getLiveStats, getSources, getTrafficPatter
 import { isValidTimeZone, resolveRange, TIMEZONE_OPTIONS } from "@/lib/analytics/ranges";
 import { PLAN_LIMITS } from "@/lib/plan-rules";
 import { getPlan } from "@/lib/plans";
-import { requireAccount } from "@/lib/session";
+import { redirect } from "next/navigation";
+import { requireAccount, requireRealUserId } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AutoRefresh } from "./auto-refresh";
 import { DashboardToolbar } from "./dashboard-toolbar";
@@ -92,8 +93,12 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
   const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views);
   const countryTotal = stats.countries?.reduce((s, c) => s + c.views, 0) ?? 0;
   // New accounts (email sign-up sends ?welcome=1; Google sign-ups are just minutes old) get a welcome.
-  const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
+  const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true, onboardedAt: true } });
   const isNew = q.welcome === "1" || (!!account && now.getTime() - account.createdAt.getTime() < 15 * 60_000);
+  // Brand-new accounts (Google and Fanvue sign-ups land here) answer the sign-up questions first.
+  if (isNew && account && !account.onboardedAt && now.getTime() - account.createdAt.getTime() < 24 * 3_600_000 && (await requireRealUserId()) === userId) {
+    redirect("/onboarding");
+  }
   if (isNew) await attributeReferral(userId);
 
   return (

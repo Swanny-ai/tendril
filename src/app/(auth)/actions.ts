@@ -52,7 +52,7 @@ export async function signupAction(_prev: AuthFormState, form: FormData): Promis
   await startTrial(user.id); // every new account gets a 5-day Pro trial
   await sendVerification(user.id, user.email);
 
-  await signIn("credentials", { email: email.data, password: password.data, redirectTo: "/dashboard?welcome=1" });
+  await signIn("credentials", { email: email.data, password: password.data, redirectTo: "/onboarding" });
   return undefined;
 }
 

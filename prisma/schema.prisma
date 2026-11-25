@@ -49,6 +49,9 @@ model User {
   healthChecks     LinkHealthCheck[]
   // The newest announcement this user has seen (its popup stays closed until a newer one is sent).
   announcementSeenAt DateTime?
+  // Sign-up questions (who they are, what they want, where their audience is) and when they finished them.
+  onboarding       Json?
+  onboardedAt      DateTime?
 
   @@index([referredById])
 }

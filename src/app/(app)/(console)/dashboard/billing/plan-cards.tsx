@@ -80,8 +80,11 @@ export function PlanCards({
   cardPay,
   paddle,
   cardSub,
+  initialInterval,
 }: {
   plan: PlanName;
+  /** Opens on this period (e.g. from the sign-up plans step). */
+  initialInterval?: Interval;
   cardPay: boolean;
   /** Card payments through Paddle (popup checkout); null = Stripe Checkout. */
   paddle: PaddleClient | null;
@@ -90,7 +93,7 @@ export function PlanCards({
 }) {
   const router = useRouter();
   // Opens on monthly prices (a current card subscription shows its own period).
-  const [interval, setPeriod] = useState<Interval>(cardSub?.interval ?? "month");
+  const [interval, setPeriod] = useState<Interval>(cardSub?.interval ?? initialInterval ?? "month");
   const [busy, setBusy] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<PaidPlan | null>(null);
   const yearly = interval === "year";
