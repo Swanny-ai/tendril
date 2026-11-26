@@ -86,7 +86,7 @@ export function OnboardingFlow({ firstName }: { firstName: string | null }) {
       <header className="relative flex items-center justify-between px-5 pt-6 sm:px-8">
         <Logo />
         {step < STEPS ? (
-          <button type="button" onClick={() => saveThen(() => setStep(STEPS))} className="text-sm text-white/50 hover:text-white">
+          <button type="button" disabled={saving} onClick={() => saveThen(() => setStep(STEPS))} className="text-sm text-white/50 hover:text-white disabled:opacity-50">
             Skip
           </button>
         ) : null}

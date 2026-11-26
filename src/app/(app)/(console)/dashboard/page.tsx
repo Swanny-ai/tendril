@@ -89,14 +89,18 @@ export default async function GlobalDashboardPage(props: PageProps<"/dashboard">
     row.views += s.views;
     topByName.set(key, row);
   }
-  // Every link, ranked; past 5 the list scrolls inside the card.
-  const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views);
+  // Top links, ranked; past 5 the list scrolls inside the card. Capped so a big account doesn't
+  // render hundreds of rows — nobody scrolls that far down a leaderboard.
+  const topPerformers = [...topByName.values()].sort((a, b) => b.views - a.views).slice(0, 50);
   const countryTotal = stats.countries?.reduce((s, c) => s + c.views, 0) ?? 0;
   // New accounts (email sign-up sends ?welcome=1; Google sign-ups are just minutes old) get a welcome.
   const account = await db.user.findUnique({ where: { id: userId }, select: { createdAt: true, onboardedAt: true } });
   const isNew = q.welcome === "1" || (!!account && now.getTime() - account.createdAt.getTime() < 15 * 60_000);
-  // Brand-new accounts (Google and Fanvue sign-ups land here) answer the sign-up questions first.
-  if (isNew && account && !account.onboardedAt && now.getTime() - account.createdAt.getTime() < 24 * 3_600_000 && (await requireRealUserId()) === userId) {
+  // Accounts made in the last week that haven't answered the sign-up questions yet (Google and Fanvue
+  // sign-ups, or anyone who closed the tab before finishing) do them first. Older accounts predate
+  // onboarding and are left alone. Never for an admin viewing someone else's dashboard.
+  const ONBOARDING_WINDOW_MS = 7 * 24 * 3_600_000;
+  if (account && !account.onboardedAt && now.getTime() - account.createdAt.getTime() < ONBOARDING_WINDOW_MS && (await requireRealUserId()) === userId) {
     redirect("/onboarding");
   }
   if (isNew) await attributeReferral(userId);
